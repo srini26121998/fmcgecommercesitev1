@@ -33,17 +33,17 @@ export function usePromotions(initialFilters?: Partial<PromotionFilters>) {
     setLoading(true);
     setError(null);
     try {
-      const result = await promotionService.getPromotions(filters, { page: pagination.page, pageSize: pagination.pageSize });
-      setPromotions(result.promotions);
-      setSummary(result.summary);
-      setPagination(result.pagination);
+      const result = await promotionService.getPromotions(filters, { page: pagination?.page || 1, pageSize: pagination?.pageSize || 10 });
+      setPromotions(result?.promotions || []);
+      setSummary(result?.summary || { total: 0, active: 0, scheduled: 0, expired: 0, totalUsage: 0, totalBudget: "₹0" });
+      setPagination(result?.pagination || { page: 1, pageSize: 10, total: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch promotions");
     } finally {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.search, filters.type, filters.status, pagination.page, pagination.pageSize]);
+  }, [filters.search, filters.type, filters.status, pagination?.page, pagination?.pageSize]);
 
   useEffect(() => { fetchPromotions(); }, [fetchPromotions]);
 
@@ -98,17 +98,17 @@ export function useCoupons(initialFilters?: Partial<CouponFilters>) {
     setLoading(true);
     setError(null);
     try {
-      const result = await promotionService.getCoupons(filters, { page: pagination.page, pageSize: pagination.pageSize });
-      setCoupons(result.coupons);
-      setSummary(result.summary);
-      setPagination(result.pagination);
+      const result = await promotionService.getCoupons(filters, { page: pagination?.page || 1, pageSize: pagination?.pageSize || 10 });
+      setCoupons(result?.coupons || []);
+      setSummary(result?.summary || { total: 0, active: 0, scheduled: 0, expired: 0, totalUsed: 0, totalIssued: 0 });
+      setPagination(result?.pagination || { page: 1, pageSize: 10, total: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch coupons");
     } finally {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.search, filters.type, filters.status, pagination.page, pagination.pageSize]);
+  }, [filters.search, filters.type, filters.status, pagination?.page, pagination?.pageSize]);
 
   useEffect(() => { fetchCoupons(); }, [fetchCoupons]);
 
@@ -169,17 +169,17 @@ export function useFlashSales() {
     setLoading(true);
     setError(null);
     try {
-      const result = await promotionService.getFlashSales({ page: pagination.page, pageSize: pagination.pageSize });
-      setFlashSales(result.flashSales);
-      setSummary(result.summary);
-      setPagination(result.pagination);
+      const result = await promotionService.getFlashSales({ page: pagination?.page || 1, pageSize: pagination?.pageSize || 10 });
+      setFlashSales(result?.flashSales || []);
+      setSummary(result?.summary || { live: 0, scheduled: 0, completed: 0, totalBudget: "₹0" });
+      setPagination(result?.pagination || { page: 1, pageSize: 10, total: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch flash sales");
     } finally {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.page, pagination.pageSize]);
+  }, [pagination?.page, pagination?.pageSize]);
 
   useEffect(() => { fetchFlashSales(); }, [fetchFlashSales]);
 
@@ -235,17 +235,17 @@ export function useCampaigns() {
     setLoading(true);
     setError(null);
     try {
-      const result = await promotionService.getCampaigns({ page: pagination.page, pageSize: pagination.pageSize });
-      setCampaigns(result.campaigns);
-      setSummary(result.summary);
-      setPagination(result.pagination);
+      const result = await promotionService.getCampaigns({ page: pagination?.page || 1, pageSize: pagination?.pageSize || 10 });
+      setCampaigns(result?.campaigns || []);
+      setSummary(result?.summary || { active: 0, scheduled: 0, drafts: 0, totalReach: "0" });
+      setPagination(result?.pagination || { page: 1, pageSize: 10, total: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch campaigns");
     } finally {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.page, pagination.pageSize]);
+  }, [pagination?.page, pagination?.pageSize]);
 
   useEffect(() => { fetchCampaigns(); }, [fetchCampaigns]);
 
@@ -301,17 +301,17 @@ export function usePushNotifications() {
     setLoading(true);
     setError(null);
     try {
-      const result = await promotionService.getPushNotifications({ page: pagination.page, pageSize: pagination.pageSize });
-      setNotifications(result.notifications);
-      setSummary(result.summary);
-      setPagination(result.pagination);
+      const result = await promotionService.getPushNotifications({ page: pagination?.page || 1, pageSize: pagination?.pageSize || 10 });
+      setNotifications(result?.notifications || []);
+      setSummary(result?.summary || { sent: 0, scheduled: 0, drafts: 0, avgOpenRate: "0%" });
+      setPagination(result?.pagination || { page: 1, pageSize: 10, total: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch notifications");
     } finally {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [pagination.page, pagination.pageSize]);
+  }, [pagination?.page, pagination?.pageSize]);
 
   useEffect(() => { fetchNotifications(); }, [fetchNotifications]);
 
@@ -370,17 +370,17 @@ export function useABTests(initialFilters?: Partial<ABTestFilters>) {
     setLoading(true);
     setError(null);
     try {
-      const result = await promotionService.getABTests(filters, { page: pagination.page, pageSize: pagination.pageSize });
-      setTests(result.tests);
-      setSummary(result.summary);
-      setPagination(result.pagination);
+      const result = await promotionService.getABTests(filters, { page: pagination?.page || 1, pageSize: pagination?.pageSize || 10 });
+      setTests(result?.tests || []);
+      setSummary(result?.summary || { total: 0, running: 0, completed: 0, totalImpressions: 0 });
+      setPagination(result?.pagination || { page: 1, pageSize: 10, total: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to fetch A/B tests");
     } finally {
       setLoading(false);
     }
   // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [filters.search, filters.status, pagination.page, pagination.pageSize]);
+  }, [filters.search, filters.status, pagination?.page, pagination?.pageSize]);
 
   useEffect(() => { fetchTests(); }, [fetchTests]);
 

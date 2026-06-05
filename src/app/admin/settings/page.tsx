@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../dashboard-layout";
@@ -14,8 +14,10 @@ import {
   Flag,
   Save,
   RefreshCw,
+  Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
+import { useGlobalSettings } from "@/hooks/use-settings";
 
 interface FeatureFlag {
   id: string;
@@ -47,6 +49,8 @@ export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
   const [flags, setFlags] = useState(mockFlags);
   const [showFeatureModal, setShowFeatureModal] = useState<FeatureFlag | null>(null);
+  
+  const { settings, loading, saving, updateSettings } = useGlobalSettings();
 
   return (
     <DashboardLayout>
@@ -91,38 +95,68 @@ export default function SettingsPage() {
         {/* Tab Content */}
         <div className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm sm:p-6">
           {activeTab === "general" && (
-            <div className="space-y-5">
+            <form 
+              className="space-y-5"
+              onSubmit={async (e) => {
+                e.preventDefault();
+                const formData = new FormData(e.currentTarget);
+                const data = {
+                  storeName: formData.get("storeName") as string,
+                  supportEmail: formData.get("supportEmail") as string,
+                  supportPhone: formData.get("supportPhone") as string,
+                  currency: formData.get("currency") as string,
+                  timezone: formData.get("timezone") as string,
+                  deliveryRadiusKm: Number(formData.get("deliveryRadiusKm")),
+                };
+                const success = await updateSettings(data);
+                if (success) toast.success("Settings saved successfully");
+              }}
+            >
               <div>
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0c831f]">Store</p>
                 <h3 className="text-sm font-black text-[#1a1a1a]">General Settings</h3>
               </div>
-              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-                {[
-                  { label: "Store Name", value: "FMCG Commerce", type: "text" },
-                  { label: "Support Email", value: "support@fmcg.com", type: "email" },
-                  { label: "Support Phone", value: "+91 1800-123-456", type: "text" },
-                  { label: "Currency", value: "INR (₹)", type: "text", disabled: true },
-                  { label: "Timezone", value: "Asia/Kolkata (IST)", type: "text", disabled: true },
-                  { label: "Delivery Radius (km)", value: "15", type: "number" },
-                ].map((field) => (
-                  <div key={field.label}>
-                    <label className="mb-1.5 block text-xs font-bold text-[#666]">{field.label}</label>
-                    <input
-                      type={field.type || "text"}
-                      defaultValue={field.value}
-                      disabled={field.disabled}
-                      className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f] disabled:cursor-not-allowed disabled:bg-[#f6f7f6] disabled:text-[#999]"
-                    />
+              
+              {loading ? (
+                <div className="flex justify-center py-8">
+                  <Loader2 className="h-6 w-6 animate-spin text-[#0c831f]" />
+                </div>
+              ) : (
+                <>
+                  <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                    {[
+                      { label: "Store Name", name: "storeName", value: settings?.storeName || "", type: "text" },
+                      { label: "Support Email", name: "supportEmail", value: settings?.supportEmail || "", type: "email" },
+                      { label: "Support Phone", name: "supportPhone", value: settings?.supportPhone || "", type: "text" },
+                      { label: "Currency", name: "currency", value: settings?.currency || "INR (₹)", type: "text", disabled: true },
+                      { label: "Timezone", name: "timezone", value: settings?.timezone || "Asia/Kolkata (IST)", type: "text", disabled: true },
+                      { label: "Delivery Radius (km)", name: "deliveryRadiusKm", value: settings?.deliveryRadiusKm || "", type: "number" },
+                    ].map((field) => (
+                      <div key={field.label}>
+                        <label className="mb-1.5 block text-xs font-bold text-[#666]">{field.label}</label>
+                        <input
+                          name={field.name}
+                          type={field.type || "text"}
+                          defaultValue={field.value}
+                          disabled={field.disabled}
+                          className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f] disabled:cursor-not-allowed disabled:bg-[#f6f7f6] disabled:text-[#999]"
+                        />
+                        {/* Add hidden inputs for disabled fields so they are included in FormData */}
+                        {field.disabled && (
+                          <input type="hidden" name={field.name} value={field.value} />
+                        )}
+                      </div>
+                    ))}
                   </div>
-                ))}
-              </div>
-              <div className="flex justify-end">
-                <button onClick={() => toast.success("Settings saved")} className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18]">
-                  <Save className="h-4 w-4" />
-                  Save Changes
-                </button>
-              </div>
-            </div>
+                  <div className="flex justify-end">
+                    <button type="submit" disabled={saving} className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] disabled:opacity-70">
+                      {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                      Save Changes
+                    </button>
+                  </div>
+                </>
+              )}
+            </form>
           )}
 
           {activeTab === "payment" && (
@@ -135,8 +169,8 @@ export default function SettingsPage() {
                 {[
                   { label: "Payment Gateway", value: "Razorpay" },
                   { label: "Gateway Commission (%)", value: "2.0" },
-                  { label: "Minimum COD Amount (₹)", value: "500" },
-                  { label: "Maximum COD Amount (₹)", value: "5000" },
+                  { label: "Minimum COD Amount (?)", value: "500" },
+                  { label: "Maximum COD Amount (?)", value: "5000" },
                 ].map((field) => (
                   <div key={field.label}>
                     <label className="mb-1.5 block text-xs font-bold text-[#666]">{field.label}</label>
@@ -296,3 +330,4 @@ export default function SettingsPage() {
     </DashboardLayout>
   );
 }
+

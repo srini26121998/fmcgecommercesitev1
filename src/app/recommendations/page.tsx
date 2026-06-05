@@ -1,61 +1,30 @@
-import type { Metadata } from "next";
+"use client";
+
+import { useMemo } from "react";
 import { env } from "@/lib/env";
+import { safeJsonLd } from "@/lib/utils";
 import Link from "next/link";
 import { ChevronLeft, Sparkles } from "lucide-react";
 import Navbar from "@/components/ui/navbar";
 import BottomNav from "@/components/ui/mobile/bottom-nav";
 import ProductCard from "@/components/ui/products/product-card";
-import { products } from "@/data/products";
-
-export const metadata: Metadata = {
-  title: "Personalized Recommendations | FMCG Commerce",
-  description:
-    "Discover AI-powered personalized grocery recommendations at FMCG Commerce. Smart picks based on your preferences, past orders, and trending products. Fresh groceries delivered in 10 minutes.",
-  keywords: [
-    "personalized grocery recommendations",
-    "AI-powered grocery picks",
-    "recommended groceries",
-    "smart grocery shopping",
-    "personalized deals",
-    "grocery suggestions India",
-    "trending groceries",
-    "FMCG recommendations",
-  ],
-  robots: { index: true, follow: true },
-  alternates: { canonical: `${env.siteUrl}/recommendations` },
-  openGraph: {
-    type: "website",
-    locale: "en_IN",
-    url: `${env.siteUrl}/recommendations`,
-    title: "Personalized Grocery Recommendations | FMCG Commerce",
-    description:
-      "AI-powered personalized grocery recommendations with 10-minute delivery. Fresh picks just for you.",
-    siteName: "FMCG Commerce",
-  },
-  twitter: {
-    card: "summary",
-    title: "Personalized Recommendations | FMCG Commerce",
-    description: "Smart grocery recommendations delivered in 10 minutes.",
-    creator: "@fmcgcommerce",
-  },
-};
-
-function getRecommendedProducts() {
-  return [...products]
-    .filter((p) => p.stock !== "out_of_stock")
-    .sort((a, b) => b.rating - a.rating);
-}
-
-const recommendedProducts = getRecommendedProducts();
+import { useProducts } from "@/hooks/use-products";
 
 export default function RecommendationsPage() {
+  const { products } = useProducts();
+
+  const recommendedProducts = useMemo(() => {
+    return [...products]
+      .filter((p) => p.stock > 0)
+      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+  }, [products]);
 
   return (
     <main className="bg-[#f2f2f2] min-h-screen pb-20 md:pb-0">
       <script
         type="application/ld+json"
         dangerouslySetInnerHTML={{
-          __html: JSON.stringify({
+          __html: safeJsonLd({
             "@context": "https://schema.org",
             "@type": "CollectionPage",
             name: "AI Recommendations | FMCG Commerce",
@@ -67,8 +36,8 @@ export default function RecommendationsPage() {
       />
       <Navbar />
 
-      <div className="pt-16">
-        <div className="bg-white border-b border-[#e8e8e8] sticky top-16 z-10">
+      <div className="pt-[72px] sm:pt-20">
+        <div className="bg-white border-b border-[#e8e8e8] sticky top-[72px] sm:top-20 z-10">
           <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-3 flex items-center gap-3">
             <Link
               href="/"
@@ -108,7 +77,7 @@ export default function RecommendationsPage() {
           ) : (
             <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
               {recommendedProducts.map((product) => (
-                <ProductCard key={product.id} product={product} />
+                <ProductCard key={product.id} product={product as any} />
               ))}
             </div>
           )}

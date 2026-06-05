@@ -37,7 +37,7 @@ export const useOfflineStore = create<OfflineStore>((set, get) => ({
         }
       });
     } catch (error) {
-      console.error("[SW] Registration failed:", error);
+      console.warn("[SW] Registration failed:", error);
     }
   },
 

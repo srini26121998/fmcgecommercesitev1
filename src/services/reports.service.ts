@@ -1,9 +1,5 @@
 // ── Reports & Analytics Service Layer ─────────────────────
 // Architecture: UI → Component → Hook → Service → API Gateway → Backend
-// Currently uses mock data. To connect to real backend:
-// 1. Uncomment axios calls below
-// 2. Set NEXT_PUBLIC_API_BASE_URL
-// 3. Remove mock data imports and delay helper
 
 import { apiClient } from "@/lib/api-client";
 import type {
@@ -20,65 +16,40 @@ import type {
   ReportPageMeta,
   ReportFilters,
 } from "@/types/reports";
-import {
-  mockGSTReports,
-  mockCustomerReportEntries,
-  mockCohortData,
-  mockAbandonedCartData,
-  mockRevenueAnalytics,
-  mockPromotionROIData,
-  mockInventoryReportEntries,
-  mockVendorReportEntries,
-  mockTaxReportEntries,
-  mockSalesReportEntries,
-} from "@/data/admin/reports";
-
-const delay = (ms = 200) => new Promise((res) => setTimeout(res, ms));
-
-function applyPagination<T>(data: T[], page = 1, pageSize = 10): { data: T[]; meta: ReportPageMeta } {
-  const total = data.length;
-  const start = (page - 1) * pageSize;
-  return {
-    data: data.slice(start, start + pageSize),
-    meta: { page, pageSize, total, totalPages: Math.ceil(total / pageSize) },
-  };
-}
-
-function applySearch<T>(data: T[], query: string, fields: (keyof T)[]): T[] {
-  if (!query) return data;
-  const q = query.toLowerCase();
-  return data.filter((item) =>
-    fields.some((field) => String(item[field]).toLowerCase().includes(q))
-  );
-}
 
 export const reportsService = {
   async getGSTReports(
     filters?: Partial<ReportFilters>,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{ data: GSTReportEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    let filtered = [...mockGSTReports];
-    if (filters?.search) {
-      filtered = applySearch(filtered, filters.search, ["businessName", "gstin", "period"] as (keyof GSTReportEntry)[]);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+      if (filters?.search) params.append("search", filters.search);
+
+      const qs = params.toString();
+      const response = await apiClient.get<any>(
+        `/api/v1/admin/reports/gst?${qs}`,
+      );
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch GST reports:", error);
+      throw error;
     }
-    if (filters?.dateFrom) {
-      filtered = filtered.filter((r) => r.dueDate >= filters.dateFrom!);
-    }
-    if (filters?.dateTo) {
-      filtered = filtered.filter((r) => r.dueDate <= filters.dateTo!);
-    }
-    if (filters?.sortBy) {
-      const key = filters.sortBy as keyof GSTReportEntry;
-      const dir = filters.sortOrder === "asc" ? 1 : -1;
-      filtered.sort((a, b) => {
-        const aVal = a[key] ?? "";
-        const bVal = b[key] ?? "";
-        return String(aVal).localeCompare(String(bVal)) * dir;
-      });
-    }
-    return applyPagination(filtered, page, pageSize);
   },
 
   async getGSTSummary(): Promise<{
@@ -88,48 +59,55 @@ export const reportsService = {
     pendingReturns: number;
     overdueReturns: number;
   }> {
-    await delay(150);
-    const total = mockGSTReports.reduce(
-      (acc, r) => ({
-        totalLiability: acc.totalLiability + r.totalTaxLiability,
-        totalInputCredit: acc.totalInputCredit + r.inputCredit,
-        netPayable: acc.netPayable + r.netPayable,
-      }),
-      { totalLiability: 0, totalInputCredit: 0, netPayable: 0 }
-    );
-    return {
-      ...total,
-      pendingReturns: mockGSTReports.filter((r) => r.status === "pending").length,
-      overdueReturns: mockGSTReports.filter((r) => r.status === "overdue").length,
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/gst/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalLiability !== undefined) return summary;
+      throw new Error("Invalid GST summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch GST summary:", error);
+      throw error;
+    }
   },
 
   async getCustomerReports(
     filters?: Partial<ReportFilters>,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{ data: CustomerReportEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    let filtered = [...mockCustomerReportEntries];
-    if (filters?.search) {
-      filtered = applySearch(filtered, filters.search, ["name", "email", "city", "preferredCategory"] as (keyof CustomerReportEntry)[]);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+      if (filters?.search) params.append("search", filters.search);
+
+      const qs = params.toString();
+      const response = await apiClient.get<any>(
+        `/api/v1/admin/reports/customers?${qs}`,
+      );
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch customer reports:", error);
+      throw error;
     }
-    if (filters?.dateFrom) {
-      filtered = filtered.filter((r) => r.lastOrderDate >= filters.dateFrom!);
-    }
-    if (filters?.dateTo) {
-      filtered = filtered.filter((r) => r.lastOrderDate <= filters.dateTo!);
-    }
-    if (filters?.sortBy) {
-      const key = filters.sortBy as keyof CustomerReportEntry;
-      const dir = filters.sortOrder === "asc" ? 1 : -1;
-      filtered.sort((a, b) => {
-        const aVal = a[key] ?? "";
-        const bVal = b[key] ?? "";
-        return String(aVal).localeCompare(String(bVal)) * dir;
-      });
-    }
-    return applyPagination(filtered, page, pageSize);
   },
 
   async getCustomerSummary(): Promise<{
@@ -139,23 +117,53 @@ export const reportsService = {
     platinumCount: number;
     atRiskCount: number;
   }> {
-    await delay(150);
-    const customers = mockCustomerReportEntries;
-    return {
-      totalCustomers: customers.length,
-      totalRevenue: customers.reduce((s, c) => s + c.totalSpent, 0),
-      avgRetentionRate: Math.round(customers.reduce((s, c) => s + c.retentionRate, 0) / customers.length),
-      platinumCount: customers.filter((c) => c.segment === "platinum").length,
-      atRiskCount: customers.filter((c) => c.retentionRate < 50).length,
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/customers/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalCustomers !== undefined) return summary;
+      throw new Error("Invalid customer summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch customer summary:", error);
+      throw error;
+    }
   },
 
   async getCohortData(
     page = 1,
-    pageSize = 12
+    pageSize = 12,
   ): Promise<{ data: CohortEntry[]; meta: ReportPageMeta }> {
-    await delay(300);
-    return applyPagination(mockCohortData, page, pageSize);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+
+      const qs = params.toString();
+      const response = await apiClient.get<any>(
+        `/api/v1/admin/reports/cohorts?${qs}`,
+      );
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch cohort data:", error);
+      throw error;
+    }
   },
 
   async getCohortSummary(): Promise<{
@@ -165,40 +173,55 @@ export const reportsService = {
     avgRetentionWeek4: number;
     avgRetentionWeek12: number;
   }> {
-    await delay(150);
-    const cohorts = mockCohortData;
-    const week1Values = cohorts.filter((c) => c.week1 > 0).map((c) => c.week1);
-    const week4Values = cohorts.filter((c) => c.week4 > 0).map((c) => c.week4);
-    const week12Values = cohorts.filter((c) => c.week11 > 0).map((c) => c.week11);
-    return {
-      totalCohorts: cohorts.length,
-      totalUsers: cohorts.reduce((s, c) => s + c.users, 0),
-      avgRetentionWeek1: Math.round(week1Values.reduce((s, v) => s + v, 0) / week1Values.length * 10) / 10,
-      avgRetentionWeek4: Math.round(week4Values.reduce((s, v) => s + v, 0) / week4Values.length * 10) / 10,
-      avgRetentionWeek12: week12Values.length > 0 ? Math.round(week12Values.reduce((s, v) => s + v, 0) / week12Values.length * 10) / 10 : 0,
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/cohorts/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalCohorts !== undefined) return summary;
+      throw new Error("Invalid cohort summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch cohort summary:", error);
+      throw error;
+    }
   },
 
   async getAbandonedCartData(
     filters?: Partial<ReportFilters>,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{ data: AbandonedCartEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    let filtered = [...mockAbandonedCartData];
-    if (filters?.search) {
-      filtered = applySearch(filtered, filters.search, ["customerName", "customerEmail"] as (keyof AbandonedCartEntry)[]);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+      if (filters?.search) params.append("search", filters.search);
+
+      const qs = params.toString();
+      const response = await apiClient.get<any>(
+        `/api/v1/admin/reports/abandoned-carts?${qs}`,
+      );
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch abandoned cart data:", error);
+      throw error;
     }
-    if (filters?.sortBy) {
-      const key = filters.sortBy as keyof AbandonedCartEntry;
-      const dir = filters.sortOrder === "asc" ? 1 : -1;
-      filtered.sort((a, b) => {
-        const aVal = a[key] ?? "";
-        const bVal = b[key] ?? "";
-        return String(aVal).localeCompare(String(bVal)) * dir;
-      });
-    }
-    return applyPagination(filtered, page, pageSize);
   },
 
   async getAbandonedCartSummary(): Promise<{
@@ -209,26 +232,53 @@ export const reportsService = {
     recoveredRevenue: number;
     avgCartValue: number;
   }> {
-    await delay(150);
-    const carts = mockAbandonedCartData;
-    const recovered = carts.filter((c) => c.status === "recovered");
-    const lost = carts.filter((c) => c.status === "lost" || c.status === "abandoned");
-    return {
-      totalAbandoned: carts.length,
-      totalRecovered: recovered.length,
-      recoveryRate: Math.round((recovered.length / carts.length) * 100),
-      lostRevenue: lost.reduce((s, c) => s + c.cartValue, 0),
-      recoveredRevenue: recovered.reduce((s, c) => s + c.cartValue, 0),
-      avgCartValue: Math.round(carts.reduce((s, c) => s + c.cartValue, 0) / carts.length),
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/abandoned-carts/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalAbandoned !== undefined) return summary;
+      throw new Error("Invalid abandoned cart summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch abandoned cart summary:", error);
+      throw error;
+    }
   },
 
   async getRevenueAnalytics(
     page = 1,
-    pageSize = 12
+    pageSize = 12,
   ): Promise<{ data: RevenueAnalyticsEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    return applyPagination(mockRevenueAnalytics, page, pageSize);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+
+      const qs = params.toString();
+      const response = await apiClient.get<any>(
+        `/api/v1/admin/reports/revenue?${qs}`,
+      );
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch revenue analytics:", error);
+      throw error;
+    }
   },
 
   async getRevenueSummary(): Promise<{
@@ -239,41 +289,55 @@ export const reportsService = {
     totalNetProfit: number;
     revenueGrowth: number;
   }> {
-    await delay(150);
-    const data = mockRevenueAnalytics;
-    const first = data[0];
-    const last = data[data.length - 1];
-    const revenueGrowth = first ? Math.round(((last.revenue - first.revenue) / first.revenue) * 100 * 10) / 10 : 0;
-    return {
-      totalRevenue: data.reduce((s, r) => s + r.revenue, 0),
-      totalCOGS: data.reduce((s, r) => s + r.cogs, 0),
-      totalGrossProfit: data.reduce((s, r) => s + r.grossProfit, 0),
-      avgGrossMargin: Math.round(data.reduce((s, r) => s + r.grossMargin, 0) / data.length * 10) / 10,
-      totalNetProfit: data.reduce((s, r) => s + r.netProfit, 0),
-      revenueGrowth,
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/revenue/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalRevenue !== undefined) return summary;
+      throw new Error("Invalid revenue summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch revenue summary:", error);
+      throw error;
+    }
   },
 
   async getPromotionROIData(
     filters?: Partial<ReportFilters>,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{ data: PromotionROIEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    let filtered = [...mockPromotionROIData];
-    if (filters?.search) {
-      filtered = applySearch(filtered, filters.search, ["promotionName", "type"] as (keyof PromotionROIEntry)[]);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+      if (filters?.search) params.append("search", filters.search);
+
+      const qs = params.toString();
+      const response = await apiClient.get<any>(
+        `/api/v1/admin/reports/promotions?${qs}`,
+      );
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch promotion ROI data:", error);
+      throw error;
     }
-    if (filters?.sortBy) {
-      const key = filters.sortBy as keyof PromotionROIEntry;
-      const dir = filters.sortOrder === "asc" ? 1 : -1;
-      filtered.sort((a, b) => {
-        const aVal = a[key] ?? "";
-        const bVal = b[key] ?? "";
-        return String(aVal).localeCompare(String(bVal)) * dir;
-      });
-    }
-    return applyPagination(filtered, page, pageSize);
   },
 
   async getPromotionROISummary(): Promise<{
@@ -285,26 +349,55 @@ export const reportsService = {
     bestPromotion: string;
     totalRedemptions: number;
   }> {
-    await delay(150);
-    const data = mockPromotionROIData;
-    const best = data.reduce((best, curr) => (curr.roi > best.roi ? curr : best), data[0]);
-    return {
-      totalPromotions: data.length,
-      totalCost: data.reduce((s, p) => s + p.cost, 0),
-      totalRevenue: data.reduce((s, p) => s + p.revenueGenerated, 0),
-      avgROI: Math.round(data.reduce((s, p) => s + p.roi, 0) / data.length),
-      highestROI: best.roi,
-      bestPromotion: best.promotionName,
-      totalRedemptions: data.reduce((s, p) => s + p.redemptionCount, 0),
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/promotions/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalPromotions !== undefined) return summary;
+      throw new Error("Invalid promotion ROI summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch promotion ROI summary:", error);
+      throw error;
+    }
   },
 
-  async exportReport(reportType: string, format: "csv" | "xlsx" | "pdf", filters?: Partial<ReportFilters>): Promise<{ success: boolean; downloadUrl: string }> {
-    await delay(500);
-    return {
-      success: true,
-      downloadUrl: `/api/reports/export/${reportType}?format=${format}`,
-    };
+  async exportReport(
+    reportType: string,
+    format: "csv" | "xlsx" | "pdf",
+    filters?: Partial<ReportFilters>,
+  ): Promise<{ success: boolean; downloadUrl: string }> {
+    try {
+      const params = new URLSearchParams();
+      params.append("format", format);
+      if (filters?.dateFrom) params.append("startDate", filters.dateFrom);
+      if (filters?.dateTo) params.append("endDate", filters.dateTo);
+      if (filters?.search) params.append("search", filters.search);
+      if (filters?.period) params.append("period", filters.period);
+
+      const qs = params.toString();
+      const requestUrl = qs
+        ? `/api/v1/reports/${reportType}/export?${qs}`
+        : `/api/v1/reports/${reportType}/export`;
+      const response = await apiClient.get<any>(requestUrl, {
+        responseType: "blob",
+      });
+      const blob =
+        response instanceof Blob
+          ? response
+          : new Blob([response], {
+            type: format === "csv" ? "text/csv" : "application/octet-stream",
+          });
+      const url = window.URL.createObjectURL(blob);
+      return { success: true, downloadUrl: url };
+    } catch (error) {
+      console.error(`[reportsService] Failed to export ${reportType} report:`, error);
+      throw error;
+    }
   },
 
   // ── Sales Reports ─────────────────────────────────────
@@ -312,71 +405,38 @@ export const reportsService = {
   async getSalesReports(
     filters?: Partial<ReportFilters>,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{ data: SalesReportEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    
-    // Merge live sales data
-    let localSales: SalesReportEntry[] = [];
-    if (typeof window !== "undefined") {
-      try {
-        const storage = localStorage.getItem("order-storage");
-        if (storage) {
-          const orders = JSON.parse(storage).state?.orders || [];
-          const grouped = orders.reduce((acc: any, o: any) => {
-            const date = new Date(o.date).toISOString().split("T")[0];
-            if (!acc[date]) {
-              acc[date] = {
-                id: `live-${date}`,
-                date,
-                grossRevenue: 0,
-                netRevenue: 0,
-                orders: 0,
-                avgOrderValue: 0,
-                discounts: 0,
-                refunds: 0,
-                promoCost: 0,
-                topCategory: "Groceries",
-                upiTransactions: 0,
-                cardTransactions: 0,
-                cashTransactions: 0,
-              };
-            }
-            acc[date].grossRevenue += o.total;
-            acc[date].netRevenue += o.total;
-            acc[date].orders += 1;
-            if (o.paymentMethod.toLowerCase().includes("upi")) acc[date].upiTransactions += 1;
-            else if (o.paymentMethod.toLowerCase().includes("card")) acc[date].cardTransactions += 1;
-            else acc[date].cashTransactions += 1;
-            return acc;
-          }, {});
-          localSales = Object.values(grouped).map((r: any) => ({ ...r, avgOrderValue: Math.round(r.grossRevenue / r.orders) }));
-        }
-      } catch (e) { console.error(e); }
-    }
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("limit", String(pageSize));
+      if (filters?.dateFrom) params.append("startDate", filters.dateFrom);
+      if (filters?.dateTo) params.append("endDate", filters.dateTo);
+      if (filters?.search) params.append("search", filters.search);
+      if (filters?.sortBy) params.append("sortBy", filters.sortBy as string);
+      if (filters?.sortOrder) params.append("sortOrder", filters.sortOrder);
 
-    let filtered = [...localSales, ...mockSalesReportEntries];
-    if (filters?.search) {
-      filtered = applySearch(filtered, filters.search, ["date", "topCategory"] as (keyof SalesReportEntry)[]);
+      const qs = params.toString();
+      const url = qs ? `/api/v1/admin/reports/sales?${qs}` : `/api/v1/admin/reports/sales`;
+      const response = await apiClient.get<any>(url);
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch sales reports:", error);
+      throw error;
     }
-    if (filters?.dateFrom) {
-      filtered = filtered.filter((r) => r.date >= filters.dateFrom!);
-    }
-    if (filters?.dateTo) {
-      filtered = filtered.filter((r) => r.date <= filters.dateTo!);
-    }
-    if (filters?.sortBy) {
-      const key = filters.sortBy as keyof SalesReportEntry;
-      const dir = filters.sortOrder === "asc" ? 1 : -1;
-      filtered.sort((a, b) => {
-        const aVal = a[key] ?? "";
-        const bVal = b[key] ?? "";
-        return String(aVal).localeCompare(String(bVal)) * dir;
-      });
-    } else {
-      filtered.sort((a, b) => b.date.localeCompare(a.date));
-    }
-    return applyPagination(filtered, page, pageSize);
   },
 
   async getSalesSummary(): Promise<{
@@ -389,23 +449,15 @@ export const reportsService = {
     ordersGrowth: number;
     topCategory: string;
   }> {
-    await delay(150);
-    const data = mockSalesReportEntries;
-    const totalRevenue = data.reduce((s, r) => s + r.grossRevenue, 0);
-    const totalOrders = data.reduce((s, r) => s + r.orders, 0);
-    const categoryCount: Record<string, number> = {};
-    data.forEach((r) => { categoryCount[r.topCategory] = (categoryCount[r.topCategory] || 0) + 1; });
-    const topCategory = Object.entries(categoryCount).sort((a, b) => b[1] - a[1])[0]?.[0] ?? "Groceries";
-    return {
-      totalRevenue,
-      totalOrders,
-      avgOrderValue: Math.round(totalRevenue / totalOrders),
-      totalRefunds: data.reduce((s, r) => s + r.refunds, 0),
-      totalDiscounts: data.reduce((s, r) => s + r.discounts, 0),
-      revenueGrowth: 12.5,
-      ordersGrowth: 10.1,
-      topCategory,
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/sales/summary",
+      );
+      return response?.data || response;
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch sales summary:", error);
+      throw error;
+    }
   },
 
   // ── Inventory Reports ─────────────────────────────────
@@ -413,23 +465,38 @@ export const reportsService = {
   async getInventoryReports(
     filters?: Partial<ReportFilters>,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{ data: InventoryReportEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    let filtered = [...mockInventoryReportEntries];
-    if (filters?.search) {
-      filtered = applySearch(filtered, filters.search, ["productName", "sku", "category", "warehouse"] as (keyof InventoryReportEntry)[]);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("limit", String(pageSize));
+      if (filters?.search) params.append("search", filters.search);
+      if (filters?.sortBy) params.append("sortBy", filters.sortBy as string);
+      if (filters?.sortOrder) params.append("sortOrder", filters.sortOrder);
+
+      const qs = params.toString();
+      const url = qs
+        ? `/api/v1/admin/reports/inventory?${qs}`
+        : `/api/v1/admin/reports/inventory`;
+      const response = await apiClient.get<any>(url);
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch inventory reports:", error);
+      throw error;
     }
-    if (filters?.sortBy) {
-      const key = filters.sortBy as keyof InventoryReportEntry;
-      const dir = filters.sortOrder === "asc" ? 1 : -1;
-      filtered.sort((a, b) => {
-        const aVal = a[key] ?? "";
-        const bVal = b[key] ?? "";
-        return String(aVal).localeCompare(String(bVal)) * dir;
-      });
-    }
-    return applyPagination(filtered, page, pageSize);
   },
 
   async getInventorySummary(): Promise<{
@@ -441,17 +508,21 @@ export const reportsService = {
     avgTurnoverRate: number;
     totalDamagedValue: number;
   }> {
-    await delay(150);
-    const data = mockInventoryReportEntries;
-    return {
-      totalSKUs: data.length,
-      totalStockValue: data.reduce((s, r) => s + r.stockValue, 0),
-      lowStockCount: data.filter((r) => r.stockStatus === "low" || r.stockStatus === "critical").length,
-      outOfStockCount: data.filter((r) => r.stockStatus === "out_of_stock").length,
-      overstockedCount: data.filter((r) => r.stockStatus === "overstocked").length,
-      avgTurnoverRate: Math.round(data.reduce((s, r) => s + r.turnoverRate, 0) / data.length * 10) / 10,
-      totalDamagedValue: data.reduce((s, r) => s + r.damaged * r.unitCost, 0),
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/inventory/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalSKUs !== undefined) return summary;
+      throw new Error("Invalid inventory summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch inventory summary:", error);
+      throw error;
+    }
   },
 
   // ── Vendor Reports ────────────────────────────────────
@@ -459,23 +530,35 @@ export const reportsService = {
   async getVendorReports(
     filters?: Partial<ReportFilters>,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{ data: VendorReportEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    let filtered = [...mockVendorReportEntries];
-    if (filters?.search) {
-      filtered = applySearch(filtered, filters.search, ["vendorName", "category"] as (keyof VendorReportEntry)[]);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+      if (filters?.search) params.append("search", filters.search);
+
+      const qs = params.toString();
+      const response = await apiClient.get<any>(
+        `/api/v1/admin/reports/vendors?${qs}`,
+      );
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch vendor reports:", error);
+      throw error;
     }
-    if (filters?.sortBy) {
-      const key = filters.sortBy as keyof VendorReportEntry;
-      const dir = filters.sortOrder === "asc" ? 1 : -1;
-      filtered.sort((a, b) => {
-        const aVal = a[key] ?? "";
-        const bVal = b[key] ?? "";
-        return String(aVal).localeCompare(String(bVal)) * dir;
-      });
-    }
-    return applyPagination(filtered, page, pageSize);
   },
 
   async getVendorSummary(): Promise<{
@@ -488,18 +571,21 @@ export const reportsService = {
     excellentCount: number;
     poorCount: number;
   }> {
-    await delay(150);
-    const data = mockVendorReportEntries;
-    return {
-      totalVendors: data.length,
-      totalGrossSales: data.reduce((s, v) => s + v.grossSales, 0),
-      totalCommission: data.reduce((s, v) => s + v.commission, 0),
-      totalNetPayout: data.reduce((s, v) => s + v.netPayout, 0),
-      totalPendingPayout: data.reduce((s, v) => s + v.pendingPayout, 0),
-      avgRating: Math.round(data.reduce((s, v) => s + v.rating, 0) / data.length * 10) / 10,
-      excellentCount: data.filter((v) => v.performance === "excellent").length,
-      poorCount: data.filter((v) => v.performance === "poor").length,
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/vendors/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalVendors !== undefined) return summary;
+      throw new Error("Invalid vendor summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch vendor summary:", error);
+      throw error;
+    }
   },
 
   // ── Tax Reports ───────────────────────────────────────
@@ -507,23 +593,35 @@ export const reportsService = {
   async getTaxReports(
     filters?: Partial<ReportFilters>,
     page = 1,
-    pageSize = 10
+    pageSize = 10,
   ): Promise<{ data: TaxReportEntry[]; meta: ReportPageMeta }> {
-    await delay(250);
-    let filtered = [...mockTaxReportEntries];
-    if (filters?.search) {
-      filtered = applySearch(filtered, filters.search, ["reportTitle", "period", "type"] as (keyof TaxReportEntry)[]);
+    try {
+      const params = new URLSearchParams();
+      params.append("page", String(page));
+      params.append("pageSize", String(pageSize));
+      if (filters?.search) params.append("search", filters.search);
+
+      const qs = params.toString();
+      const response = await apiClient.get<any>(
+        `/api/v1/admin/reports/taxes?${qs}`,
+      );
+      const resData = response?.data || response;
+      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
+      const total = resData?.totalElements || resData?.total || data.length;
+
+      return {
+        data: Array.isArray(data) ? data : [],
+        meta: {
+          page,
+          pageSize,
+          total,
+          totalPages: Math.ceil(total / pageSize),
+        },
+      };
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch tax reports:", error);
+      throw error;
     }
-    if (filters?.sortBy) {
-      const key = filters.sortBy as keyof TaxReportEntry;
-      const dir = filters.sortOrder === "asc" ? 1 : -1;
-      filtered.sort((a, b) => {
-        const aVal = a[key] ?? "";
-        const bVal = b[key] ?? "";
-        return String(aVal).localeCompare(String(bVal)) * dir;
-      });
-    }
-    return applyPagination(filtered, page, pageSize);
   },
 
   async getTaxSummary(): Promise<{
@@ -534,21 +632,20 @@ export const reportsService = {
     nextDueDate: string;
     totalITCClaimed: number;
   }> {
-    await delay(150);
-    const data = mockTaxReportEntries;
-    const filed = data.filter((r) => r.status === "filed");
-    const itcEntry = data.find((r) => r.type === "ITC");
-    const pending = data.filter((r) => r.status === "pending");
-    const nextDue = pending
-      .filter((r) => r.dueDate !== "—")
-      .sort((a, b) => a.dueDate.localeCompare(b.dueDate))[0];
-    return {
-      totalTaxCollected: filed.reduce((s, r) => s + r.totalTaxAmount, 0),
-      totalTaxPaid: filed.reduce((s, r) => s + r.totalTaxAmount, 0),
-      pendingFilings: pending.length,
-      overdueFilings: data.filter((r) => r.status === "overdue").length,
-      nextDueDate: nextDue?.dueDate ?? "—",
-      totalITCClaimed: itcEntry?.totalTaxAmount ?? 0,
-    };
+    try {
+      const response = await apiClient.get<any>(
+        "/api/v1/admin/reports/taxes/summary",
+      );
+      const summary =
+        response?.data?.summary ||
+        response?.summary ||
+        response?.data ||
+        response;
+      if (summary && summary.totalTaxCollected !== undefined) return summary;
+      throw new Error("Invalid tax summary response format");
+    } catch (error) {
+      console.error("[reportsService] Failed to fetch tax summary:", error);
+      throw error;
+    }
   },
 };

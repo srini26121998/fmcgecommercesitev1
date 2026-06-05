@@ -10,9 +10,9 @@ import { toast } from "sonner";
 const routes = [
   { zone: "North Zone", deliveries: 28, distance: "45 km", time: "3.2 hrs", fuel: "2.1 L", status: "optimized", savings: "12%" },
   { zone: "South Zone", deliveries: 22, distance: "38 km", time: "2.8 hrs", fuel: "1.8 L", status: "optimized", savings: "8%" },
-  { zone: "East Zone", deliveries: 35, distance: "52 km", time: "4.1 hrs", fuel: "2.6 L", status: "pending", savings: "—" },
+  { zone: "East Zone", deliveries: 35, distance: "52 km", time: "4.1 hrs", fuel: "2.6 L", status: "pending", savings: "₹" },
   { zone: "West Zone", deliveries: 18, distance: "32 km", time: "2.2 hrs", fuel: "1.5 L", status: "optimized", savings: "15%" },
-  { zone: "Central Zone", deliveries: 15, distance: "28 km", time: "1.9 hrs", fuel: "1.3 L", status: "pending", savings: "—" },
+  { zone: "Central Zone", deliveries: 15, distance: "28 km", time: "1.9 hrs", fuel: "1.3 L", status: "pending", savings: "₹" },
 ];
 
 export default function RouteOptimizationPage() {
@@ -64,7 +64,7 @@ export default function RouteOptimizationPage() {
                   </div>
                   <div>
                     <p className="text-sm font-bold text-[#1a1a1a]">{r.zone}</p>
-                    <p className="text-xs text-[#666]">{r.deliveries} deliveries · {r.distance}</p>
+                    <p className="text-xs text-[#666]">{r.deliveries} deliveries ₹ {r.distance}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2">
@@ -82,8 +82,8 @@ export default function RouteOptimizationPage() {
                 </div>
                 <div>
                   <p className="text-[10px] text-[#999]">Savings</p>
-                  <p className={`flex items-center gap-1 text-xs font-bold ${r.savings !== "—" ? "text-[#0c831f]" : "text-[#999]"}`}>
-                    <TrendingDown className="h-3 w-3" /> {r.savings !== "—" ? r.savings : "N/A"}
+                  <p className={`flex items-center gap-1 text-xs font-bold ${r.savings !== "₹" ? "text-[#0c831f]" : "text-[#999]"}`}>
+                    <TrendingDown className="h-3 w-3" /> {r.savings !== "₹" ? r.savings : "N/A"}
                   </p>
                 </div>
               </div>
@@ -94,3 +94,4 @@ export default function RouteOptimizationPage() {
     </DashboardLayout>
   );
 }
+

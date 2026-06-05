@@ -8,7 +8,7 @@ import { z } from "zod";
 export type PromotionType = "coupon" | "discount" | "flash_sale" | "buy_x_get_y" | "bogo";
 export type DiscountType = "percentage" | "fixed" | "bogo";
 export type PromotionStatus = "active" | "scheduled" | "expired" | "paused" | "draft";
-export type CouponType = "public" | "new_user" | "vip" | "loyalty" | "referral";
+export type CouponType = "public" | "new_user" | "vip" | "loyalty" | "referral" | "free_delivery";
 export type CampaignStatus = "active" | "scheduled" | "draft" | "completed";
 export type CampaignChannel = "push" | "email" | "sms" | "in_app" | "whatsapp";
 export type NotificationStatus = "sent" | "scheduled" | "draft" | "failed";
@@ -47,9 +47,9 @@ export type Promotion = z.infer<typeof PromotionSchema>;
 export const CouponSchema = z.object({
   id: z.string(),
   code: z.string().min(1, "Coupon code is required"),
-  type: z.enum(["public", "new_user", "vip", "loyalty", "referral"]),
+  type: z.enum(["public", "new_user", "vip", "loyalty", "referral", "free_delivery"]),
   discount: z.string(),
-  discountType: z.enum(["percentage", "fixed", "bogo"]),
+  discountType: z.enum(["percentage", "fixed", "bogo", "free_delivery"]),
   discountValue: z.number().nonnegative(),
   minOrder: z.number().nonnegative().default(0),
   maxDiscount: z.number().nonnegative().optional(),

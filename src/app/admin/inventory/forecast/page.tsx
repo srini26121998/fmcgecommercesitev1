@@ -1,14 +1,21 @@
-﻿"use client";
+"use client";
 
-import { useMemo } from "react";
+import { useMemo, useEffect } from "react";
 import DashboardLayout from "../../dashboard-layout";
 import ReusableCard from "@/components/ui/admin/reusable-card";
 import { TrendingUp, TrendingDown, Package, BarChart3, RefreshCw } from "lucide-react";
 import { useDemandForecasts } from "@/hooks/use-inventory";
 import ForecastChart from "@/components/ui/inventory/forecast-chart";
+import { toast } from "sonner";
 
 export default function ForecastPage() {
-  const { forecasts, loading, refresh } = useDemandForecasts();
+  const { forecasts, loading, error, refresh } = useDemandForecasts();
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const kpis = useMemo(() => {
     const avgConfidence =
@@ -57,3 +64,4 @@ export default function ForecastPage() {
     </DashboardLayout>
   );
 }
+

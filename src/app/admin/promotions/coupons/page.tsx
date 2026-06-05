@@ -27,10 +27,11 @@ export default function CouponsPage() {
     const discountLabel = editForm.discountType === "percentage" ? `${editForm.discountValue}% Off`
       : editForm.discountType === "bogo" ? "Buy 1 Get 1" : `₹${editForm.discountValue} Off`;
     
-    const res = await updateCoupon(editCoupon.id, {
-      ...editForm,
-      discount: discountLabel,
-    });
+    const payload = { ...editForm, discount: discountLabel };
+    if (payload.startDate && !payload.startDate.includes("T")) payload.startDate += "T00:00:00";
+    if (payload.endDate && !payload.endDate.includes("T")) payload.endDate += "T23:59:59";
+
+    const res = await updateCoupon(editCoupon.id, payload);
     if (res) {
       toast.success(`Coupon "${editForm.code}" updated successfully`);
       setEditCoupon(null);
@@ -95,7 +96,7 @@ export default function CouponsPage() {
             )},
             { key: "discount", header: "Discount", width: "120px", render: (c) => <span className="font-bold">{c.discount}</span> },
             { key: "minOrder", header: "Min Order", width: "100px", align: "right", render: (c) => c.minOrder ? `₹${c.minOrder}` : "—" },
-            { key: "totalUsed", header: "Uses", width: "140px", align: "right", render: (c) => <span>{c.totalUsed.toLocaleString()} / {c.totalIssued.toLocaleString()}</span> },
+            { key: "totalUsed", header: "Uses", width: "140px", align: "right", render: (c) => <span>{c.totalUsed.toLocaleString()} / {c.totalIssued === -1 ? '∞' : c.totalIssued.toLocaleString()}</span> },
             { key: "status", header: "Status", width: "100px", render: (c) => <StatusBadge status={c.status} /> },
             { key: "endDate", header: "Expires", width: "110px", hideOnMobile: true },
           ]}
@@ -154,7 +155,7 @@ export default function CouponsPage() {
               </div>
               <div>
                 <span className="block text-xs font-bold text-[#999] uppercase">Usage</span>
-                <span className="font-semibold text-[#1a1a1a]">{showViewModal.totalUsed.toLocaleString()} / {showViewModal.totalIssued.toLocaleString()}</span>
+                <span className="font-semibold text-[#1a1a1a]">{showViewModal.totalUsed.toLocaleString()} / {showViewModal.totalIssued === -1 ? 'Unlimited' : showViewModal.totalIssued.toLocaleString()}</span>
               </div>
               <div>
                 <span className="block text-xs font-bold text-[#999] uppercase">Per User Limit</span>
@@ -184,7 +185,7 @@ export default function CouponsPage() {
 
       {/* Slide-in panel */}
       <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
           editCoupon ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -223,6 +224,7 @@ export default function CouponsPage() {
                 <option value="vip">VIP</option>
                 <option value="loyalty">Loyalty</option>
                 <option value="referral">Referral</option>
+                <option value="free_delivery">Free Delivery</option>
               </select>
             </div>
             <div>
@@ -231,6 +233,7 @@ export default function CouponsPage() {
                 <option value="percentage">Percentage (%)</option>
                 <option value="fixed">Fixed (₹)</option>
                 <option value="bogo">BOGO</option>
+                <option value="free_delivery">Free Delivery</option>
               </select>
             </div>
           </div>
@@ -290,3 +293,4 @@ export default function CouponsPage() {
     </DashboardLayout>
   );
 }
+

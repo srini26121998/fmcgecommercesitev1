@@ -1,6 +1,7 @@
 "use client";
 
 import { History, Plus, Edit3, DollarSign, Package, Activity, Trash2, Image, Hash, Tag, Upload } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface AuditEntry {
   id: string;
@@ -118,39 +119,40 @@ export default function AuditTimeline({ entries, isLoading }: AuditTimelineProps
               </div>
 
               {/* Content */}
-              <div className="flex-1 rounded-xl border border-[#e8e8e8] bg-white p-3 transition-all hover:shadow-sm">
-                <div className="flex items-start justify-between gap-2">
-                  <div>
-                    <p className="text-sm font-bold text-[#1a1a1a]">{entry.action}</p>
-                    <p className="mt-0.5 text-xs text-[#666]">
-                      <span className="font-medium">{entry.product}</span>
-                      {entry.field !== "All" && entry.field !== "—" && (
-                        <span> — field: <span className="font-medium">{entry.field}</span></span>
-                      )}
-                    </p>
+              <motion.div 
+                drag
+                dragConstraints={{ left: 0, right: 0, top: 0, bottom: 0 }}
+                dragElastic={0.1}
+                whileDrag={{ scale: 1.02, zIndex: 50, cursor: "grabbing" }}
+                className="flex-1 rounded-xl border border-[#e8e8e8] bg-white p-4 transition-shadow hover:shadow-md cursor-grab relative"
+              >
+                <div className="flex items-start justify-between gap-2 mb-3">
+                  <div className="flex items-center gap-2">
+                    <p className="text-base font-bold text-[#1a1a1a]">{entry.action}</p>
+                    <span className={`flex-shrink-0 rounded-full px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wider ${roleColor}`}>
+                      {entry.role}
+                    </span>
                   </div>
-                  <span className={`flex-shrink-0 rounded-full px-2 py-0.5 text-[9px] font-bold ${roleColor}`}>
-                    {entry.role}
+                  <span className="text-[11px] font-medium text-[#999] bg-[#f6f7f6] px-2.5 py-1 rounded-lg">
+                    {formatTimestamp(entry.timestamp)}
                   </span>
                 </div>
 
-                {/* Old → New values */}
-                {entry.oldValue !== "—" && entry.newValue !== "—" && (
-                  <div className="mt-2 flex items-center gap-2 rounded-lg bg-[#f9fafb] px-3 py-1.5">
-                    <span className="text-xs text-[#dc2626] line-through">{entry.oldValue}</span>
-                    <span className="text-[#999]">→</span>
-                    <span className="text-xs font-semibold text-[#0c831f]">{entry.newValue}</span>
-                  </div>
-                )}
-
-                {/* Footer */}
-                <div className="mt-2 flex items-center justify-between">
-                  <span className="text-[10px] text-[#999]">
-                    by <span className="font-medium text-[#666]">{entry.performedBy}</span>
-                  </span>
-                  <span className="text-[10px] text-[#999]">{formatTimestamp(entry.timestamp)}</span>
+                <div className="flex flex-wrap items-center gap-x-6 gap-y-3 rounded-lg border border-[#f0f0f0] bg-[#fcfcfc] p-3">
+                  {Object.entries(entry)
+                    .filter(([key, value]) => !["id", "timestamp", "action", "role"].includes(key) && value !== null && value !== "" && value !== "null")
+                    .map(([key, value]) => (
+                      <div key={key} className="flex items-center gap-2">
+                        <span className="text-[10px] font-bold uppercase tracking-wide text-[#999]">
+                          {key.replace(/([A-Z])/g, " $1").trim()}:
+                        </span>
+                        <span className="text-xs font-semibold text-[#1a1a1a] max-w-[200px] truncate" title={String(value)}>
+                          {String(value)}
+                        </span>
+                      </div>
+                    ))}
                 </div>
-              </div>
+              </motion.div>
             </div>
           );
         })}

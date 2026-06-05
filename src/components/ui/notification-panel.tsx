@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { Bell, Package, Tag, Truck, X, Heart, Clock, Megaphone, Gift, RefreshCw } from "lucide-react";
-import { useNotificationStore } from "@/store/notification-store";
+import { useUserNotifications } from "@/hooks/use-user-notifications";
 import Link from "next/link";
 
 const NOTIFICATION_ICONS: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
@@ -27,19 +27,19 @@ const getTimeAgo = (timestamp: number) => {
 
 export default function NotificationPanel() {
   const [isOpen, setIsOpen] = useState(false);
-  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useNotificationStore();
+  const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useUserNotifications();
 
   return (
     <div className="relative">
       {/* Bell Button */}
       <button
         onClick={() => setIsOpen(!isOpen)}
-        className="relative min-w-[44px] min-h-[44px] w-10 h-10 rounded-lg bg-[#f2f2f2] border border-[#e8e8e8] flex items-center justify-center hover-border-pink transition-all duration-200 btn-press"
+        className="relative min-w-[44px] min-h-[44px] w-11 h-11 rounded-xl bg-[#f8f9fa] border border-[#e8e8e8] flex items-center justify-center hover-border-pink transition-all duration-200 btn-press hover:bg-white hover:shadow-sm group"
         aria-label={`Notifications${unreadCount > 0 ? `, ${unreadCount} unread` : ""}`}
       >
-        <Bell className="w-4 h-4 text-[#1a1a1a]" />
+        <Bell className="w-5 h-5 text-[#444] group-hover:text-[#ff4f8b] transition-colors" />
         {unreadCount > 0 && (
-          <span className="absolute -top-1 -right-1 bg-[#ff4f8b] text-white text-[9px] font-black min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center leading-none px-1">
+          <span className="absolute -top-1 -right-1 bg-[#ff4f8b] text-white text-[9px] font-black min-w-[18px] min-h-[18px] rounded-full flex items-center justify-center leading-none px-1 shadow-sm">
             {unreadCount > 9 ? "9+" : unreadCount}
           </span>
         )}

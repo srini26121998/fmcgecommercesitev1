@@ -1,11 +1,7 @@
 // ── Customer Management Service Layer ───────────────────
 // Architecture: UI → Component → Hook → Service → API Gateway → Backend
-// Currently uses mock data.
-// To connect to real backend:
-// 1. Uncomment the axios calls below
-// 2. Set NEXT_PUBLIC_API_BASE_URL
-// 3. Remove mock data imports and delay helper
 
+import { apiClient } from "@/lib/api-client";
 import type {
   Customer,
   CustomerActivity,
@@ -13,8 +9,6 @@ import type {
   CustomerFilters,
   CustomersListResponse,
   Segment,
-  AnalyticsMetric,
-  CohortData,
   SupportTicket,
   TicketFilters,
   TicketsListResponse,
@@ -26,22 +20,7 @@ import type {
 } from "@/types/customers";
 import type { PaginationState } from "@/types/products";
 
-import {
-  mockCustomers,
-  mockCustomerActivities,
-  mockSegments,
-  mockAnalyticsMetrics,
-  mockCohortData,
-  mockAcquisitionChannels,
-  mockSupportTickets,
-  mockFraudAlerts,
-  mockSuspiciousActivities,
-  mockExportRequests,
-} from "@/data/admin/customers";
-
 // ── Helpers ──────────────────────────────────────────────
-
-const delay = (ms = 250) => new Promise((res) => setTimeout(res, ms));
 
 function computeCustomersSummary(customers: Customer[]) {
   return {
@@ -58,27 +37,6 @@ function computeCustomersSummary(customers: Customer[]) {
   };
 }
 
-function computeTicketsSummary(tickets: SupportTicket[]) {
-  return {
-    total: tickets.length,
-    open: tickets.filter((t) => t.status === "open").length,
-    inProgress: tickets.filter((t) => t.status === "in_progress").length,
-    resolved: tickets.filter((t) => t.status === "resolved" || t.status === "closed").length,
-    urgent: tickets.filter((t) => t.priority === "urgent").length,
-  };
-}
-
-function computeFraudSummary(alerts: FraudAlert[]) {
-  return {
-    total: alerts.length,
-    blocked: alerts.filter((a) => a.status === "blocked").length,
-    flagged: alerts.filter((a) => a.status === "flagged").length,
-    monitoring: alerts.filter((a) => a.status === "monitoring").length,
-    critical: alerts.filter((a) => a.riskLevel === "critical").length,
-    high: alerts.filter((a) => a.riskLevel === "high").length,
-  };
-}
-
 // ── Customer Service ─────────────────────────────────────
 
 export const customerService = {
@@ -88,135 +46,173 @@ export const customerService = {
     filters?: Partial<CustomerFilters>,
     pagination?: Partial<PaginationState>,
   ): Promise<CustomersListResponse> {
-    await delay(300);
+    try {
+      const params = new URLSearchParams();
+      if (filters?.search) params.set("search", filters.search);
+      if (filters?.segment && filters.segment !== "all") params.set("segment", filters.segment);
+      if (filters?.status && filters.status !== "all") params.set("status", filters.status);
+      if (filters?.city) params.set("city", filters.city);
+      if (filters?.minOrders !== undefined) params.set("minOrders", String(filters.minOrders));
+      if (filters?.minSpent !== undefined) params.set("minSpent", String(filters.minSpent));
+      if (filters?.sortBy) params.set("sortBy", filters.sortBy);
+      if (filters?.sortOrder) params.set("sortOrder", filters.sortOrder);
+      if (pagination?.page) params.set("page", String(pagination.page));
+      if (pagination?.pageSize) params.set("limit", String(pagination.pageSize));
 
-    let filtered = [...mockCustomers];
+      const qs = params.toString();
+      const url = qs ? `/api/v1/admin/customers?${qs}` : `/api/v1/admin/customers`;
+      const response = await apiClient.get<any>(url);
+      const customers = response.data?.customers || response.customers || response.data || [];
+      const total = response.data?.total || response.total || customers.length;
+      
+      return {
+        customers,
+        pagination: { page: pagination?.page || 1, pageSize: pagination?.pageSize || 10, total },
+        summary: response.data?.summary || response.summary || computeCustomersSummary(customers),
+      };
+    } catch (error) {
+      console.error("[CustomerService] getCustomers failed:", error);
+      throw error;
+    }
+  },
 
-    if (filters?.search) {
-      const q = filters.search.toLowerCase();
-      filtered = filtered.filter(
-        (c) =>
-          c.name.toLowerCase().includes(q) ||
-          c.email.toLowerCase().includes(q) ||
-          c.phone.includes(q) ||
-          c.city.toLowerCase().includes(q),
-      );
+  async getCustomerStats(): Promise<any> {
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/customers/stats");
+      return response.data || response;
+    } catch (error) {
+      console.error("[CustomerService] getCustomerStats failed:", error);
+      throw error;
     }
-    if (filters?.segment && filters.segment !== "all") {
-      filtered = filtered.filter((c) => c.segment === filters.segment);
-    }
-    if (filters?.status && filters.status !== "all") {
-      filtered = filtered.filter((c) => c.status === filters.status);
-    }
-    if (filters?.city) {
-      filtered = filtered.filter((c) => c.city.toLowerCase().includes(filters.city!.toLowerCase()));
-    }
-
-    // Filter by segment/status convenience
-    if (filters?.minOrders !== undefined) {
-      filtered = filtered.filter((c) => c.totalOrders >= filters.minOrders!);
-    }
-    if (filters?.minSpent !== undefined) {
-      filtered = filtered.filter((c) => c.totalSpent >= filters.minSpent!);
-    }
-
-    // Sorting
-    if (filters?.sortBy) {
-      filtered.sort((a, b) => {
-        const aVal = a[filters.sortBy as keyof Customer] ?? "";
-        const bVal = b[filters.sortBy as keyof Customer] ?? "";
-        const cmp = typeof aVal === "number" && typeof bVal === "number" ? aVal - bVal : String(aVal).localeCompare(String(bVal));
-        return filters.sortOrder === "asc" ? cmp : -cmp;
-      });
-    }
-
-    const page = pagination?.page || 1;
-    const pageSize = pagination?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-    const paged = filtered.slice(start, start + pageSize);
-
-    return {
-      customers: paged,
-      pagination: { page, pageSize, total },
-      summary: computeCustomersSummary(filtered),
-    };
   },
 
   async getCustomerById(id: string): Promise<Customer | undefined> {
-    await delay(150);
-    return mockCustomers.find((c) => c.id === id);
+    try {
+      const response = await apiClient.get<any>(`/api/v1/admin/customers/${id}`);
+      return response.data?.customer || response.customer || response.data;
+    } catch (error) {
+      console.error(`[CustomerService] getCustomerById failed for ${id}:`, error);
+      throw error;
+    }
   },
 
   async updateCustomerStatus(id: string, status: string): Promise<Customer | undefined> {
-    await delay(200);
-    const idx = mockCustomers.findIndex((c) => c.id === id);
-    if (idx === -1) return undefined;
-    mockCustomers[idx] = { ...mockCustomers[idx], status: status as Customer["status"], updatedAt: new Date().toISOString() };
-    return mockCustomers[idx];
+    try {
+      const response = await apiClient.patch<any>(`/api/v1/admin/customers/${id}/status`, { status });
+      return response.data?.customer || response.customer || response.data;
+    } catch (error) {
+      console.error(`[CustomerService] updateCustomerStatus failed:`, error);
+      throw error;
+    }
   },
 
   async updateCustomer(id: string, data: Partial<Customer>): Promise<Customer | undefined> {
-    await delay(250);
-    const idx = mockCustomers.findIndex((c) => c.id === id);
-    if (idx === -1) return undefined;
-    mockCustomers[idx] = { ...mockCustomers[idx], ...data, updatedAt: new Date().toISOString() };
-    return mockCustomers[idx];
+    try {
+      const response = await apiClient.patch<any>(`/api/v1/admin/customers/${id}`, data);
+      return response.data?.customer || response.customer || response.data;
+    } catch (error) {
+      console.error(`[CustomerService] updateCustomer failed:`, error);
+      throw error;
+    }
+  },
+
+  async getCustomerNotes(id: string): Promise<any[]> {
+    try {
+      const response = await apiClient.get<any>(`/api/v1/admin/customers/${id}/notes`);
+      return response.data?.notes || response.notes || response.data || [];
+    } catch (error) {
+      console.error(`[CustomerService] getCustomerNotes failed:`, error);
+      throw error;
+    }
   },
 
   async addCustomerNote(id: string, content: string, performedBy: string): Promise<boolean> {
-    await delay(150);
-    const idx = mockCustomers.findIndex((c) => c.id === id);
-    if (idx === -1) return false;
-    const note = { id: `NOTE-${Date.now()}`, content, performedBy, createdAt: new Date().toISOString() };
-    mockCustomers[idx].notes = [...mockCustomers[idx].notes, note];
-    return true;
+    try {
+      await apiClient.post<any>(`/api/v1/admin/customers/${id}/notes`, { content, performedBy });
+      return true;
+    } catch (error) {
+      console.error(`[CustomerService] addCustomerNote failed:`, error);
+      throw error;
+    }
+  },
+
+  async deleteCustomerNote(noteId: string): Promise<boolean> {
+    try {
+      await apiClient.delete<any>(`/api/v1/admin/customers/notes/${noteId}`);
+      return true;
+    } catch (error) {
+      console.error(`[CustomerService] deleteCustomerNote failed:`, error);
+      throw error;
+    }
   },
 
   // ── Activities ────────────────────────────────────────
 
   async getCustomerActivities(customerId: string): Promise<CustomerActivity[]> {
-    await delay(200);
-    return mockCustomerActivities.filter((a) => a.customerId === customerId);
+    try {
+      const response = await apiClient.get<any>(`/api/v1/admin/customers/${customerId}/activities`);
+      return response.data || response;
+    } catch (error) {
+      console.error(`[CustomerService] getCustomerActivities failed for ${customerId}:`, error);
+      throw error;
+    }
   },
 
   async addCustomerActivity(customerId: string, action: CustomerAction, description: string, performedBy?: string): Promise<boolean> {
-    await delay(100);
-    const activity = {
-      id: `ACT-${Date.now()}`,
-      customerId,
-      action,
-      description,
-      performedBy,
-      timestamp: new Date().toISOString().replace('T', ' ').slice(0, 16),
-    };
-    mockCustomerActivities.unshift(activity);
-    return true;
+    try {
+      await apiClient.post<any>(`/api/v1/admin/customers/${customerId}/activities`, { action, description, performedBy });
+      return true;
+    } catch (error) {
+      console.error(`[CustomerService] addCustomerActivity failed for ${customerId}:`, error);
+      throw error;
+    }
   },
 
   // ── Segments ──────────────────────────────────────────
 
   async getSegments(): Promise<Segment[]> {
-    await delay(200);
-    return [...mockSegments];
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/customers/segments");
+      return response.data || response;
+    } catch (error) {
+      console.error("[CustomerService] getSegments failed:", error);
+      throw error;
+    }
+  },
+
+  async createSegment(data: { name: string; criteria: string; description: string }): Promise<any> {
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/customers/segments", data);
+      return response.data || response;
+    } catch (error) {
+      console.error("[CustomerService] createSegment failed:", error);
+      throw error;
+    }
+  },
+
+  async updateSegment(id: string | number, data: { name: string; criteria: string; description: string }): Promise<any> {
+    try {
+      const response = await apiClient.put<any>(`/api/v1/admin/customers/segments/${id}`, data);
+      return response.data || response;
+    } catch (error) {
+      console.error(`[CustomerService] updateSegment failed for ${id}:`, error);
+      throw error;
+    }
   },
 
   // ── Analytics ─────────────────────────────────────────
 
-  async getAnalyticsMetrics(): Promise<AnalyticsMetric[]> {
-    await delay(200);
-    return [...mockAnalyticsMetrics];
+  async getPurchaseBehavior(): Promise<any> {
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/customers/analytics");
+      return response.data || response;
+    } catch (error) {
+      console.error("[CustomerService] getPurchaseBehavior failed:", error);
+      throw error;
+    }
   },
 
-  async getCohortData(): Promise<CohortData[]> {
-    await delay(200);
-    return [...mockCohortData];
-  },
 
-  async getAcquisitionChannels(): Promise<{ channel: string; count: number; percentage: number; revenue: number }[]> {
-    await delay(200);
-    return [...mockAcquisitionChannels];
-  },
 
   // ── Support Tickets ───────────────────────────────────
 
@@ -224,69 +220,89 @@ export const customerService = {
     filters?: Partial<TicketFilters>,
     pagination?: Partial<PaginationState>,
   ): Promise<TicketsListResponse> {
-    await delay(250);
+    try {
+      const params = new URLSearchParams();
+      if (filters?.search) params.set("search", filters.search);
+      if (filters?.status && filters.status !== "all") params.set("status", filters.status);
+      if (filters?.priority && filters.priority !== "all") params.set("priority", filters.priority);
+      if (filters?.assignedTo) params.set("assignedTo", filters.assignedTo);
+      if (pagination?.page) params.set("page", String(pagination.page));
+      if (pagination?.pageSize) params.set("limit", String(pagination.pageSize));
 
-    let filtered = [...mockSupportTickets];
+      const response = await apiClient.get<any>(`/api/v1/admin/customers/tickets?${params.toString()}`);
+      
+      let tickets = [];
+      if (Array.isArray(response)) {
+        tickets = response;
+      } else if (response?.data?.tickets) {
+        tickets = response.data.tickets;
+      } else if (response?.tickets) {
+        tickets = response.tickets;
+      } else if (Array.isArray(response?.data)) {
+        tickets = response.data;
+      }
 
-    if (filters?.search) {
-      const q = filters.search.toLowerCase();
-      filtered = filtered.filter(
-        (t) =>
-          t.customer.toLowerCase().includes(q) ||
-          t.subject.toLowerCase().includes(q) ||
-          t.id.toLowerCase().includes(q),
-      );
-    }
-    if (filters?.status && filters.status !== "all") {
-      filtered = filtered.filter((t) => t.status === filters.status);
-    }
-    if (filters?.priority && filters.priority !== "all") {
-      filtered = filtered.filter((t) => t.priority === filters.priority);
-    }
-    if (filters?.assignedTo) {
-      filtered = filtered.filter((t) => t.assignedTo === filters.assignedTo);
-    }
+      const total = response?.data?.total || response?.total || response?.data?.pagination?.total || response?.pagination?.total || tickets.length;
 
-    const page = pagination?.page || 1;
-    const pageSize = pagination?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-    const paged = filtered.slice(start, start + pageSize);
-
-    return {
-      tickets: paged,
-      pagination: { page, pageSize, total },
-      summary: computeTicketsSummary(filtered),
-    };
+      return {
+        tickets,
+        pagination: response?.data?.pagination || response?.pagination || { page: pagination?.page || 1, pageSize: pagination?.pageSize || 10, total },
+        summary: response?.data?.summary || response?.summary || { total: tickets.length, open: 0, inProgress: 0, resolved: 0, urgent: 0 }
+      };
+    } catch (error) {
+      console.error("[CustomerService] getTickets failed:", error);
+      throw error;
+    }
   },
 
   async getTicketById(id: string): Promise<SupportTicket | undefined> {
-    await delay(150);
-    return mockSupportTickets.find((t) => t.id === id);
+    try {
+      const response = await apiClient.get<any>(`/api/v1/admin/customers/tickets/${id}`);
+      return response.data?.ticket || response.ticket || response.data;
+    } catch (error) {
+      console.error(`[CustomerService] getTicketById failed for ${id}:`, error);
+      throw error;
+    }
+  },
+
+  async createTicket(data: any): Promise<any> {
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/customers/tickets", data);
+      return response.data || response;
+    } catch (error) {
+      console.error("[CustomerService] createTicket failed:", error);
+      throw error;
+    }
+  },
+
+  async updateTicket(id: string, data: any): Promise<any> {
+    try {
+      const response = await apiClient.put<any>(`/api/v1/admin/customers/tickets/${id}`, data);
+      return response.data || response;
+    } catch (error) {
+      console.error(`[CustomerService] updateTicket failed for ${id}:`, error);
+      throw error;
+    }
   },
 
   async updateTicketStatus(id: string, status: string, assignedTo?: string): Promise<SupportTicket | undefined> {
-    await delay(200);
-    const idx = mockSupportTickets.findIndex((t) => t.id === id);
-    if (idx === -1) return undefined;
-    mockSupportTickets[idx] = {
-      ...mockSupportTickets[idx],
-      status: status as SupportTicket["status"],
-      ...(assignedTo ? { assignedTo } : {}),
-      updatedAt: new Date().toISOString(),
-      ...(status === "resolved" || status === "closed" ? { resolvedAt: new Date().toISOString() } : {}),
-    };
-    return mockSupportTickets[idx];
+    try {
+      const response = await apiClient.patch<any>(`/api/v1/admin/customers/tickets/${id}/status`, { status, assignedTo });
+      return response.data?.ticket || response.ticket || response.data;
+    } catch (error) {
+      console.error(`[CustomerService] updateTicketStatus failed for ${id}:`, error);
+      throw error;
+    }
   },
 
   async addTicketMessage(id: string, message: { sender: string; senderRole: "customer" | "agent" | "system"; content: string }): Promise<boolean> {
-    await delay(200);
-    const idx = mockSupportTickets.findIndex((t) => t.id === id);
-    if (idx === -1) return false;
-    const msg = { id: `MSG-${Date.now()}`, ...message, attachments: [], createdAt: new Date().toISOString() };
-    mockSupportTickets[idx].messages = [...mockSupportTickets[idx].messages, msg];
-    mockSupportTickets[idx].updatedAt = new Date().toISOString();
-    return true;
+    try {
+      await apiClient.post<any>(`/api/v1/admin/customers/tickets/${id}/messages`, message);
+      return true;
+    } catch (error) {
+      console.error(`[CustomerService] addTicketMessage failed for ${id}:`, error);
+      throw error;
+    }
   },
 
   // ── Fraud Detection ───────────────────────────────────
@@ -295,75 +311,70 @@ export const customerService = {
     filters?: Partial<FraudFilters>,
     pagination?: Partial<PaginationState>,
   ): Promise<FraudListResponse> {
-    await delay(250);
+    try {
+      const params = new URLSearchParams();
+      if (filters?.search) params.set("search", filters.search);
+      if (filters?.status && filters.status !== "all") params.set("status", filters.status);
+      if (filters?.riskLevel && filters.riskLevel !== "all") params.set("riskLevel", filters.riskLevel);
+      if (filters?.minScore !== undefined) params.set("minScore", String(filters.minScore));
+      if (pagination?.page) params.set("page", String(pagination.page));
+      if (pagination?.pageSize) params.set("limit", String(pagination.pageSize));
 
-    let filtered = [...mockFraudAlerts];
+      const response = await apiClient.get<any>(`/api/v1/admin/customers/fraud-alerts`);
+      
+      let alerts = [];
+      if (Array.isArray(response)) {
+        alerts = response;
+      } else if (response?.data?.alerts) {
+        alerts = response.data.alerts;
+      } else if (response?.alerts) {
+        alerts = response.alerts;
+      } else if (Array.isArray(response?.data)) {
+        alerts = response.data;
+      }
 
-    if (filters?.search) {
-      const q = filters.search.toLowerCase();
-      filtered = filtered.filter(
-        (a) =>
-          a.customerName.toLowerCase().includes(q) ||
-          a.reason.toLowerCase().includes(q) ||
-          a.email.toLowerCase().includes(q),
-      );
+      const total = response?.data?.total || response?.total || response?.data?.pagination?.total || response?.pagination?.total || alerts.length;
+
+      const computedSummary = {
+        total: alerts.length,
+        blocked: alerts.filter((a: any) => a.status === "blocked").length,
+        flagged: alerts.filter((a: any) => a.status === "flagged").length,
+        monitoring: alerts.filter((a: any) => a.status === "monitoring").length,
+        critical: alerts.filter((a: any) => a.riskLevel === "critical" || (a.riskScore || a.score) >= 90).length,
+        high: alerts.filter((a: any) => a.riskLevel === "high" || ((a.riskScore || a.score) >= 70 && (a.riskScore || a.score) < 90)).length,
+      };
+
+      return {
+        alerts,
+        pagination: response?.data?.pagination || response?.pagination || { page: pagination?.page || 1, pageSize: pagination?.pageSize || 10, total },
+        summary: response?.data?.summary || response?.summary || computedSummary
+      };
+    } catch (error) {
+      console.error("[CustomerService] getFraudAlerts failed:", error);
+      throw error;
     }
-    if (filters?.status && filters.status !== "all") {
-      filtered = filtered.filter((a) => a.status === filters.status);
-    }
-    if (filters?.riskLevel && filters.riskLevel !== "all") {
-      filtered = filtered.filter((a) => a.riskLevel === filters.riskLevel);
-    }
-    if (filters?.minScore !== undefined) {
-      filtered = filtered.filter((a) => a.riskScore >= filters.minScore!);
-    }
-
-    // Sort by risk score descending by default
-    filtered.sort((a, b) => b.riskScore - a.riskScore);
-
-    const page = pagination?.page || 1;
-    const pageSize = pagination?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-    const paged = filtered.slice(start, start + pageSize);
-
-    return {
-      alerts: paged,
-      pagination: { page, pageSize, total },
-      summary: computeFraudSummary(filtered),
-    };
   },
 
   async updateFraudAlertStatus(id: string, status: string): Promise<FraudAlert | undefined> {
-    await delay(200);
-    const idx = mockFraudAlerts.findIndex((a) => a.id === id);
-    if (idx === -1) return undefined;
-    mockFraudAlerts[idx] = {
-      ...mockFraudAlerts[idx],
-      status: status as FraudAlert["status"],
-      ...(status === "cleared" || status === "blocked" ? { resolvedAt: new Date().toISOString() } : {}),
-    };
-    return mockFraudAlerts[idx];
+    try {
+      const response = await apiClient.patch<any>(`/api/v1/admin/customers/fraud/alerts/${id}/status`, { status });
+      return response.data?.alert || response.alert || response.data;
+    } catch (error) {
+      console.error(`[CustomerService] updateFraudAlertStatus failed for ${id}:`, error);
+      throw error;
+    }
   },
 
-  async getFraudAnalytics(): Promise<{ alertsByLevel: Record<string, number>; trendLast7Days: number; topReasons: { reason: string; count: number }[] }> {
-    await delay(200);
-    const alertsByLevel: Record<string, number> = {};
-    mockFraudAlerts.forEach((a) => { alertsByLevel[a.riskLevel] = (alertsByLevel[a.riskLevel] || 0) + 1; });
-
-    const reasonMap: Record<string, number> = {};
-    mockFraudAlerts.forEach((a) => { reasonMap[a.reason] = (reasonMap[a.reason] || 0) + 1; });
-    const topReasons = Object.entries(reasonMap)
-      .map(([reason, count]) => ({ reason, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5);
-
-    return {
-      alertsByLevel,
-      trendLast7Days: 12,
-      topReasons,
-    };
+  async resetFraudScore(customerId: string | number): Promise<boolean> {
+    try {
+      await apiClient.post<any>(`/api/v1/admin/customers/${customerId}/reset-fraud`, {});
+      return true;
+    } catch (error) {
+      console.error(`[CustomerService] resetFraudScore failed for ${customerId}:`, error);
+      throw error;
+    }
   },
+
 
   // ── Export / GDPR Requests ────────────────────────────
 
@@ -371,36 +382,34 @@ export const customerService = {
     customerId?: string,
     pagination?: Partial<PaginationState>,
   ): Promise<{ requests: ExportRequest[]; pagination: PaginationState }> {
-    await delay(200);
-    let filtered = [...mockExportRequests];
-    if (customerId) {
-      filtered = filtered.filter((r) => r.customerId === customerId);
+    try {
+      const params = new URLSearchParams();
+      if (customerId) params.set("customerId", customerId);
+      if (pagination?.page) params.set("page", String(pagination.page));
+      if (pagination?.pageSize) params.set("limit", String(pagination.pageSize));
+
+      const response = await apiClient.get<any>(`/api/v1/admin/customers/exports?${params.toString()}`);
+      if (response?.data) {
+        return response.data;
+      }
+      return response;
+    } catch (error) {
+      console.error("[CustomerService] getExportRequests failed:", error);
+      throw error;
     }
-    const page = pagination?.page || 1;
-    const pageSize = pagination?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-    const paged = filtered.slice(start, start + pageSize);
-    return { requests: paged, pagination: { page, pageSize, total } };
   },
 
   async requestDataExport(customerId: string, customerName: string, type: string): Promise<ExportRequest> {
-    await delay(500);
-    const req: ExportRequest = {
-      id: `EXP-${Date.now()}`,
-      customerId,
-      customerName,
-      type: type as ExportRequest["type"],
-      scope: "all",
-      status: "pending",
-      fileUrl: null,
-      requestedBy: customerName,
-      requestedAt: new Date().toISOString(),
-      completedAt: null,
-    };
-    return req;
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/customers/exports", { customerId, customerName, type });
+      return response.data || response;
+    } catch (error) {
+      console.error("[CustomerService] requestDataExport failed:", error);
+      throw error;
+    }
   },
 };
+
 
 // ── Export singleton ─────────────────────────────────────
 export default customerService;

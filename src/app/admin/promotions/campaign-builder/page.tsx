@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -63,7 +63,7 @@ export default function CampaignBuilderPage() {
                       <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#fff0f6]"><Megaphone className="h-4 w-4 text-[#ff4f8b]" /></div>
                       <div>
                         <p className="text-sm font-bold text-[#1a1a1a]">{camp.name}</p>
-                        <p className="text-xs text-[#999]">{camp.audience} · Budget: {camp.budget}</p>
+                        <p className="text-xs text-[#999]">{camp.audience} ₹ Budget: {camp.budget}</p>
                       </div>
                     </div>
                     <div className="text-right flex flex-col items-end gap-1.5">
@@ -183,7 +183,7 @@ export default function CampaignBuilderPage() {
 
       {/* Slide-in panel */}
       <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
           editCampaign ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -229,3 +229,4 @@ export default function CampaignBuilderPage() {
     </DashboardLayout>
   );
 }
+

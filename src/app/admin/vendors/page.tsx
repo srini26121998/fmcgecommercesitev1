@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../dashboard-layout";
@@ -14,7 +14,7 @@ import { vendorsService } from "@/services/vendors.service";
 import {
   Store, Eye, Edit3, Star, DollarSign, Package, TrendingUp,
   Plus, Phone, RefreshCw, ShieldAlert, CheckCircle, XCircle,
-  MapPin, CreditCard, Activity,
+  MapPin, CreditCard, Activity, Loader2, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import type { Vendor } from "@/types/vendors";
@@ -25,12 +25,19 @@ export default function VendorsPage() {
   const {
     data, loading, error, summary, filters, meta,
     fetchData, updateFilters, goToPage, changePageSize,
+    createVendor, updateVendorStatus, updateVendor, deleteVendor,
+    approveVendor, rejectVendor
   } = useVendors();
 
   const [selectedVendor, setSelectedVendor] = useState<Vendor | null>(null);
+  const [viewLoading, setViewLoading] = useState(false);
   const [showAddModal, setShowAddModal] = useState(false);
   const [addForm, setAddForm] = useState({ name: "", email: "", phone: "", category: "", city: "", state: "", commissionRate: "10", contactPerson: "" });
   const [addLoading, setAddLoading] = useState(false);
+
+  const [showEditModal, setShowEditModal] = useState(false);
+  const [editForm, setEditForm] = useState<Partial<Vendor>>({});
+  const [editLoading, setEditLoading] = useState(false);
 
   const handleAddVendor = async () => {
     if (!addForm.name || !addForm.email || !addForm.category) {
@@ -39,7 +46,7 @@ export default function VendorsPage() {
     }
     setAddLoading(true);
     try {
-      await vendorsService.createVendor({ ...addForm, commissionRate: Number(addForm.commissionRate) });
+      await createVendor({ ...addForm, commissionRate: Number(addForm.commissionRate) });
       toast.success(`${addForm.name} has been onboarded successfully`);
       setShowAddModal(false);
       setAddForm({ name: "", email: "", phone: "", category: "", city: "", state: "", commissionRate: "10", contactPerson: "" });
@@ -53,11 +60,79 @@ export default function VendorsPage() {
 
   const handleStatusChange = async (vendor: Vendor, status: Vendor["status"]) => {
     try {
-      await vendorsService.updateVendorStatus(vendor.id, status);
+      await updateVendorStatus(vendor.id, status);
       toast.success(`${vendor.name} status updated to ${status}`);
       fetchData();
     } catch {
       toast.error("Failed to update vendor status");
+    }
+  };
+
+  const handleViewVendor = async (vendor: Vendor) => {
+    setSelectedVendor(vendor);
+    setViewLoading(true);
+    try {
+      const fullVendor = await vendorsService.getVendorById(vendor.id);
+      if (fullVendor) {
+        setSelectedVendor(fullVendor);
+      }
+    } catch (err) {
+      toast.error("Failed to fetch full vendor details");
+    } finally {
+      setViewLoading(false);
+    }
+  };
+
+  const handleEditVendorClick = async (vendor: Vendor) => {
+    setEditForm({ ...vendor }); // Initial fallback
+    setShowEditModal(true);
+    setEditLoading(true);
+    try {
+      const fullVendor = await vendorsService.getVendorById(vendor.id);
+      if (fullVendor) {
+        setEditForm({
+          id: fullVendor.id,
+          name: fullVendor.name,
+          email: fullVendor.email,
+          phone: fullVendor.phone,
+          category: fullVendor.category,
+          city: fullVendor.city,
+          state: fullVendor.state,
+          commissionRate: fullVendor.commissionRate,
+          contactPerson: fullVendor.contactPerson,
+          status: fullVendor.status,
+          gstin: fullVendor.gstin,
+        });
+      }
+    } catch (err) {
+      toast.error("Failed to fetch vendor details for editing");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const submitEditVendor = async () => {
+    if (!editForm.id) return;
+    setEditLoading(true);
+    try {
+      await updateVendor(editForm.id, editForm);
+      toast.success("Vendor updated successfully");
+      setShowEditModal(false);
+    } catch {
+      toast.error("Failed to update vendor");
+    } finally {
+      setEditLoading(false);
+    }
+  };
+
+  const handleDeleteVendor = async (vendor: Vendor) => {
+    if (window.confirm(`Are you sure you want to delete ${vendor.name || 'this vendor'}?`)) {
+      try {
+        await deleteVendor(vendor.id);
+        toast.success("Vendor deleted successfully");
+      } catch {
+        toast.error("Failed to delete vendor");
+      }
     }
   };
 
@@ -108,13 +183,13 @@ export default function VendorsPage() {
           />
           <ReusableCard
             title="Total Sales"
-            value={summary ? `₹${(summary.totalSales / 10000000).toFixed(2)}Cr` : "—"}
+            value={summary ? `?${(summary.totalSales / 10000000).toFixed(2)}Cr` : "-"}
             icon={<TrendingUp className="h-5 w-5" />}
             color="text-[#9333ea]" bgColor="bg-[#f3e8ff]"
           />
           <ReusableCard
             title="Pending Payouts"
-            value={summary ? `₹${(summary.pendingPayouts / 100000).toFixed(1)}L` : "—"}
+            value={summary ? `?${(summary.pendingPayouts / 100000).toFixed(1)}L` : "-"}
             icon={<DollarSign className="h-5 w-5" />}
             color="text-[#d97706]" bgColor="bg-[#fffbeb]"
             subtitle={summary ? `${summary.pendingVendors} pending approval` : undefined}
@@ -176,56 +251,83 @@ export default function VendorsPage() {
           columns={[
             {
               key: "name", header: "Vendor", sortable: true,
-              render: (v) => (
-                <div className="flex items-center gap-2.5">
-                  <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0c831f]/10 text-xs font-black text-[#0c831f]">
-                    {v.name.split(" ").map((n) => n[0]).join("").slice(0, 2).toUpperCase()}
+              render: (v) => {
+                const businessName = (v as any).businessName || v.name || "Unknown";
+                return (
+                  <div className="flex items-center gap-2.5">
+                    <div className="flex h-9 w-9 items-center justify-center rounded-full bg-[#0c831f]/10 text-xs font-black text-[#0c831f]">
+                      {businessName.split(" ").map((n: string) => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <span className="font-bold text-[#1a1a1a]">{businessName}</span>
+                      <span className="block text-[10px] text-[#999]">{v.email}</span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="font-bold text-[#1a1a1a]">{v.name}</span>
-                    <span className="block text-[10px] text-[#999]">{v.email}</span>
-                  </div>
-                </div>
-              ),
+                );
+              },
             },
-            { key: "category", header: "Category", width: "130px", hideOnMobile: true },
+            { key: "contactPerson", header: "Contact Person", width: "130px", hideOnMobile: true, render: (v) => <span>{(v as any).contactName || v.contactPerson || "N/A"}</span> },
+            { key: "phone", header: "Phone", width: "120px", hideOnMobile: true },
+            { key: "gstin", header: "GST Number", width: "130px", hideOnMobile: true, render: (v) => <span className="font-mono">{(v as any).gstNumber || v.gstin || "N/A"}</span> },
             { key: "status", header: "Status", width: "100px", render: (v) => <StatusBadge status={v.status} /> },
-            { key: "totalProducts", header: "Products", width: "80px", align: "right", sortable: true },
-            {
-              key: "totalSales", header: "Sales", width: "100px", align: "right", sortable: true,
-              render: (v) => <span className="font-bold">₹{(v.totalSales / 100000).toFixed(1)}L</span>,
-            },
             {
               key: "commissionRate", header: "Commission", width: "100px", align: "right",
               render: (v) => <span className="font-bold text-[#0c831f]">{v.commissionRate}%</span>,
             },
             {
-              key: "rating", header: "Rating", width: "80px",
-              render: (v) => (
-                <div className="flex items-center gap-1">
-                  <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                  <span className="font-bold">{v.rating}</span>
-                </div>
-              ),
+              key: "joinedDate", header: "Joined", width: "100px",
+              render: (v) => {
+                const dateStr = (v as any).createdAt || v.joinedDate;
+                if (!dateStr) return <span>N/A</span>;
+                try {
+                  const date = new Date(dateStr);
+                  return <span className="text-sm font-medium">{date.toLocaleDateString()}</span>;
+                } catch {
+                  return <span>{dateStr}</span>;
+                }
+              }
             },
-            { key: "city", header: "City", width: "100px", hideOnMobile: true },
           ]}
           actions={[
-            { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: (v) => setSelectedVendor(v) },
+            { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: handleViewVendor },
+            { label: "Edit", icon: <Edit3 className="h-3.5 w-3.5" />, onClick: handleEditVendorClick },
             { label: "Call", icon: <Phone className="h-3.5 w-3.5" />, onClick: (v) => toast.success(`Calling ${v.phone}`) },
             {
-              label: "Suspend",
-              icon: <ShieldAlert className="h-3.5 w-3.5" />,
-              onClick: (v) => handleStatusChange(v, "suspended"),
-              variant: "danger",
-              show: (v) => v.status === "active",
-            },
-            {
-              label: "Activate",
+              label: "Approve",
               icon: <CheckCircle className="h-3.5 w-3.5" />,
-              onClick: (v) => handleStatusChange(v, "active"),
+              onClick: async (v) => {
+                try {
+                  await approveVendor(v.id);
+                  toast.success(`${v.name || 'Vendor'} approved successfully`);
+                } catch {
+                  toast.error("Failed to approve vendor");
+                }
+              },
               variant: "success",
               show: (v) => v.status !== "active",
+            },
+            {
+              label: "Reject",
+              icon: <XCircle className="h-3.5 w-3.5" />,
+              onClick: async (v) => {
+                const reason = window.prompt("Reason for rejection:");
+                if (reason !== null) {
+                  try {
+                    await rejectVendor(v.id, reason || "Rejected by admin");
+                    toast.success(`${v.name || 'Vendor'} rejected successfully`);
+                  } catch {
+                    toast.error("Failed to reject vendor");
+                  }
+                }
+              },
+              variant: "danger",
+              show: (v) => v.status !== "rejected",
+            },
+            {
+              label: "Delete",
+              icon: <Trash2 className="h-3.5 w-3.5" />,
+              onClick: handleDeleteVendor,
+              variant: "danger",
             },
           ]}
         />
@@ -235,110 +337,102 @@ export default function VendorsPage() {
       <ReusableDrawer
         open={!!selectedVendor}
         onClose={() => setSelectedVendor(null)}
-        title={selectedVendor?.name ?? ""}
-        subtitle={selectedVendor?.vendorId}
+        title={((selectedVendor as any)?.businessName || selectedVendor?.name) ?? ""}
+        subtitle={((selectedVendor as any)?.id?.toString() || selectedVendor?.vendorId) ?? ""}
         width="lg"
       >
-        {selectedVendor && (
+        {viewLoading && (
+          <div className="flex h-40 items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-[#0c831f]" />
+          </div>
+        )}
+        {selectedVendor && !viewLoading && (
           <div className="space-y-4">
-            {/* Status + Performance */}
+            {/* Status */}
             <div className="flex items-center gap-2">
               <StatusBadge status={selectedVendor.status} />
-              <StatusBadge status={selectedVendor.performance} />
-              <div className="flex items-center gap-1 rounded-full bg-[#fffbeb] px-2.5 py-0.5">
-                <Star className="h-3 w-3 fill-amber-400 text-amber-400" />
-                <span className="text-xs font-bold text-amber-600">{selectedVendor.rating}</span>
-              </div>
             </div>
 
-            {/* Contact Info */}
+            {/* Contact Information */}
             <div className="rounded-xl border border-[#e8e8e8] bg-[#f9fafb] p-4">
               <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#666]">Contact Information</h4>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Contact Person", value: selectedVendor.contactPerson },
+                  { label: "Contact Person", value: (selectedVendor as any).contactName || selectedVendor.contactPerson },
                   { label: "Phone", value: selectedVendor.phone },
                   { label: "Email", value: selectedVendor.email },
-                  { label: "Category", value: selectedVendor.category },
-                  { label: "City", value: `${selectedVendor.city}, ${selectedVendor.state}` },
-                  { label: "Joined", value: selectedVendor.joinedDate },
+                  { label: "Joined", value: (selectedVendor as any).createdAt || selectedVendor.joinedDate },
+                  { label: "Last Updated", value: (selectedVendor as any).updatedAt },
                 ].map((f) => (
                   <div key={f.label}>
                     <p className="text-[10px] font-bold uppercase tracking-wide text-[#999]">{f.label}</p>
-                    <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{f.value}</p>
+                    <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">
+                      {f.value ? (typeof f.value === "string" && f.value.includes("T") ? new Date(f.value).toLocaleString() : f.value) : "N/A"}
+                    </p>
                   </div>
                 ))}
               </div>
             </div>
 
-            {/* Performance Metrics */}
+            {/* Business Details */}
             <div className="rounded-xl border border-[#e8e8e8] p-4">
-              <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#666]">Performance Metrics</h4>
+              <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#666]">Business Details</h4>
               <div className="grid grid-cols-2 gap-3">
                 {[
-                  { label: "Total Orders", value: selectedVendor.totalOrders.toLocaleString(), color: "text-[#2563eb]" },
-                  { label: "Total Sales", value: `₹${(selectedVendor.totalSales / 100000).toFixed(1)}L`, color: "text-[#0c831f]" },
-                  { label: "On-Time Delivery", value: `${selectedVendor.onTimeDeliveryRate}%`, color: selectedVendor.onTimeDeliveryRate >= 95 ? "text-[#0c831f]" : "text-[#d97706]" },
-                  { label: "Return Rate", value: `${selectedVendor.returnRate}%`, color: selectedVendor.returnRate <= 2 ? "text-[#0c831f]" : "text-[#dc2626]" },
-                  { label: "Active Products", value: selectedVendor.activeProducts, color: "text-[#9333ea]" },
-                  { label: "Pending Payout", value: `₹${(selectedVendor.pendingPayout / 1000).toFixed(1)}K`, color: "text-[#d97706]" },
-                ].map((m) => (
-                  <div key={m.label} className="rounded-lg bg-[#f9fafb] p-3">
-                    <p className="text-[10px] font-bold text-[#666]">{m.label}</p>
-                    <p className={`mt-1 text-lg font-black ${m.color}`}>{m.value}</p>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Banking */}
-            <div className="rounded-xl border border-[#e8e8e8] p-4">
-              <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#666]">Banking Details</h4>
-              <div className="grid grid-cols-2 gap-3">
-                {[
-                  { label: "Bank", value: selectedVendor.bankName },
-                  { label: "Account", value: selectedVendor.bankAccount },
-                  { label: "IFSC", value: selectedVendor.ifsc },
-                  { label: "GSTIN", value: selectedVendor.gstin },
+                  { label: "Business Name", value: (selectedVendor as any).businessName || selectedVendor.name },
+                  { label: "GST Number", value: (selectedVendor as any).gstNumber || selectedVendor.gstin },
+                  { label: "Commission Rate", value: selectedVendor.commissionRate ? `${selectedVendor.commissionRate}%` : "N/A" },
                 ].map((f) => (
                   <div key={f.label}>
                     <p className="text-[10px] font-bold uppercase tracking-wide text-[#999]">{f.label}</p>
-                    <p className="mt-0.5 text-sm font-mono font-bold text-[#1a1a1a]">{f.value}</p>
+                    <p className="mt-0.5 text-sm font-mono font-bold text-[#1a1a1a]">{f.value || "N/A"}</p>
                   </div>
                 ))}
               </div>
             </div>
-
-            {/* Tags */}
-            {selectedVendor.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {selectedVendor.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-[#f6f7f6] px-2.5 py-1 text-[10px] font-bold text-[#666]">
-                    #{tag}
-                  </span>
-                ))}
-              </div>
-            )}
 
             {/* Actions */}
             <div className="flex gap-3 border-t border-[#e8e8e8] pt-4">
-              {selectedVendor.status === "active" ? (
+              {selectedVendor.status !== "active" && (
                 <button
-                  onClick={() => { handleStatusChange(selectedVendor, "suspended"); setSelectedVendor(null); }}
-                  className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100"
-                >
-                  <XCircle className="h-4 w-4" /> Suspend
-                </button>
-              ) : (
-                <button
-                  onClick={() => { handleStatusChange(selectedVendor, "active"); setSelectedVendor(null); }}
+                  onClick={async () => {
+                    try {
+                      await approveVendor(selectedVendor.id);
+                      toast.success(`${selectedVendor.name || 'Vendor'} approved successfully`);
+                      setSelectedVendor(null);
+                    } catch {
+                      toast.error("Failed to approve vendor");
+                    }
+                  }}
                   className="flex items-center gap-1.5 rounded-xl border border-[#0c831f]/20 bg-[#e8f5e9] px-4 py-2 text-sm font-bold text-[#0c831f] hover:bg-[#d0f0d4]"
                 >
-                  <CheckCircle className="h-4 w-4" /> Activate
+                  <CheckCircle className="h-4 w-4" /> Approve
+                </button>
+              )}
+              {selectedVendor.status !== "rejected" && (
+                <button
+                  onClick={async () => {
+                    const reason = window.prompt("Reason for rejection:");
+                    if (reason !== null) {
+                      try {
+                        await rejectVendor(selectedVendor.id, reason || "Rejected by admin");
+                        toast.success(`${selectedVendor.name || 'Vendor'} rejected successfully`);
+                        setSelectedVendor(null);
+                      } catch {
+                        toast.error("Failed to reject vendor");
+                      }
+                    }
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100"
+                >
+                  <XCircle className="h-4 w-4" /> Reject
                 </button>
               )}
               <button
-                onClick={() => toast.info(`Editing ${selectedVendor.name}`)}
+                onClick={() => {
+                  setSelectedVendor(null);
+                  handleEditVendorClick(selectedVendor);
+                }}
                 className="ml-auto rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18]"
               >
                 Edit Vendor
@@ -414,6 +508,86 @@ export default function VendorsPage() {
           </button>
         </div>
       </ReusableModal>
+
+      {/* Edit Vendor Modal */}
+      <ReusableModal
+        open={showEditModal}
+        onClose={() => setShowEditModal(false)}
+        title="Edit Vendor"
+        subtitle="Update vendor details"
+        size="md"
+      >
+        {editLoading && !editForm.id ? (
+          <div className="flex h-40 items-center justify-center">
+            <Loader2 className="h-6 w-6 animate-spin text-[#0c831f]" />
+          </div>
+        ) : (
+          <>
+            <div className="space-y-4">
+              {[
+                { key: "name", label: "Business Name *", placeholder: "Enter company name" },
+                { key: "contactPerson", label: "Contact Person", placeholder: "Owner / Manager name" },
+                { key: "email", label: "Email *", placeholder: "vendor@example.com", type: "email" },
+                { key: "phone", label: "Phone", placeholder: "+91 98765 43210" },
+                { key: "gstin", label: "GST Number", placeholder: "GSTIN" },
+              ].map((field) => (
+                <div key={field.key}>
+                  <label className="mb-1.5 block text-xs font-bold text-[#666]">{field.label}</label>
+                  <input
+                    type={field.type ?? "text"}
+                    placeholder={field.placeholder}
+                    value={(editForm as any)[field.key] || ""}
+                    onChange={(e) => setEditForm((prev) => ({ ...prev, [field.key]: e.target.value }))}
+                    className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
+                  />
+                </div>
+              ))}
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Status *</label>
+                <select
+                  value={editForm.status || "active"}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, status: e.target.value as Vendor["status"] }))}
+                  className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
+                >
+                  <option value="active">Active</option>
+                  <option value="pending">Pending</option>
+                  <option value="suspended">Suspended</option>
+                  <option value="inactive">Inactive</option>
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Commission Rate (%)</label>
+                <input
+                  type="number"
+                  min="0" max="100"
+                  value={editForm.commissionRate || ""}
+                  onChange={(e) => setEditForm((prev) => ({ ...prev, commissionRate: Number(e.target.value) }))}
+                  className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
+                />
+              </div>
+            </div>
+            <div className="mt-6 flex justify-end gap-3 border-t border-[#e8e8e8] pt-4">
+              <button
+                onClick={() => setShowEditModal(false)}
+                className="rounded-xl border border-[#e8e8e8] bg-white px-5 py-2.5 text-sm font-bold text-[#666] hover:bg-[#f6f7f6]"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={submitEditVendor}
+                disabled={editLoading}
+                className="rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] disabled:opacity-50"
+              >
+                {editLoading ? "Saving..." : "Save Changes"}
+              </button>
+            </div>
+          </>
+        )}
+      </ReusableModal>
     </DashboardLayout>
   );
 }
+
+
+
+

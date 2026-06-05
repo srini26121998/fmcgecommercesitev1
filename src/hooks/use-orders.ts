@@ -27,9 +27,11 @@ export function useOrders(initialStatus?: string) {
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState(initialStatus || "all");
   const [viewMode, setViewMode] = useState<"table" | "kanban">("table");
+  const [isMock, setIsMock] = useState(false);
   const [pagination, setPagination] = useState<PaginationState>({
-    page: 1, pageSize: 10, total: 0,
+    page: 1, pageSize: 20, total: 0,
   });
+
   const [summary, setSummary] = useState({
     total: 0, pending: 0, confirmed: 0, preparing: 0,
     outForDelivery: 0, delivered: 0, cancelled: 0, returned: 0,
@@ -47,6 +49,7 @@ export function useOrders(initialStatus?: string) {
       setOrders(result.orders);
       setPagination(result.pagination);
       setSummary(result.summary);
+      setIsMock(!!result.isMock);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load orders");
     } finally {
@@ -81,6 +84,7 @@ export function useOrders(initialStatus?: string) {
     statusFilter, setStatusFilter,
     viewMode, setViewMode,
     pagination, summary, kanbanGroups,
+    isMock,
     setPage, setPageSize,
     fetchOrders,
   };
@@ -122,7 +126,7 @@ export function useOrderActions() {
     setUpdating((prev) => ({ ...prev, [data.orderId]: true }));
     setError(null);
     try {
-      await orderService.updateOrderStatus(data.orderId, data.newStatus, data.note);
+      await orderService.updateOrderStatus(data.orderId, data.newStatus, data.notes, data.backendId);
       // Fire-and-forget admin notification (non-critical, won't break the action)
       notifyOrder.statusChanged(data.orderId, data.newStatus).catch(() => {});
       return true;
@@ -138,7 +142,7 @@ export function useOrderActions() {
     setUpdating((prev) => ({ ...prev, [data.orderId]: true }));
     setError(null);
     try {
-      await orderService.assignPartner(data);
+      await orderService.assignPartner(data, data.backendId);
       return true;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to assign partner");
@@ -318,6 +322,7 @@ export function useUnassignedOrders() {
   const [error, setError] = useState<string | null>(null);
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
+  const [filterType, setFilterType] = useState<"unassigned" | "assigned" | "all">("unassigned");
   const pageSize = 10;
 
   const fetchOrders = useCallback(async () => {
@@ -327,7 +332,7 @@ export function useUnassignedOrders() {
       const result = await orderService.getOrders(
         { search }, { page, pageSize }
       );
-      setOrders(result.orders.filter((o) => !o.deliveryPartner));
+      setOrders(result.orders);
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load orders");
     } finally {
@@ -338,5 +343,29 @@ export function useUnassignedOrders() {
 
   useEffect(() => { fetchOrders(); }, [fetchOrders]);
 
-  return { orders, loading, error, search, setSearch, setPage, fetchOrders };
+  const unassignedCount = useMemo(() => orders.filter((o) => !o.deliveryPartner).length, [orders]);
+  const assignedCount = useMemo(() => orders.filter((o) => !!o.deliveryPartner).length, [orders]);
+
+  const filteredOrders = useMemo(() => {
+    return orders.filter((o) => {
+      if (filterType === "unassigned") return !o.deliveryPartner;
+      if (filterType === "assigned") return !!o.deliveryPartner;
+      return true;
+    });
+  }, [orders, filterType]);
+
+  return {
+    orders: filteredOrders,
+    rawOrders: orders,
+    loading,
+    error,
+    search,
+    setSearch,
+    setPage,
+    filterType,
+    setFilterType,
+    unassignedCount,
+    assignedCount,
+    fetchOrders,
+  };
 }

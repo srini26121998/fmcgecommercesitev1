@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, MessageCircle, Phone, Mail, ChevronDown, Search, HelpCircle, BookOpen, ExternalLink, FileText } from "lucide-react";

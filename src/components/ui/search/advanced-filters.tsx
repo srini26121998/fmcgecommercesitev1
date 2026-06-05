@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { X, ChevronDown, Check, RotateCcw, Star, Percent, Sparkles } from "lucide-react";
 import type { StockStatus } from "@/data/products";
+import { useCategories } from "@/hooks/use-categories";
 
 const PRICE_RANGES = [
   { label: "Under ₹100", min: 0, max: 100 },
@@ -30,7 +31,7 @@ const STOCK_OPTIONS: { label: string; value: StockStatus }[] = [
   { label: "Low Stock", value: "low_stock" },
 ];
 
-const CATEGORY_OPTIONS = [
+const FALLBACK_CATEGORIES = [
   "All",
   "Groceries",
   "Fruits",
@@ -38,7 +39,7 @@ const CATEGORY_OPTIONS = [
   "Health",
   "Dairy",
   "Beverages",
-] as const;
+];
 
 const PRESET_COMBOS = [
   { label: "Budget-friendly", icon: "💰", filters: { priceRanges: [0], discounts: [] as number[], ratings: [] as number[], stock: [] as string[], category: "All" } },
@@ -75,15 +76,22 @@ export function getActiveFilterCount(filters: FilterState): number {
   return filters.priceRanges.length + filters.discounts.length + filters.ratings.length + filters.stock.length + (filters.category !== "All" ? 1 : 0);
 }
 
-export { PRICE_RANGES, RATING_OPTIONS, DISCOUNT_OPTIONS, STOCK_OPTIONS, CATEGORY_OPTIONS, PRESET_COMBOS };
+export { PRICE_RANGES, RATING_OPTIONS, DISCOUNT_OPTIONS, STOCK_OPTIONS, PRESET_COMBOS };
 
 export default function AdvancedFilters({ isOpen, onClose, filters, onApply, onClear }: AdvancedFiltersProps) {
+  const { data: apiCategories } = useCategories();
+  
+  const categoryOptions = apiCategories && apiCategories.length > 0 
+    ? ["All", ...apiCategories.map(c => c.name)] 
+    : FALLBACK_CATEGORIES;
+
   const [draft, setDraft] = useState<FilterState>({ ...filters });
   const [expanded, setExpanded] = useState<Record<string, boolean>>({
     price: true,
     discount: true,
     rating: true,
     availability: true,
+    category: true,
   });
 
   if (!isOpen) return null;
@@ -182,7 +190,7 @@ export default function AdvancedFilters({ isOpen, onClose, filters, onApply, onC
             </button>
             {expanded.category && (
               <div className="mt-3 flex flex-wrap gap-2">
-                {CATEGORY_OPTIONS.map((cat) => (
+                {categoryOptions.map((cat) => (
                   <button
                     key={cat}
                     onClick={() => setDraft((prev) => ({ ...prev, category: cat }))}

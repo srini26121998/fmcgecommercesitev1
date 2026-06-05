@@ -256,6 +256,19 @@ export const NotificationEventMappingSchema = z.object({
 
 export type NotificationEventMapping = z.infer<typeof NotificationEventMappingSchema>;
 
+// ── Global Settings ───────────────────────────────────────
+
+export const GlobalSettingsSchema = z.object({
+  storeName: z.string().min(1),
+  supportEmail: z.string().email(),
+  supportPhone: z.string(),
+  currency: z.string(),
+  timezone: z.string(),
+  deliveryRadiusKm: z.number().nonnegative(),
+});
+
+export type GlobalSettings = z.infer<typeof GlobalSettingsSchema>;
+
 // ── API Response Types ────────────────────────────────────
 
 export interface SettingsApiResponse<T> {

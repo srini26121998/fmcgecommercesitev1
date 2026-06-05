@@ -59,8 +59,8 @@ const variantDefaults: Record<
   },
   search: {
     icon: <SearchX className="w-10 h-10 text-[#ccc]" />,
-    title: "No results found",
-    description: "We couldn't find any products matching your search. Try different keywords or adjust your filters.",
+    title: "No product is available",
+    description: "No product is available.",
     actions: [
       { label: "Browse all products", href: "/", variant: "primary" },
       { label: "Clear search", icon: <RotateCcw className="w-4 h-4" />, variant: "secondary" },
@@ -92,8 +92,8 @@ const variantDefaults: Record<
   },
   filtered: {
     icon: <Filter className="w-10 h-10 text-[#ccc]" />,
-    title: "No matching products",
-    description: "No products match your active filters. Try adjusting or clearing them.",
+    title: "No product is available",
+    description: "No product is available.",
     actions: [
       { label: "Clear all filters", icon: <RotateCcw className="w-4 h-4" />, variant: "secondary" },
     ],

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -74,3 +74,4 @@ export default function LiveTrackingPage() {
     </DashboardLayout>
   );
 }
+

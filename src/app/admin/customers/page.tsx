@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import DashboardLayout from "../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
@@ -62,13 +62,13 @@ export default function CustomersPage() {
     vip: {
       name: "VIP Special Promo (High AOV)",
       subject: "Exclusive VIP Appreciation Offer from FMCG Commerce 🌟",
-      body: "Hi {{name}},\n\nAs one of our most valued VIP customers, we want to thank you for your incredible loyalty.\n\nWe have credited a special discount code to your account for your next purchase. Enjoy flat ₹500 off and free express shipping on orders above ₹2000:\n\n{{discount}}\n\nThank you for choosing FMCG Commerce.\n\nBest regards,\nThe VIP Experience Team",
+      body: "Hi {{name}},\n\nAs one of our most valued VIP customers, we want to thank you for your incredible loyalty.\n\nWe have credited a special discount code to your account for your next purchase. Enjoy flat ?500 off and free express shipping on orders above ?2000:\n\n{{discount}}\n\nThank you for choosing FMCG Commerce.\n\nBest regards,\nThe VIP Experience Team",
       defaultDiscount: "VIP500GOLD",
     },
     reengage: {
       name: "Re-engagement (At Risk)",
       subject: "We miss you, {{name}}! 💚 Here's a special gift just for you",
-      body: "Hi {{name}},\n\nIt has been a while since your last purchase, and we miss you! We have updated our catalog with fresh fresh produce, household essentials, and direct-from-farm choices.\n\nHere is a code for free shipping and ₹200 off your next order:\n\n{{discount}}\n\nBest regards,\nThe FMCG Team",
+      body: "Hi {{name}},\n\nIt has been a while since your last purchase, and we miss you! We have updated our catalog with fresh fresh produce, household essentials, and direct-from-farm choices.\n\nHere is a code for free shipping and ?200 off your next order:\n\n{{discount}}\n\nBest regards,\nThe FMCG Team",
       defaultDiscount: "BACK2FMCG",
     },
     feedback: {
@@ -218,7 +218,7 @@ export default function CustomersPage() {
         {/* KPI Strip */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <ReusableCard title="Total Customers" value={summary.total} icon={<Users className="h-4 w-4" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
-          <ReusableCard title="Total Revenue" value={`₹${summary.totalRevenue.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
+          <ReusableCard title="Total Revenue" value={`?${summary.totalRevenue.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
           <ReusableCard title="VIP Customers" value={summary.vip} icon={<Star className="h-4 w-4" />} color="text-[#9333ea]" bgColor="bg-[#f3e8ff]" />
           <ReusableCard title="At Risk" value={summary.atRisk} icon={<AlertTriangle className="h-4 w-4" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
         </div>
@@ -277,9 +277,9 @@ export default function CustomersPage() {
             { key: "segment", header: "Segment", width: "100px", render: (c: Customer) => <StatusBadge status={c.segment} /> },
             { key: "status", header: "Status", width: "100px", render: (c: Customer) => <StatusBadge status={c.status} /> },
             { key: "totalOrders", header: "Orders", width: "80px", align: "right", sortable: true },
-            { key: "totalSpent", header: "Spent", width: "100px", align: "right", sortable: true, render: (c: Customer) => <span className="font-semibold">₹{c.totalSpent.toLocaleString()}</span> },
+            { key: "totalSpent", header: "Spent", width: "100px", align: "right", sortable: true, render: (c: Customer) => <span className="font-semibold">?{c.totalSpent.toLocaleString()}</span> },
             { key: "city", header: "City", width: "100px", hideOnMobile: true },
-            { key: "lastOrderDate", header: "Last Order", width: "110px", hideOnMobile: true, render: (c: Customer) => c.lastOrderDate || <span className="text-[#999]">—</span> },
+            { key: "lastOrderDate", header: "Last Order", width: "110px", hideOnMobile: true, render: (c: Customer) => c.lastOrderDate || <span className="text-[#999]">₹</span> },
           ]}
           actions={[
             { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: (c: Customer) => setShowDetailModal(c) },
@@ -356,9 +356,9 @@ export default function CustomersPage() {
                     { label: "Segment", value: <StatusBadge status={showDetailModal.segment} /> },
                     { label: "Status", value: <StatusBadge status={showDetailModal.status} /> },
                     { label: "Total Orders", value: showDetailModal.totalOrders },
-                    { label: "Total Spent", value: `₹${showDetailModal.totalSpent.toLocaleString()}` },
-                    { label: "Avg Order Value", value: `₹${showDetailModal.avgOrderValue}` },
-                    { label: "LTV", value: showDetailModal.lifetimeValue || "—" },
+                    { label: "Total Spent", value: `?${showDetailModal.totalSpent.toLocaleString()}` },
+                    { label: "Avg Order Value", value: `?${showDetailModal.avgOrderValue}` },
+                    { label: "LTV", value: showDetailModal.lifetimeValue || "₹" },
                   ].map((f) => (
                     <div key={f.label} className="rounded-xl bg-[#f9fafb] p-3">
                       <p className="text-[10px] font-bold uppercase tracking-wide text-[#999]">{f.label}</p>
@@ -463,7 +463,7 @@ export default function CustomersPage() {
                     <div className="text-left w-full max-w-xs mx-auto border border-[#e8e8e8] rounded-xl p-4 bg-[#f9fafb] space-y-2.5 text-xs">
                       <div className="flex items-center gap-2">
                         <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${sendingStep > 1 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                          {sendingStep > 1 ? "✓" : "1"}
+                          {sendingStep > 1 ? "?" : "1"}
                         </span>
                         <span className={sendingStep >= 1 ? "text-[#1a1a1a] font-semibold" : "text-[#999]"}>
                           Resolving mail server...
@@ -471,7 +471,7 @@ export default function CustomersPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${sendingStep > 2 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                          {sendingStep > 2 ? "✓" : "2"}
+                          {sendingStep > 2 ? "?" : "2"}
                         </span>
                         <span className={sendingStep >= 2 ? "text-[#1a1a1a] font-semibold" : "text-[#999]"}>
                           Parsing parameters...
@@ -479,7 +479,7 @@ export default function CustomersPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${sendingStep > 3 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                          {sendingStep > 3 ? "✓" : "3"}
+                          {sendingStep > 3 ? "?" : "3"}
                         </span>
                         <span className={sendingStep >= 3 ? "text-[#1a1a1a] font-semibold" : "text-[#999]"}>
                           Compiling attachments...
@@ -487,7 +487,7 @@ export default function CustomersPage() {
                       </div>
                       <div className="flex items-center gap-2">
                         <span className={`flex h-4 w-4 items-center justify-center rounded-full text-[10px] font-bold ${sendingStep > 4 ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-400"}`}>
-                          {sendingStep > 4 ? "✓" : "4"}
+                          {sendingStep > 4 ? "?" : "4"}
                         </span>
                         <span className={sendingStep >= 4 ? "text-[#1a1a1a] font-semibold" : "text-[#999]"}>
                           SMTP Delivery Gateway...
@@ -646,7 +646,7 @@ export default function CustomersPage() {
                               <div key={idx} className="flex items-center gap-1.5 bg-[#f6f7f6] border border-[#e8e8e8] rounded-lg px-2 py-0.5 text-[10px] text-[#1a1a1a] font-bold">
                                 <span>{file.name} ({file.size})</span>
                                 <button type="button" onClick={() => handleRemoveAttachment(idx)} className="text-red-500 hover:text-red-700 font-black">
-                                  ✕
+                                  ?
                                 </button>
                               </div>
                             ))}
@@ -718,7 +718,7 @@ export default function CustomersPage() {
                       </div>
                       <div className="flex justify-between">
                         <span className="text-[#666]">Status:</span>
-                        <span className="font-bold text-green-600 flex items-center gap-1">● Active</span>
+                        <span className="font-bold text-green-600 flex items-center gap-1">?₹ Active</span>
                       </div>
                     </div>
                   </div>
@@ -791,7 +791,7 @@ export default function CustomersPage() {
 
       {/* Slide-in panel */}
       <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
           editCustomer ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -879,3 +879,4 @@ export default function CustomersPage() {
     </DashboardLayout>
   );
 }
+

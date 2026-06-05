@@ -173,7 +173,7 @@ export default function ApiKeysPage() {
             <p className="mt-1 text-lg font-black text-[#1a1a1a]">
               {keys.length > 0
                 ? Math.round(keys.reduce((s, k) => s + k.rateLimit, 0) / keys.length).toLocaleString()
-                : "—"}
+                : "₹"}
             </p>
           </div>
           <div className="rounded-xl border border-[#e8e8e8] bg-white p-4">
@@ -184,7 +184,7 @@ export default function ApiKeysPage() {
             <p className="mt-1 text-lg font-black text-[#1a1a1a]">
               {keys.length > 0
                 ? keys.reduce((s, k) => s + k.usageCount, 0).toLocaleString()
-                : "—"}
+                : "₹"}
             </p>
           </div>
         </div>
@@ -271,7 +271,7 @@ export default function ApiKeysPage() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1.5">
                           <code className="rounded bg-[#f6f7f6] px-2 py-1 text-[10px] font-mono text-[#666]">
-                            {visibleKeys[key.id] ? key.key : `${key.key.slice(0, 12)}••••••${key.key.slice(-4)}`}
+                            {visibleKeys[key.id] ? key.key : `${key.key.slice(0, 12)}₹₹₹₹₹₹${key.key.slice(-4)}`}
                           </code>
                           <button
                             onClick={() => toggleKeyVisibility(key.id)}
@@ -517,3 +517,4 @@ export default function ApiKeysPage() {
     </DashboardLayout>
   );
 }
+

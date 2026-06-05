@@ -105,7 +105,7 @@ export interface NotificationQueryParams {
   page?: number;
   pageSize?: number;
   type?: NotificationCategory | "all";
-  status?: "all" | "unread" | "read";
+  status?: "all" | "unread" | "read" | "archived" | "active";
   search?: string;
   priority?: NotificationPriority | "all";
   startDate?: string;

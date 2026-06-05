@@ -3,6 +3,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "sonner";
 import { env } from "@/lib/env";
+import { safeJsonLd } from "@/lib/utils";
 import PullToRefresh from "@/components/ui/mobile/pull-to-refresh";
 import Navbar from "@/components/ui/navbar";
 import Hero from "@/components/ui/home/hero";
@@ -37,7 +38,7 @@ export default function HomeClient() {
   return (
     <PullToRefresh onRefresh={handleRefresh}>
       <main
-        className="bg-[#f2f2f2] min-h-screen pb-20 md:pb-0"
+        className="bg-[#f2f2f2] min-h-screen md:pb-0 page-with-bottom-nav"
         itemScope
         itemType="https://schema.org/WebSite"
       >
@@ -45,7 +46,7 @@ export default function HomeClient() {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify([
+            __html: safeJsonLd([
               {
                 "@context": "https://schema.org",
                 "@type": ["Organization", "LocalBusiness"],
@@ -111,7 +112,7 @@ export default function HomeClient() {
         <script
           type="application/ld+json"
           dangerouslySetInnerHTML={{
-            __html: JSON.stringify({
+            __html: safeJsonLd({
               "@context": "https://schema.org",
               "@type": "WebSite",
               url: env.siteUrl,
@@ -142,7 +143,7 @@ export default function HomeClient() {
         <Navbar />
 
         {/* Offset for fixed navbar */}
-        <div className="pt-16">
+        <div className="pt-[72px] sm:pt-20">
           <Hero />
           <CategoryPills />
           <PromoBanner />

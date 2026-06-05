@@ -1,13 +1,13 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Bell, Smartphone, MessageSquare } from "lucide-react";
 import NotificationSettingsPanel from "@/components/ui/notifications/notification-settings";
-import { useNotificationStore } from "@/store/notification-store";
+import { useUserNotifications } from "@/hooks/use-user-notifications";
 
 export default function NotificationSettingsPage() {
-  const { notifications, unreadCount } = useNotificationStore();
+  const { notifications, unreadCount } = useUserNotifications();
 
   return (
     <main className="min-h-screen bg-[#f2f2f2] pb-24">

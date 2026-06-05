@@ -1,8 +1,9 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, Home, Building2, Plus, Edit2, Trash2, MapPin, CheckCircle, X, Star, MapPinned } from "lucide-react";
 import { useAddressStore, type Address } from "@/store/address-store";
+import { useUserAddresses } from "@/hooks/use-user-addresses";
 import { toast } from "sonner";
 
 interface AddressForm {
@@ -26,10 +27,12 @@ const emptyForm: AddressForm = {
 };
 
 export default function AddressesPage() {
-  const { addresses, addAddress, updateAddress, deleteAddress, setDefaultAddress } = useAddressStore();
+  const { addresses, setDefaultAddress: storeSetDefaultAddress } = useAddressStore();
+  const { addAddress, updateAddress, deleteAddress, setDefaultAddress } = useUserAddresses(true);
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [form, setForm] = useState<AddressForm>({ ...emptyForm });
+  const [addressToDelete, setAddressToDelete] = useState<{id: string, type: string} | null>(null);
 
   const resetForm = () => {
     setForm({ ...emptyForm });
@@ -51,34 +54,65 @@ export default function AddressesPage() {
     setShowForm(true);
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!form.name.trim() || !form.address.trim() || !form.city.trim() || !form.pincode.trim() || !form.phone.trim()) {
       toast.error("Please fill in all required fields");
       return;
     }
-    if (editingId) {
-      updateAddress(editingId, form);
-      toast.success("Address updated successfully!");
-    } else {
-      addAddress(form);
-      toast.success("New address added!");
+    if (!/^\+?91\s?\d{10}$|^\d{10}$/.test(form.phone.trim())) {
+      toast.error("Please enter a valid 10-digit phone number");
+      return;
     }
-    resetForm();
+    if (editingId) {
+      const res = await updateAddress(editingId, form);
+      if (res.success) {
+        toast.success("Address updated successfully!");
+        resetForm();
+      } else {
+        toast.error(res.message || "Failed to update address");
+      }
+    } else {
+      const res = await addAddress(form);
+      if (res.success) {
+        toast.success("New address added!");
+        resetForm();
+      } else {
+        toast.error(res.message || "Failed to add address");
+      }
+    }
   };
 
-  const handleDelete = (id: string, type: string) => {
+  const handleDeleteClick = (id: string, type: string) => {
     const addr = addresses.find((a) => a.id === id);
     if (addr?.isDefault && addresses.filter((a) => a.id !== id).length > 0) {
       toast.error("Set another address as default before deleting this one");
       return;
     }
-    deleteAddress(id);
-    toast.success(`${type} address removed`);
+    setAddressToDelete({ id, type });
   };
 
-  const handleSetDefault = (id: string) => {
-    setDefaultAddress(id);
-    toast.success("Default address updated!");
+  const confirmDelete = async () => {
+    if (!addressToDelete) return;
+    const { id, type } = addressToDelete;
+    const res = await deleteAddress(id);
+    if (res.success) {
+      toast.success(`${type} address removed`);
+    } else {
+      toast.error(res.message || "Failed to delete address");
+    }
+    setAddressToDelete(null);
+  };
+
+  const handleSetDefault = async (id: string) => {
+    // We update local state first for instant UI response
+    storeSetDefaultAddress(id);
+    // Call the dedicated set-default endpoint
+    const res = await setDefaultAddress(id);
+    if (res.success) {
+      toast.success("Default address updated!");
+    } else {
+      toast.error(res.message || "Failed to sync default address");
+    }
   };
 
   return (
@@ -142,20 +176,20 @@ export default function AddressesPage() {
               placeholder="Full Name *"
               value={form.name}
               onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))}
-              className="w-full h-11 rounded-xl border border-[#e8e8e8] px-4 text-sm outline-none focus:border-[#ff4f8b] transition-colors"
+              className="w-full h-12 rounded-xl border border-[#e8e8e8] px-4 text-sm font-medium outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 bg-[#f9f9f9] placeholder:text-[#999]"
             />
             <input
               placeholder="Address (Street, Area, Landmark) *"
               value={form.address}
               onChange={(e) => setForm((f) => ({ ...f, address: e.target.value }))}
-              className="w-full h-11 rounded-xl border border-[#e8e8e8] px-4 text-sm outline-none focus:border-[#ff4f8b] transition-colors"
+              className="w-full h-12 rounded-xl border border-[#e8e8e8] px-4 text-sm font-medium outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 bg-[#f9f9f9] placeholder:text-[#999]"
             />
             <div className="grid grid-cols-2 gap-3">
               <input
                 placeholder="City *"
                 value={form.city}
                 onChange={(e) => setForm((f) => ({ ...f, city: e.target.value }))}
-                className="h-11 rounded-xl border border-[#e8e8e8] px-4 text-sm outline-none focus:border-[#ff4f8b] transition-colors"
+                className="h-12 rounded-xl border border-[#e8e8e8] px-4 text-sm font-medium outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 bg-[#f9f9f9] placeholder:text-[#999]"
               />
               <input
                 placeholder="Pincode *"
@@ -163,7 +197,7 @@ export default function AddressesPage() {
                 onChange={(e) => setForm((f) => ({ ...f, pincode: e.target.value.replace(/\D/g, "").slice(0, 6) }))}
                 inputMode="numeric"
                 pattern="[0-9]{6}"
-                className="h-11 rounded-xl border border-[#e8e8e8] px-4 text-sm outline-none focus:border-[#ff4f8b] transition-colors"
+                className="h-12 rounded-xl border border-[#e8e8e8] px-4 text-sm font-medium outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 bg-[#f9f9f9] placeholder:text-[#999]"
               />
             </div>
             <input
@@ -171,7 +205,7 @@ export default function AddressesPage() {
               value={form.phone}
               onChange={(e) => setForm((f) => ({ ...f, phone: e.target.value }))}
               type="tel"
-              className="w-full h-11 rounded-xl border border-[#e8e8e8] px-4 text-sm outline-none focus:border-[#ff4f8b] transition-colors"
+              className="w-full h-12 rounded-xl border border-[#e8e8e8] px-4 text-sm font-medium outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 bg-[#f9f9f9] placeholder:text-[#999]"
             />
 
             <label className="flex items-center gap-2.5 cursor-pointer py-1">
@@ -277,7 +311,7 @@ export default function AddressesPage() {
                     <Edit2 className="w-3.5 h-3.5 text-[#666]" />
                   </button>
                   <button
-                    onClick={() => handleDelete(address.id, address.type)}
+                    onClick={() => handleDeleteClick(address.id, address.type)}
                     className="w-8 h-8 rounded-lg bg-white border border-[#e8e8e8] flex items-center justify-center hover:bg-[#fff0f6] transition-colors"
                     aria-label={`Delete ${address.type} address`}
                   >
@@ -298,6 +332,39 @@ export default function AddressesPage() {
           ))
         )}
       </div>
+
+      {/* Delete Confirmation Modal */}
+      {addressToDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl w-full max-w-sm p-6 shadow-xl animate-in fade-in zoom-in-95 duration-200">
+            <div className="flex flex-col items-center text-center space-y-4">
+              <div className="w-12 h-12 rounded-full bg-[#fff0f6] flex items-center justify-center">
+                <Trash2 className="w-6 h-6 text-[#ff4f8b]" />
+              </div>
+              <div>
+                <h3 className="text-lg font-bold text-[#1a1a1a]">Delete Address</h3>
+                <p className="text-sm text-[#666] mt-1">
+                  Are you sure you want to delete this {addressToDelete.type} address? This action cannot be undone.
+                </p>
+              </div>
+              <div className="flex w-full gap-3 pt-2">
+                <button
+                  onClick={() => setAddressToDelete(null)}
+                  className="flex-1 h-11 rounded-xl border border-[#e8e8e8] text-sm font-semibold text-[#666] hover:bg-[#f2f2f2] transition-colors"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={confirmDelete}
+                  className="flex-1 h-11 rounded-xl bg-[#ff4f8b] text-white text-sm font-bold hover:bg-[#e63872] transition-colors"
+                >
+                  Delete
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </main>
   );
 }

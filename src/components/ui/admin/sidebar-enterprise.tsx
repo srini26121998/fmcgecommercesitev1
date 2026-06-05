@@ -161,7 +161,7 @@ export default function SidebarEnterprise({
                       `}
                       title={collapsed ? item.label : undefined}
                     >
-                      <item.icon className="h-4 w-4 flex-shrink-0" />
+                      <item.icon className="h-6 w-6 flex-shrink-0" />
                       {/* Label — hidden when collapsed */}
                       <div
                         className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
@@ -169,7 +169,7 @@ export default function SidebarEnterprise({
                         }`}
                       >
                         <div className="min-w-0">
-                          <span className="block text-sm font-bold leading-tight">{item.label}</span>
+                          <span className="block text-sm font-medium leading-tight">{item.label}</span>
                           {item.caption && (
                             <span className="block truncate text-[10px] font-medium opacity-70">{item.caption}</span>
                           )}
@@ -194,7 +194,7 @@ export default function SidebarEnterprise({
                         type="button"
                       >
                         <ChevronDown
-                          className={`h-3.5 w-3.5 transition-transform duration-300 ease-in-out ${
+                          className={`h-4 w-4 transition-transform duration-300 ease-in-out ${
                             isExpanded ? "rotate-0" : "-rotate-90"
                           }`}
                         />
@@ -226,13 +226,13 @@ export default function SidebarEnterprise({
                               key={sub.href}
                               href={sub.href}
                               onClick={(e) => e.stopPropagation()}
-                              className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm transition-all duration-150 ${
+                              className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
                                 isSubActive
                                   ? "bg-[#e8f5e9] text-[#0c831f] font-bold"
                                   : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
                               }`}
                             >
-                              <sub.icon className={`h-3.5 w-3.5 flex-shrink-0 transition-colors ${
+                              <sub.icon className={`h-5 w-5 flex-shrink-0 transition-colors ${
                                 isSubActive ? "text-[#0c831f]" : "text-[#999] group-hover:text-[#666]"
                               }`} />
                               <span>{sub.label}</span>
@@ -270,7 +270,7 @@ export default function SidebarEnterprise({
                     `}
                     title={collapsed ? item.label : undefined}
                   >
-                    <item.icon className="h-4 w-4 flex-shrink-0" />
+                    <item.icon className="h-6 w-6 flex-shrink-0" />
                     {/* Label — hidden when collapsed */}
                     <div
                       className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
@@ -278,7 +278,7 @@ export default function SidebarEnterprise({
                       }`}
                     >
                       <div className="min-w-0">
-                        <span className="block text-sm font-bold leading-tight">{item.label}</span>
+                        <span className="block text-sm font-medium leading-tight">{item.label}</span>
                         {item.caption && (
                           <span className="block truncate text-[10px] font-medium opacity-70">{item.caption}</span>
                         )}

@@ -3,10 +3,9 @@
 import { useMemo, useRef, useState, useEffect } from "react";
 import Link from "next/link";
 import { TrendingUp, MapPin, ChevronRight } from "lucide-react";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/use-products";
 import { SafeProductImage } from "@/components/ui/safe-image";
-import { useCartStore } from "@/store/cart-store";
-import { toast } from "sonner";
+import AddToCartButton from "@/components/ui/products/add-to-cart-button";
 
 const AREAS = [
   "Koramangala, Bengaluru",
@@ -17,8 +16,8 @@ const AREAS = [
 ];
 
 export default function NearbyTrends() {
+  const { products } = useProducts();
   const [areaIndex, setAreaIndex] = useState(0);
-  const addToCart = useCartStore((s) => s.addToCart);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -30,10 +29,10 @@ export default function NearbyTrends() {
 
   const trendingProducts = useMemo(() => {
     return [...products]
-      .filter((p) => p.stock !== "out_of_stock")
+      .filter((p) => p.stock > 0)
       .sort((a, b) => b.rating - a.rating)
       .slice(0, 10);
-  }, []);
+  }, [products]);
 
   function scroll(dir: number) {
     const el = scrollRef.current;
@@ -66,7 +65,7 @@ export default function NearbyTrends() {
           className="flex gap-3 overflow-x-auto hide-scrollbar snap-x snap-mandatory touch-pan-x pb-1"
         >
           {trendingProducts.map((product) => {
-            const discount = Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100);
+            const discount = product.oldPrice > product.price ? Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100) : 0;
             return (
               <div
                 key={product.id}
@@ -100,24 +99,22 @@ export default function NearbyTrends() {
                       </p>
                     </Link>
                     <p className="text-[9px] text-[#999] mt-0.5">{product.category}</p>
-                     <div className="flex items-center justify-between mt-1.5">
-                       <div className="flex-1">
-                         <span className="text-sm font-black text-[#1a1a1a]">₹{product.price}</span>
-                         <span className="text-[9px] text-[#999] line-through ml-1">₹{product.oldPrice}</span>
-                       </div>
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            addToCart({ id: product.id, name: product.name, price: product.price, image: product.image, quantity: 1 });
-                            toast.success("Added to cart 🛒");
-                          }}
-                          className="min-h-[44px] h-7 px-2.5 rounded-md text-[11px] font-bold text-white bg-[#ff4f8b] hover:bg-[#e63872] active:scale-95 transition-all shadow-sm"
-                        >
-                          ADD
-                        </button>
-                     </div>
+                    <div className="mt-1.5">
+                      <div className="flex items-center gap-1">
+                        <span className="text-sm font-black text-[#1a1a1a]">₹{product.price}</span>
+                        <span className="text-[9px] text-[#999] line-through">₹{product.oldPrice}</span>
+                      </div>
+                      <div className="mt-2">
+                        <AddToCartButton
+                          productId={product.id}
+                          productName={product.name}
+                          productPrice={product.price}
+                          productImage={product.image}
+                          themeColor="pink"
+                          size="md"
+                        />
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>

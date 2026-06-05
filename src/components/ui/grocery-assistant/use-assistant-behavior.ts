@@ -62,14 +62,26 @@ export function useAssistantBehavior(reducedMotion: boolean): AssistantBehavior 
   useEffect(() => {
     if (reducedMotion) return;
 
+    let rafId: number | null = null;
+    let latestPos = { x: 0, y: 0 };
+
     const handleMouseMove = (e: MouseEvent) => {
-      const pos = { x: e.clientX, y: e.clientY };
-      mousePosRef.current = pos;
-      setMousePos(pos);
+      latestPos = { x: e.clientX, y: e.clientY };
+      mousePosRef.current = latestPos;
+      
+      if (rafId === null) {
+        rafId = requestAnimationFrame(() => {
+          setMousePos(latestPos);
+          rafId = null;
+        });
+      }
     };
 
     window.addEventListener("mousemove", handleMouseMove);
-    return () => window.removeEventListener("mousemove", handleMouseMove);
+    return () => {
+      window.removeEventListener("mousemove", handleMouseMove);
+      if (rafId !== null) cancelAnimationFrame(rafId);
+    };
   }, [reducedMotion]);
 
   // ── Sync isNearCursorRef → state for reactive rendering ──

@@ -76,14 +76,14 @@ export default function TaxReportsPage() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <ReusableCard
             title="Total Tax Collected"
-            value={summary ? `₹${(summary.totalTaxCollected / 10000000).toFixed(2)}Cr` : "—"}
+            value={summary ? `?${(summary.totalTaxCollected / 10000000).toFixed(2)}Cr` : "₹"}
             icon={<Landmark className="h-5 w-5" />}
             color="text-[#2563eb]"
             bgColor="bg-[#eff6ff]"
           />
           <ReusableCard
             title="ITC Claimed"
-            value={summary ? `₹${(summary.totalITCClaimed / 100000).toFixed(1)}L` : "—"}
+            value={summary ? `?${(summary.totalITCClaimed / 100000).toFixed(1)}L` : "₹"}
             icon={<DollarSign className="h-5 w-5" />}
             color="text-[#0c831f]"
             bgColor="bg-[#e8f5e9]"
@@ -98,7 +98,7 @@ export default function TaxReportsPage() {
           />
           <ReusableCard
             title="Next Due Date"
-            value={summary?.nextDueDate ?? "—"}
+            value={summary?.nextDueDate ?? "₹"}
             icon={<Calendar className="h-5 w-5" />}
             color="text-[#9333ea]"
             bgColor="bg-[#f3e8ff]"
@@ -112,7 +112,7 @@ export default function TaxReportsPage() {
             <div>
               <p className="text-sm font-bold text-amber-700">
                 {summary.pendingFilings} filing{summary.pendingFilings > 1 ? "s" : ""} pending
-                {summary.overdueFilings > 0 && ` · ${summary.overdueFilings} overdue`}
+                {summary.overdueFilings > 0 && ` ₹ ${summary.overdueFilings} overdue`}
               </p>
               <p className="text-xs text-amber-600">Next due: {summary.nextDueDate}</p>
             </div>
@@ -152,7 +152,7 @@ export default function TaxReportsPage() {
                   </div>
                   <div>
                     <span className="font-bold text-[#1a1a1a]">{r.reportTitle}</span>
-                    <span className="block text-[10px] text-[#999]">{r.id} · {r.period}</span>
+                    <span className="block text-[10px] text-[#999]">{r.id} ₹ {r.period}</span>
                   </div>
                 </div>
               ),
@@ -175,7 +175,7 @@ export default function TaxReportsPage() {
               sortable: true,
               render: (r) => (
                 <span className="font-bold">
-                  {r.totalTaxAmount > 0 ? `₹${(r.totalTaxAmount / 100000).toFixed(2)}L` : "—"}
+                  {r.totalTaxAmount > 0 ? `?${(r.totalTaxAmount / 100000).toFixed(2)}L` : "₹"}
                 </span>
               ),
             },
@@ -197,7 +197,7 @@ export default function TaxReportsPage() {
               width: "110px",
               hideOnMobile: true,
               render: (r) => (
-                <span className={r.dueDate !== "—" && r.status === "pending" ? "font-bold text-[#d97706]" : "text-[#666]"}>
+                <span className={r.dueDate !== "₹" && r.status === "pending" ? "font-bold text-[#d97706]" : "text-[#666]"}>
                   {r.dueDate}
                 </span>
               ),
@@ -264,7 +264,7 @@ export default function TaxReportsPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold uppercase tracking-wide text-[#666]">Format / Size</p>
-                  <p className="mt-1 text-sm font-bold text-[#1a1a1a] uppercase">{selectedReport.format} · {selectedReport.fileSize}</p>
+                  <p className="mt-1 text-sm font-bold text-[#1a1a1a] uppercase">{selectedReport.format} ₹ {selectedReport.fileSize}</p>
                 </div>
               </div>
             </div>
@@ -275,12 +275,12 @@ export default function TaxReportsPage() {
                 <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#666]">Tax Breakdown</h4>
                 <div className="space-y-2.5">
                   {[
-                    { label: "Taxable Value", value: selectedReport.taxableValue > 0 ? `₹${(selectedReport.taxableValue / 100000).toFixed(2)}L` : "—" },
-                    { label: "CGST", value: selectedReport.cgst > 0 ? `₹${(selectedReport.cgst / 1000).toFixed(1)}K` : "—" },
-                    { label: "SGST", value: selectedReport.sgst > 0 ? `₹${(selectedReport.sgst / 1000).toFixed(1)}K` : "—" },
-                    { label: "IGST", value: selectedReport.igst > 0 ? `₹${(selectedReport.igst / 1000).toFixed(1)}K` : "—" },
-                    { label: "TDS", value: selectedReport.tds > 0 ? `₹${(selectedReport.tds / 1000).toFixed(1)}K` : "—" },
-                    { label: "Total Tax Amount", value: `₹${(selectedReport.totalTaxAmount / 100000).toFixed(2)}L`, highlight: true },
+                    { label: "Taxable Value", value: selectedReport.taxableValue > 0 ? `?${(selectedReport.taxableValue / 100000).toFixed(2)}L` : "₹" },
+                    { label: "CGST", value: selectedReport.cgst > 0 ? `?${(selectedReport.cgst / 1000).toFixed(1)}K` : "₹" },
+                    { label: "SGST", value: selectedReport.sgst > 0 ? `?${(selectedReport.sgst / 1000).toFixed(1)}K` : "₹" },
+                    { label: "IGST", value: selectedReport.igst > 0 ? `?${(selectedReport.igst / 1000).toFixed(1)}K` : "₹" },
+                    { label: "TDS", value: selectedReport.tds > 0 ? `?${(selectedReport.tds / 1000).toFixed(1)}K` : "₹" },
+                    { label: "Total Tax Amount", value: `?${(selectedReport.totalTaxAmount / 100000).toFixed(2)}L`, highlight: true },
                   ].map((item) => (
                     <div
                       key={item.label}
@@ -319,11 +319,11 @@ export default function TaxReportsPage() {
                   {selectedReport.status === "filed"
                     ? `Filed on ${selectedReport.filedDate}`
                     : selectedReport.status === "pending"
-                    ? `Pending — due ${selectedReport.dueDate}`
+                    ? `Pending ₹ due ${selectedReport.dueDate}`
                     : `Status: ${selectedReport.status}`}
                 </span>
               </div>
-              {selectedReport.generatedAt !== "—" && (
+              {selectedReport.generatedAt !== "₹" && (
                 <p className="mt-1 text-xs text-[#999]">Generated: {selectedReport.generatedAt}</p>
               )}
             </div>
@@ -333,3 +333,4 @@ export default function TaxReportsPage() {
     </DashboardLayout>
   );
 }
+

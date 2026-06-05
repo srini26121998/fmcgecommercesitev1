@@ -62,7 +62,7 @@ export const useWishlistStore =
         onRehydrateStorage: () => {
           return (state, error) => {
             if (error) {
-              console.error("wishlist rehydration error", error);
+              console.warn("wishlist rehydration error", error);
             } else if (state) {
               state.setHasHydrated(true);
             }

@@ -41,6 +41,7 @@ export function AssignPartnerModal({ open, onClose, order, onAssigned }: AssignP
       const result = await orderService.assignPartner({
         orderId: order.id,
         partnerId,
+        backendId: order.backendId,
       });
       if (result) {
         const partner = partners.find((p) => p.id === partnerId);

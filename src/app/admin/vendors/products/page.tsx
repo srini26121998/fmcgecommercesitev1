@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -9,7 +9,6 @@ import ReusableSearchBar from "@/components/ui/admin/reusable-search";
 import ReusableExportButton from "@/components/ui/admin/reusable-export";
 import { ReusablePageHeader, ReusableDrawer } from "@/components/common";
 import { useVendorProducts } from "@/hooks/use-vendors";
-import { mockVendors } from "@/data/admin/vendors";
 import {
   Package, Eye, Edit3, TrendingUp, DollarSign,
   AlertTriangle, BarChart3, RefreshCw,
@@ -24,8 +23,6 @@ export default function VendorProductsPage() {
   } = useVendorProducts();
 
   const [selectedProduct, setSelectedProduct] = useState<VendorProduct | null>(null);
-
-  const vendorNames = [...new Set(mockVendors.map((v) => v.name))];
 
   return (
     <DashboardLayout>
@@ -210,7 +207,7 @@ export default function VendorProductsPage() {
                 {selectedProduct.rating && (
                   <div>
                     <p className="text-[10px] font-bold text-[#999]">Rating</p>
-                    <p className="mt-0.5 font-bold text-amber-500">★ {selectedProduct.rating}</p>
+                    <p className="mt-0.5 font-bold text-amber-500">? {selectedProduct.rating}</p>
                   </div>
                 )}
               </div>
@@ -221,3 +218,4 @@ export default function VendorProductsPage() {
     </DashboardLayout>
   );
 }
+

@@ -54,8 +54,8 @@ export default function AbandonedCartPage() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <ReusableCard title="Total Abandoned" value={summary?.totalAbandoned ?? 0} icon={<ShoppingCart className="h-5 w-5" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
           <ReusableCard title="Recovered" value={summary?.totalRecovered ?? 0} icon={<RefreshCw className="h-5 w-5" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" subtitle={`${summary?.recoveryRate ?? 0}% recovery rate`} />
-          <ReusableCard title="Lost Revenue" value={summary ? `₹${(summary.lostRevenue / 1000).toFixed(1)}K` : "—"} icon={<TrendingDown className="h-5 w-5" />} color="text-[#dc2626]" bgColor="bg-[#fef2f2]" />
-          <ReusableCard title="Recovered Revenue" value={summary ? `₹${(summary.recoveredRevenue / 1000).toFixed(1)}K` : "—"} icon={<DollarSign className="h-5 w-5" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
+          <ReusableCard title="Lost Revenue" value={summary ? `?${(summary.lostRevenue / 1000).toFixed(1)}K` : "₹"} icon={<TrendingDown className="h-5 w-5" />} color="text-[#dc2626]" bgColor="bg-[#fef2f2]" />
+          <ReusableCard title="Recovered Revenue" value={summary ? `?${(summary.recoveredRevenue / 1000).toFixed(1)}K` : "₹"} icon={<DollarSign className="h-5 w-5" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
         </div>
 
         <div className="flex items-center gap-3">
@@ -90,12 +90,12 @@ export default function AbandonedCartPage() {
               ),
             },
             { key: "items", header: "Items", width: "60px", align: "center" },
-            { key: "cartValue", header: "Cart Value", width: "110px", align: "right", sortable: true, render: (r) => <span className="font-bold">₹{r.cartValue.toLocaleString()}</span> },
+            { key: "cartValue", header: "Cart Value", width: "110px", align: "right", sortable: true, render: (r) => <span className="font-bold">?{r.cartValue.toLocaleString()}</span> },
             { key: "status", header: "Status", width: "110px", render: (r) => (
               <StatusBadge status={r.status === "recovered" ? "Recovered" : r.status === "abandoned" ? "Abandoned" : "Lost"} />
             )},
             { key: "abandonedAt", header: "Abandoned", width: "140px", hideOnMobile: true },
-            { key: "recoveryMethod", header: "Recovery", width: "110px", hideOnMobile: true, render: (r) => r.recoveryMethod ? <span className="text-xs font-medium text-[#666]">{r.recoveryMethod}</span> : <span className="text-[#ccc]">—</span> },
+            { key: "recoveryMethod", header: "Recovery", width: "110px", hideOnMobile: true, render: (r) => r.recoveryMethod ? <span className="text-xs font-medium text-[#666]">{r.recoveryMethod}</span> : <span className="text-[#ccc]">₹</span> },
           ]}
           actions={[
             { label: "View Items", icon: <Eye className="h-3.5 w-3.5" />, onClick: (r) => setSelectedCart(r) },
@@ -124,7 +124,7 @@ export default function AbandonedCartPage() {
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wide text-[#666]">Cart Value</p>
-                    <p className="mt-1 text-sm font-black text-[#1a1a1a]">₹{selectedCart.cartValue.toLocaleString()}</p>
+                    <p className="mt-1 text-sm font-black text-[#1a1a1a]">?{selectedCart.cartValue.toLocaleString()}</p>
                   </div>
                   <div>
                     <p className="text-[10px] font-bold uppercase tracking-wide text-[#666]">Items</p>
@@ -170,3 +170,4 @@ export default function AbandonedCartPage() {
     </DashboardLayout>
   );
 }
+

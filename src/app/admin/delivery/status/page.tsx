@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -199,7 +199,7 @@ export default function DeliveryStatusPage() {
               width: "100px",
               render: (e) => (
                 <span className="text-xs text-[#666]">
-                  {e.assignedAt ? new Date(e.assignedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "—"}
+                  {e.assignedAt ? new Date(e.assignedAt).toLocaleTimeString("en-IN", { hour: "2-digit", minute: "2-digit" }) : "₹"}
                 </span>
               ),
             },
@@ -247,7 +247,7 @@ export default function DeliveryStatusPage() {
               </div>
               <div>
                 <span className="block text-[10px] font-bold text-[#666] uppercase">Zone</span>
-                <span className="text-sm font-bold text-[#1a1a1a]">{showViewModal.zone || "—"}</span>
+                <span className="text-sm font-bold text-[#1a1a1a]">{showViewModal.zone || "₹"}</span>
               </div>
             </div>
 
@@ -264,7 +264,7 @@ export default function DeliveryStatusPage() {
                   showViewModal.slaStatus === "critical" ? "bg-[#fef2f2] text-[#dc2626]" :
                   "bg-[#f6f7f6] text-[#666]"
                 }`}>
-                  {showViewModal.slaStatus?.replace("_", " ") || "—"}
+                  {showViewModal.slaStatus?.replace("_", " ") || "₹"}
                 </span>
               </div>
             </div>
@@ -273,7 +273,7 @@ export default function DeliveryStatusPage() {
               <div>
                 <span className="block text-[10px] font-bold text-[#666] uppercase">Assigned At</span>
                 <span className="text-xs text-[#1a1a1a]">
-                  {showViewModal.assignedAt ? new Date(showViewModal.assignedAt).toLocaleString("en-IN") : "—"}
+                  {showViewModal.assignedAt ? new Date(showViewModal.assignedAt).toLocaleString("en-IN") : "₹"}
                 </span>
               </div>
               <div>
@@ -364,3 +364,4 @@ export default function DeliveryStatusPage() {
     </DashboardLayout>
   );
 }
+

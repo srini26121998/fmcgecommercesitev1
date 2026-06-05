@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -69,7 +69,7 @@ export default function ABTestingPage() {
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-[#f3e8ff]"><BarChart3 className="h-4 w-4 text-[#9333ea]" /></div>
                     <div>
                       <p className="text-sm font-bold text-[#1a1a1a]">{test.name}</p>
-                      <p className="text-xs text-[#999]">{test.audience} · {test.totalImpressions.toLocaleString()} impressions</p>
+                      <p className="text-xs text-[#999]">{test.audience} ₹ {test.totalImpressions.toLocaleString()} impressions</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-2">
@@ -117,7 +117,7 @@ export default function ABTestingPage() {
                   </div>
                   <div className="rounded-xl bg-[#f9fafb] p-3">
                     <p className="text-[10px] font-bold uppercase text-[#999]">Period</p>
-                    <p className="text-xs font-bold text-[#666]">{test.startedAt} — {test.endedAt || "Ongoing"}</p>
+                    <p className="text-xs font-bold text-[#666]">{test.startedAt} ₹ {test.endedAt || "Ongoing"}</p>
                   </div>
                 </div>
               </div>
@@ -210,7 +210,7 @@ export default function ABTestingPage() {
 
       {/* Slide-in panel */}
       <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
           editTest ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -256,3 +256,4 @@ export default function ABTestingPage() {
     </DashboardLayout>
   );
 }
+

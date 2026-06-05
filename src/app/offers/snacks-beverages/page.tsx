@@ -1,4 +1,4 @@
-import { products } from "@/data/products";
+﻿import { productService } from "@/services/products.service";
 import Navbar from "@/components/ui/navbar";
 import BottomNav from "@/components/ui/mobile/bottom-nav";
 import CategoryClient from "@/components/ui/category/category-client";
@@ -11,10 +11,16 @@ export const metadata: Metadata = {
   description: "Stock up for the weekend with our special deals on snacks and beverages. Munchies, drinks, and party essentials at best prices.",
 };
 
-export default function SnacksBeveragesPage() {
-  const snacksBeverages = products.filter((p) => 
-    p.category === "Snacks" || p.category === "Beverages"
-  );
+export default async function SnacksBeveragesPage() {
+  let snacksBeverages: any[] = [];
+  try {
+    const res = await productService.getProducts({}, { pageSize: 100 });
+    snacksBeverages = res.products.filter((p) => 
+      p.category === "Snacks" || p.category === "Beverages"
+    );
+  } catch (e) {
+    console.error("Error loading dynamic snacks and beverages:", e);
+  }
 
   return (
     <main className="bg-[#f2f2f2] min-h-screen pb-20 md:pb-0">
@@ -48,7 +54,7 @@ export default function SnacksBeveragesPage() {
         <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
           <CategoryClient
             items={snacksBeverages}
-            categoryEmoji="🍿"
+            categoryEmoji="ðŸ¿"
             categoryLabel="Weekend Special"
           />
         </div>

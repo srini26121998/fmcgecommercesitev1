@@ -66,9 +66,9 @@ export default function PromotionROIPage() {
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <ReusableCard title="Total Promotions" value={summary?.totalPromotions ?? 0} icon={<Percent className="h-5 w-5" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
-          <ReusableCard title="Total Cost" value={summary ? `₹${(summary.totalCost / 100000).toFixed(1)}L` : "—"} icon={<DollarSign className="h-5 w-5" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
-          <ReusableCard title="Revenue Generated" value={summary ? `₹${(summary.totalRevenue / 10000000).toFixed(2)}Cr` : "—"} icon={<TrendingUp className="h-5 w-5" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
-          <ReusableCard title="Avg ROI" value={summary ? `${summary.avgROI}%` : "—"} icon={<Target className="h-5 w-5" />} color="text-[#9333ea]" bgColor="bg-[#f3e8ff]" subtitle={summary ? `Best: ${summary.bestPromotion}` : undefined} />
+          <ReusableCard title="Total Cost" value={summary ? `?${(summary.totalCost / 100000).toFixed(1)}L` : "₹"} icon={<DollarSign className="h-5 w-5" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
+          <ReusableCard title="Revenue Generated" value={summary ? `?${(summary.totalRevenue / 10000000).toFixed(2)}Cr` : "₹"} icon={<TrendingUp className="h-5 w-5" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
+          <ReusableCard title="Avg ROI" value={summary ? `${summary.avgROI}%` : "₹"} icon={<Target className="h-5 w-5" />} color="text-[#9333ea]" bgColor="bg-[#f3e8ff]" subtitle={summary ? `Best: ${summary.bestPromotion}` : undefined} />
         </div>
 
         <ReusableChart title="ROI by Promotion" subtitle="Return on investment percentage per campaign" height={260}>
@@ -133,8 +133,8 @@ export default function PromotionROIPage() {
                 </div>
               ),
             },
-            { key: "cost", header: "Cost", align: "right", width: "90px", render: (r) => <span>₹{(r.cost / 1000).toFixed(0)}K</span> },
-            { key: "revenueGenerated", header: "Revenue", align: "right", width: "110px", sortable: true, render: (r) => <span className="font-bold">₹{(r.revenueGenerated / 100000).toFixed(1)}L</span> },
+            { key: "cost", header: "Cost", align: "right", width: "90px", render: (r) => <span>?{(r.cost / 1000).toFixed(0)}K</span> },
+            { key: "revenueGenerated", header: "Revenue", align: "right", width: "110px", sortable: true, render: (r) => <span className="font-bold">?{(r.revenueGenerated / 100000).toFixed(1)}L</span> },
             { key: "roi", header: "ROI", align: "right", width: "70px", sortable: true, render: (r) => (
               <span className={`font-bold ${r.roi >= 400 ? "text-[#0c831f]" : r.roi >= 300 ? "text-[#d97706]" : "text-[#666]"}`}>{r.roi}%</span>
             )},
@@ -151,3 +151,4 @@ export default function PromotionROIPage() {
     </DashboardLayout>
   );
 }
+

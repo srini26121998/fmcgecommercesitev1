@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -6,12 +6,12 @@ import { CreditCard, Shield, Wallet, CheckCircle, XCircle, Edit3 } from "lucide-
 import { toast } from "sonner";
 
 const paymentMethods = [
-  { name: "UPI", enabled: true, provider: "Razorpay", fee: "1.5%", settlement: "T+1", limit: "₹1,00,000" },
-  { name: "Credit/Debit Card", enabled: true, provider: "Razorpay", fee: "2.0%", settlement: "T+2", limit: "₹2,00,000" },
-  { name: "Net Banking", enabled: true, provider: "Razorpay", fee: "0.8%", settlement: "T+1", limit: "₹5,00,000" },
-  { name: "Wallet", enabled: true, provider: "In-house", fee: "0%", settlement: "Instant", limit: "₹25,000" },
-  { name: "COD", enabled: true, provider: "Razorpay", fee: "1.0%", settlement: "T+1", limit: "₹5,000" },
-  { name: "EMI", enabled: false, provider: "Razorpay", fee: "1.5%", settlement: "T+3", limit: "₹3,00,000" },
+  { name: "UPI", enabled: true, provider: "Razorpay", fee: "1.5%", settlement: "T+1", limit: "?1,00,000" },
+  { name: "Credit/Debit Card", enabled: true, provider: "Razorpay", fee: "2.0%", settlement: "T+2", limit: "?2,00,000" },
+  { name: "Net Banking", enabled: true, provider: "Razorpay", fee: "0.8%", settlement: "T+1", limit: "?5,00,000" },
+  { name: "Wallet", enabled: true, provider: "In-house", fee: "0%", settlement: "Instant", limit: "?25,000" },
+  { name: "COD", enabled: true, provider: "Razorpay", fee: "1.0%", settlement: "T+1", limit: "?5,000" },
+  { name: "EMI", enabled: false, provider: "Razorpay", fee: "1.5%", settlement: "T+3", limit: "?3,00,000" },
 ];
 
 export default function PaymentSettingsPage() {
@@ -106,3 +106,4 @@ export default function PaymentSettingsPage() {
     </DashboardLayout>
   );
 }
+

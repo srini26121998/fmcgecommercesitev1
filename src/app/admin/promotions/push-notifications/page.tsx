@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -191,7 +191,7 @@ export default function PushNotificationsPage() {
               </div>
               <div>
                 <span className="block text-xs font-bold text-[#999] uppercase">Deep Link</span>
-                <span className="font-semibold text-[#1a1a1a]">{showViewModal.deepLink || "—"}</span>
+                <span className="font-semibold text-[#1a1a1a]">{showViewModal.deepLink || "₹"}</span>
               </div>
               <div>
                 <span className="block text-xs font-bold text-[#999] uppercase">Sent Count</span>
@@ -203,11 +203,11 @@ export default function PushNotificationsPage() {
               </div>
               <div>
                 <span className="block text-xs font-bold text-[#999] uppercase">Scheduled At</span>
-                <span className="font-semibold text-[#1a1a1a]">{showViewModal.scheduledAt || "—"}</span>
+                <span className="font-semibold text-[#1a1a1a]">{showViewModal.scheduledAt || "₹"}</span>
               </div>
               <div>
                 <span className="block text-xs font-bold text-[#999] uppercase">Sent At</span>
-                <span className="font-semibold text-[#1a1a1a]">{showViewModal.sentAt || "—"}</span>
+                <span className="font-semibold text-[#1a1a1a]">{showViewModal.sentAt || "₹"}</span>
               </div>
             </div>
           </div>
@@ -225,7 +225,7 @@ export default function PushNotificationsPage() {
 
       {/* Slide-in panel */}
       <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
           editNotification ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -293,3 +293,4 @@ export default function PushNotificationsPage() {
     </DashboardLayout>
   );
 }
+

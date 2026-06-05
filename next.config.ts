@@ -4,13 +4,28 @@ const nextConfig: NextConfig = {
   /* config options here */
   reactCompiler: true,
   images: {
+    unoptimized: process.env.NODE_ENV === "development",
     remotePatterns: [
       {
         protocol: "https",
         hostname: "images.unsplash.com",
       },
+      {
+        protocol: "https",
+        hostname: "fmcg.com",
+      },
     ],
     qualities: [75, 85],
+  },
+  // ── Redirects ────────────────────────────────────────
+  async redirects() {
+    return [
+      {
+        source: '/amin',
+        destination: '/admin',
+        permanent: true,
+      },
+    ];
   },
 
   // ── Security Headers ─────────────────────────────────

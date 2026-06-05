@@ -4,13 +4,15 @@ import { useState } from "react";
 import { ArrowRightLeft } from "lucide-react";
 import ReusableModal from "@/components/ui/admin/reusable-modal";
 import type { StockTransfer } from "@/types/inventory";
+import { adminToast } from "@/lib/admin-toast";
+import { validateForm, inventorySchemas } from "@/validation/admin";
 
 interface StockTransferFormProps {
   open: boolean;
   onClose: () => void;
   onSubmit: (data: Omit<StockTransfer, "id" | "status" | "createdAt">) => Promise<void>;
   warehouses: { name: string; id: string }[];
-  products: { name: string; sku: string }[];
+  products: { name: string; sku: string; id?: string }[];
 }
 
 export default function StockTransferForm({
@@ -30,12 +32,23 @@ export default function StockTransferForm({
   const [error, setError] = useState<string | null>(null);
 
   const handleSubmit = async () => {
-    if (!product || !fromWarehouse || !toWarehouse || quantity <= 0) {
-      setError("Please fill in all required fields");
-      return;
-    }
-    if (fromWarehouse === toWarehouse) {
-      setError("Source and destination warehouses must be different");
+    // Look up IDs
+    const fromId = warehouses.find((w) => w.name === fromWarehouse)?.id || fromWarehouse;
+    const toId = warehouses.find((w) => w.name === toWarehouse)?.id || toWarehouse;
+    const selectedProduct = products.find((p) => p.name === product);
+    const prodId = selectedProduct?.id || selectedProduct?.sku || sku || product;
+
+    const payload = {
+      fromWarehouseId: fromId,
+      toWarehouseId: toId,
+      productId: prodId,
+      quantity,
+      notes: notes || undefined,
+    };
+
+    const validation = validateForm(inventorySchemas.stockTransfer, payload);
+    if (!validation.success) {
+      adminToast.validationError(validation.errors);
       return;
     }
 
@@ -51,6 +64,9 @@ export default function StockTransferForm({
         notes: notes || undefined,
         initiatedBy: "Admin User",
         date: new Date().toISOString().split("T")[0],
+        fromWarehouseId: fromId,
+        toWarehouseId: toId,
+        productId: prodId,
       });
       // Reset form
       setProduct("");
@@ -73,8 +89,8 @@ export default function StockTransferForm({
     setSku(found?.sku || "");
   };
 
-  const warehouseOptions = warehouses.map((w) => w.name);
-  const productOptions = products.map((p) => p.name);
+  const warehouseOptions = warehouses;
+  const productOptions = products;
 
   return (
     <ReusableModal open={open} onClose={onClose} title="New Stock Transfer" subtitle="Transfer stock between warehouses" size="md">
@@ -89,7 +105,7 @@ export default function StockTransferForm({
           >
             <option value="">Select Product</option>
             {productOptions.map((opt) => (
-              <option key={opt} value={opt}>{opt}</option>
+              <option key={opt.sku} value={opt.name}>{opt.name}</option>
             ))}
           </select>
         </div>
@@ -105,7 +121,7 @@ export default function StockTransferForm({
             >
               <option value="">Select Source</option>
               {warehouseOptions.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
+                <option key={opt.id} value={opt.name}>{opt.name}</option>
               ))}
             </select>
           </div>
@@ -123,7 +139,7 @@ export default function StockTransferForm({
             >
               <option value="">Select Destination</option>
               {warehouseOptions.map((opt) => (
-                <option key={opt} value={opt}>{opt}</option>
+                <option key={opt.id} value={opt.name}>{opt.name}</option>
               ))}
             </select>
           </div>

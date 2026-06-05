@@ -6,6 +6,7 @@ import ErrorBoundary from "@/components/ui/error-boundary";
 import LayoutClient from "./layout-client";
 import SkipLink from "@/components/ui/a11y/skip-link";
 import GroceryAssistant from "@/components/ui/grocery-assistant/grocery-assistant";
+import { GlobalLoader } from "@/components/ui/global-loader";
 import { env } from "@/lib/env";
 
 const inter = Inter({
@@ -66,7 +67,7 @@ export default function RootLayout({
   children,
 }: Readonly<{ children: React.ReactNode }>) {
   return (
-    <html lang="en" className={`h-full antialiased ${inter.variable} font-sans`} suppressHydrationWarning>
+    <html lang="en" className={`h-full antialiased ${inter.variable} font-sans`} data-scroll-behavior="smooth" suppressHydrationWarning>
       <body className="min-h-full flex flex-col bg-[#f2f2f2] relative" suppressHydrationWarning>
         <SkipLink />
         <LayoutClient>
@@ -77,7 +78,8 @@ export default function RootLayout({
           </ErrorBoundary>
         </LayoutClient>
         <GroceryAssistant />
-        <Toaster position="bottom-right" className="z-50" />
+        <GlobalLoader />
+        <Toaster position="top-right" className="z-50" />
       </body>
     </html>
   );

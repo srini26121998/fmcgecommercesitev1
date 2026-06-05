@@ -95,7 +95,7 @@ export default function SEOEditor({
     if (!selected || !vals) return;
     setSaving(true);
     try {
-      await onUpdate?.(selected.productId, {
+      const success = await onUpdate?.(selected.productId, {
         metaTitle: vals.metaTitle,
         metaDescription: vals.metaDescription,
         metaKeywords: vals.metaKeywords,
@@ -103,7 +103,13 @@ export default function SEOEditor({
         canonicalUrl: vals.canonicalUrl,
         ogImage: vals.ogImage,
       });
-      toast.success(`SEO updated for ${selected.productName}`);
+      if (success === false) {
+        toast.error(`Failed to update SEO for ${selected.productName}`);
+      } else {
+        toast.success(`SEO settings saved for ${selected.productName}`);
+      }
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Failed to save SEO settings");
     } finally {
       setSaving(false);
     }

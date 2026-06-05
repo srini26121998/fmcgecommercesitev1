@@ -13,9 +13,11 @@ import { promotionService } from "@/services/promotions.service";
 import type { Promotion } from "@/types/promotions";
 import { Percent, Plus, Edit3, Copy, Trash2, Gift, Zap, Clock, Eye, X, Save } from "lucide-react";
 import { toast } from "sonner";
+import { AnimatedLoader } from "@/components/ui/animated-loader";
 
 export default function PromotionsPage() {
   const { promotions, summary, pagination, loading, error, filters, updateFilters, fetchPromotions, updatePromotion, deletePromotion, setPage, setPageSize } = usePromotions();
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [showViewModal, setShowViewModal] = useState<Promotion | null>(null);
   const [editPromotion, setEditPromotion] = useState<Promotion | null>(null);
@@ -41,7 +43,15 @@ export default function PromotionsPage() {
       toast.error("Promotion name is required");
       return;
     }
-    const res = await promotionService.createPromotion(createForm);
+    
+    const payload = { ...createForm };
+    if (payload.startDate && !payload.startDate.includes("T")) payload.startDate += "T00:00:00";
+    if (payload.endDate && !payload.endDate.includes("T")) payload.endDate += "T23:59:59";
+    
+    setIsSubmitting(true);
+    const res = await promotionService.createPromotion(payload);
+    setIsSubmitting(false);
+    
     if (res) {
       toast.success(`Promotion "${res.name}" created!`);
       setShowCreateModal(false);
@@ -65,7 +75,15 @@ export default function PromotionsPage() {
 
   const handleEditSave = async () => {
     if (!editPromotion || !editForm.name) return;
-    const res = await updatePromotion(editPromotion.id, editForm);
+    
+    const payload = { ...editForm };
+    if (payload.startDate && !payload.startDate.includes("T")) payload.startDate += "T00:00:00";
+    if (payload.endDate && !payload.endDate.includes("T")) payload.endDate += "T23:59:59";
+    
+    setIsSubmitting(true);
+    const res = await updatePromotion(editPromotion.id, payload);
+    setIsSubmitting(false);
+    
     if (res) {
       toast.success(`Promotion "${editForm.name}" updated successfully`);
       setEditPromotion(null);
@@ -76,7 +94,10 @@ export default function PromotionsPage() {
   };
 
   const handleDelete = async (id: string, name: string) => {
+    setIsSubmitting(true);
     const success = await deletePromotion(id);
+    setIsSubmitting(false);
+    
     if (success) {
       toast.success(`Deleted promotion "${name}"`);
     } else {
@@ -169,7 +190,7 @@ export default function PromotionsPage() {
             )},
             { key: "status", header: "Status", width: "110px", render: (p) => <StatusBadge status={p.status} /> },
             { key: "usageCount", header: "Used", width: "120px", align: "right", render: (p) => (
-              <span>{p.usageCount.toLocaleString()} / {p.usageLimit.toLocaleString()}</span>
+              <span>{p.usageCount.toLocaleString()} / {p.usageLimit === 999999 ? '∞' : p.usageLimit.toLocaleString()}</span>
             )},
             { key: "startDate", header: "Start", width: "110px", hideOnMobile: true },
             { key: "endDate", header: "End", width: "110px", hideOnMobile: true },
@@ -178,7 +199,9 @@ export default function PromotionsPage() {
             { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: (p) => setShowViewModal(p) },
             { label: "Edit", icon: <Edit3 className="h-3.5 w-3.5" />, onClick: (p) => { setEditPromotion(p); setEditForm({ ...p }); } },
             { label: "Duplicate", icon: <Copy className="h-3.5 w-3.5" />, onClick: async (p) => {
+              setIsSubmitting(true);
               const res = await promotionService.createPromotion({ ...p, id: undefined, name: `${p.name} (Copy)` });
+              setIsSubmitting(false);
               if (res) { toast.success(`Duplicated "${p.name}"`); fetchPromotions(); }
             }},
             { label: "Delete", icon: <Trash2 className="h-3.5 w-3.5" />, onClick: (p) => handleDelete(p.id, p.name), variant: "danger" },
@@ -309,7 +332,7 @@ export default function PromotionsPage() {
 
       {/* Slide-in panel */}
       <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
           editPromotion ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -406,6 +429,9 @@ export default function PromotionsPage() {
           </button>
         </div>
       </aside>
+
+      {isSubmitting && <AnimatedLoader fullScreen text="Processing..." />}
     </DashboardLayout>
   );
 }
+

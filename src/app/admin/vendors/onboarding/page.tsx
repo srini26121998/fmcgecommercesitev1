@@ -137,7 +137,7 @@ export default function VendorOnboardingPage() {
               render: (a) => (
                 <div>
                   <span className="font-bold text-[#1a1a1a]">{a.company}</span>
-                  <span className="block text-[10px] text-[#999]">{a.id} · {a.owner}</span>
+                  <span className="block text-[10px] text-[#999]">{a.id} ₹ {a.owner}</span>
                 </div>
               ),
             },
@@ -209,7 +209,7 @@ export default function VendorOnboardingPage() {
                   { label: "Phone", value: selectedApp.phone },
                   { label: "Category", value: selectedApp.category },
                   { label: "City", value: `${selectedApp.city}, ${selectedApp.state}` },
-                  { label: "Expected Volume", value: selectedApp.expectedMonthlyVolume ? `₹${(selectedApp.expectedMonthlyVolume / 1000).toFixed(0)}K/mo` : "—" },
+                  { label: "Expected Volume", value: selectedApp.expectedMonthlyVolume ? `?${(selectedApp.expectedMonthlyVolume / 1000).toFixed(0)}K/mo` : "₹" },
                 ].map((f) => (
                   <div key={f.label}>
                     <p className="text-[10px] font-bold uppercase tracking-wide text-[#999]">{f.label}</p>
@@ -322,3 +322,4 @@ export default function VendorOnboardingPage() {
     </DashboardLayout>
   );
 }
+

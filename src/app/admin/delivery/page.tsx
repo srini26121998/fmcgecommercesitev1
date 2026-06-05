@@ -125,7 +125,7 @@ export default function DeliveryPage() {
               return (
                 <div key={zone} className="rounded-xl border border-[#e8e8e8] bg-[#f9fafb] p-4">
                   <p className="text-sm font-bold text-[#1a1a1a]">{zone}</p>
-                  <p className="text-xs text-[#999]">{zonePartners.length} partners · {zoneOnline} online</p>
+                  <p className="text-xs text-[#999]">{zonePartners.length} partners  {zoneOnline} online</p>
                   <div className="mt-2 flex -space-x-1.5">
                     {zonePartners.slice(0, 4).map((p) => (
                       <div key={p.id} className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-white bg-[#0c831f]/10 text-[8px] font-black text-[#0c831f]">
@@ -171,13 +171,13 @@ export default function DeliveryPage() {
               <span className="font-bold capitalize text-[#666]">{p.vehicleType.replace("_", " ")}</span>
             )},
             { key: "status", header: "Status", width: "100px", render: (p) => <StatusBadge status={p.status} /> },
-            { key: "currentOrders", header: "Active Orders", width: "120px", align: "center" },
-            { key: "totalDeliveries", header: "Total Delivered", width: "130px", align: "right", sortable: true, render: (p) => <span className="font-bold">{p.totalDeliveries.toLocaleString()}</span> },
-            { key: "rating", header: "Rating", width: "80px", render: (p) => (
+            { key: "currentOrders", header: "Active Orders", width: "120px", align: "center", hideOnMobile: true },
+            { key: "totalDeliveries", header: "Total Delivered", width: "130px", align: "right", sortable: true, hideOnMobile: true, render: (p) => <span className="font-bold">{p.totalDeliveries.toLocaleString()}</span> },
+            { key: "rating", header: "Rating", width: "80px", hideOnMobile: true, render: (p) => (
               <div className="flex items-center gap-1"><Star className="h-3 w-3 text-[#d97706] fill-current" /><span className="font-bold">{p.rating}</span></div>
             )},
             { key: "zone", header: "Zone", width: "130px", hideOnMobile: true },
-            { key: "earnings", header: "Earnings", width: "100px", align: "right", render: (p) => <span className="font-bold text-[#0c831f]">{p.earnings}</span> },
+            { key: "earnings", header: "Earnings", width: "100px", align: "right", hideOnMobile: true, render: (p) => <span className="font-bold text-[#0c831f]">{p.earnings}</span> },
           ]}
           actions={[
             { label: "Track", icon: <MapPin className="h-3.5 w-3.5" />, onClick: (p) => toast.info(`Tracking ${p.name}`), variant: "success" },
@@ -365,3 +365,4 @@ export default function DeliveryPage() {
     </DashboardLayout>
   );
 }
+

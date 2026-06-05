@@ -1,9 +1,8 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
-import { products } from "@/data/products";
 
 interface CartItem {
-  id: number;
+  id: number | string;
   name: string;
   price: number;
   image: string;
@@ -16,11 +15,11 @@ interface CartStore {
 
   addToCart: (product: CartItem) => void;
 
-  removeFromCart: (id: number) => void;
+  removeFromCart: (id: number | string) => void;
 
-  increaseQuantity: (id: number) => void;
+  increaseQuantity: (id: number | string) => void;
 
-  decreaseQuantity: (id: number) => void;
+  decreaseQuantity: (id: number | string) => void;
 
   clearCart: () => void;
 }
@@ -31,12 +30,7 @@ export const useCartStore = create<CartStore>()(
       cart: [],
 
       addToCart: (product) => {
-        const productInfo = products.find((p) => p.id === product.id);
-        
-        if (productInfo && productInfo.stock === "out_of_stock") {
-          console.warn(`Cannot add OOS product: ${product.name} (ID: ${product.id})`);
-          return;
-        }
+        // Stock validation should be handled by the UI or API before calling this
 
         set((state) => {
           const existing = state.cart.find(
@@ -70,23 +64,18 @@ export const useCartStore = create<CartStore>()(
         })),
 
       increaseQuantity: (id) => {
-        const productInfo = products.find((p) => p.id === id);
-        
-        if (productInfo && productInfo.stock === "out_of_stock") {
-          console.warn(`Cannot increase quantity for OOS product (ID: ${id})`);
-          return;
-        }
+        const MAX_QUANTITY = 20;
+        // Stock validation should be handled by the UI or API before calling this
 
-        set((state) => ({
-          cart: state.cart.map((item) =>
-            item.id === id
-              ? {
-                  ...item,
-                  quantity: item.quantity + 1,
-                }
-              : item
-          ),
-        }));
+        set((state) => {
+          const item = state.cart.find((i) => i.id === id);
+          if (!item || item.quantity >= MAX_QUANTITY) return state;
+          return {
+            cart: state.cart.map((i) =>
+              i.id === id ? { ...i, quantity: Math.min(i.quantity + 1, MAX_QUANTITY) } : i
+            ),
+          };
+        });
       },
 
       decreaseQuantity: (id) =>

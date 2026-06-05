@@ -1,4 +1,4 @@
-﻿interface KpiCardProps {
+interface KpiCardProps {
   title: string;
   value: React.ReactNode;
   growth: string;
@@ -28,3 +28,4 @@ export default function KpiCard({ title, value, growth, subtitle }: KpiCardProps
     </div>
   );
 }
+

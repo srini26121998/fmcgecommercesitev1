@@ -7,13 +7,11 @@ import {
   Star,
   Clock,
   X,
-  ShoppingBag,
   Heart,
   ChevronRight,
-  Minus,
-  Plus,
 } from "lucide-react";
-import { useCartStore } from "@/store/cart-store";
+import { useUserCart } from "@/hooks/use-user-cart";
+import AddToCartButton from "@/components/ui/products/add-to-cart-button";
 import { useWishlistStore } from "@/store/wishlist-store";
 import { toast } from "sonner";
 import type { Product } from "@/data/products";
@@ -26,7 +24,7 @@ interface QuickViewModalProps {
 
 export default function QuickViewModal({ product, open, onClose }: QuickViewModalProps) {
   const overlayRef = useRef<HTMLDivElement>(null);
-  const { addToCart, cart, increaseQuantity, decreaseQuantity } = useCartStore();
+  const { addToCart, cartItems, increaseQuantity, decreaseQuantity } = useUserCart();
   const { addToWishlist, removeFromWishlist, wishlist } = useWishlistStore();
 
   useEffect(() => {
@@ -47,8 +45,6 @@ export default function QuickViewModal({ product, open, onClose }: QuickViewModa
   const discount = Math.round(
     ((product.oldPrice - product.price) / product.oldPrice) * 100
   );
-  const cartItem = cart.find((c) => c.id === product.id);
-  const inCart = !!cartItem;
   const wishlisted = wishlist.some((item) => item.id === product.id);
 
   return (
@@ -123,50 +119,21 @@ export default function QuickViewModal({ product, open, onClose }: QuickViewModa
           </div>
 
           <p className="text-xs text-[#666] leading-relaxed mb-4">
-            Premium quality {product.category.toLowerCase()} product. Fresh and carefully sourced.
+            Premium quality {String(product.category).toLowerCase()} product. Fresh and carefully sourced.
           </p>
 
           {/* Actions */}
           <div className="flex items-center gap-2">
-            {inCart ? (
-              <div className="flex-1 flex items-center justify-between h-11 rounded-xl border-2 border-[#0c831f] bg-[#0c831f] text-white px-1">
-                <button
-                  onClick={() => decreaseQuantity(product.id)}
-                  className="flex min-w-[40px] h-full items-center justify-center hover:bg-[#0a6e1a] rounded-l-lg transition-colors"
-                  aria-label="Decrease quantity"
-                >
-                  <Minus className="w-3.5 h-3.5" />
-                </button>
-                <span className="text-xs font-black px-2">{cartItem?.quantity || 0}</span>
-                <button
-                  onClick={() => increaseQuantity(product.id)}
-                  className="flex min-w-[40px] h-full items-center justify-center hover:bg-[#0a6e1a] rounded-r-lg transition-colors"
-                  aria-label="Increase quantity"
-                >
-                  <Plus className="w-3.5 h-3.5" />
-                </button>
+              <div className="flex-1">
+                <AddToCartButton
+                  productId={product.id}
+                  productName={product.name}
+                  productPrice={product.price}
+                  productImage={product.image}
+                  themeColor="pink"
+                  size="lg"
+                />
               </div>
-            ) : (
-              <button
-                onClick={() => {
-                  addToCart({
-                    id: product.id,
-                    name: product.name,
-                    price: product.price,
-                    image: product.image,
-                    quantity: 1,
-                  });
-                  toast.success(`${product.name} added to cart!`, {
-                    description: "Delivery in 10 minutes",
-                    duration: 2000,
-                  });
-                }}
-                className="flex-1 h-11 rounded-xl bg-[#ff4f8b] text-white text-sm font-black flex items-center justify-center gap-2 hover:bg-[#e63872] transition-all active:scale-[0.98]"
-              >
-                <ShoppingBag className="w-4 h-4" />
-                Add to Cart — ₹{product.price}
-              </button>
-            )}
 
             <button
               onClick={() => {

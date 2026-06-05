@@ -3,21 +3,17 @@
 import { useRef, useMemo } from "react";
 import Link from "next/link";
 import { Zap, ChevronLeft, ChevronRight, Clock } from "lucide-react";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/use-products";
 import { SafeProductImage } from "@/components/ui/safe-image";
-import { useCartStore } from "@/store/cart-store";
-import { toast } from "sonner";
+import AddToCartButton from "@/components/ui/products/add-to-cart-button";
 
 export default function FlashSaleSection() {
-  const addToCart = useCartStore((s) => s.addToCart);
-  const increaseQty = useCartStore((s) => s.increaseQuantity);
-  const decreaseQty = useCartStore((s) => s.decreaseQuantity);
-  const cart = useCartStore((s) => s.cart);
+  const { products } = useProducts();
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const flashSaleProducts = useMemo(() => {
-    return products.filter((p) => p.isFlashSale && p.stock !== "out_of_stock");
-  }, []);
+    return products.filter((p) => p.isFlashSale && p.stock > 0);
+  }, [products]);
 
   function scroll(dir: number) {
     const el = scrollRef.current;
@@ -49,7 +45,7 @@ export default function FlashSaleSection() {
 
         <Link
           href="/offers/flash-sale"
-          className="flex-shrink-0 inline-flex items-center justify-center min-h-[44px] h-9 sm:h-10 px-4 sm:px-5 rounded-lg bg-white text-[#dc2626] font-bold text-xs sm:text-sm hover:bg-white/90 transition"
+          className="flex-shrink-0 inline-flex items-center justify-center h-8 sm:h-9 px-4 rounded-lg bg-white text-[#dc2626] font-bold text-xs sm:text-sm hover:bg-white/90 transition shadow-sm"
         >
           View All Deals
         </Link>
@@ -70,8 +66,6 @@ export default function FlashSaleSection() {
         >
           {flashSaleProducts.map((product) => {
             const discount = Math.round(((product.oldPrice - product.price) / product.oldPrice) * 100);
-            const cartItem = cart.find((item) => item.id === product.id);
-            const quantity = cartItem?.quantity ?? 0;
 
             return (
               <div
@@ -118,56 +112,15 @@ export default function FlashSaleSection() {
                       </div>
                     </Link>
 
-                    <div className="mt-2">
-                      {quantity === 0 ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            addToCart({
-                              id: product.id,
-                              name: product.name,
-                              price: product.price,
-                              image: product.image,
-                              quantity: 1,
-                            });
-                            toast.success("Added to cart 🛒");
-                          }}
-                          className="min-h-[44px] w-full h-7 px-2.5 rounded-md text-[11px] font-bold text-white bg-[#dc2626] hover:bg-[#b91c1c] active:scale-95 transition-all shadow-sm"
-                        >
-                          ADD
-                        </button>
-                      ) : (
-                        <div className="flex items-center justify-center w-full h-7 rounded-md bg-[#dc2626] overflow-hidden shadow-sm">
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              decreaseQty(product.id);
-                            }}
-                            className="flex-1 h-full flex items-center justify-center text-white hover:bg-[#b91c1c] transition-colors"
-                          >
-                            <span className="text-sm font-bold">-</span>
-                          </button>
-                          <span className="w-6 text-center text-sm font-bold text-white">
-                            {quantity}
-                          </span>
-                          <button
-                            type="button"
-                            onClick={(e) => {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              increaseQty(product.id);
-                              toast.success("Added to cart 🛒");
-                            }}
-                            className="flex-1 h-full flex items-center justify-center text-white hover:bg-[#b91c1c] transition-colors"
-                          >
-                            <span className="text-sm font-bold">+</span>
-                          </button>
-                        </div>
-                      )}
+                    <div className="mt-2.5">
+                      <AddToCartButton
+                        productId={product.id}
+                        productName={product.name}
+                        productPrice={product.price}
+                        productImage={product.image}
+                        themeColor="red"
+                        size="md"
+                      />
                     </div>
                   </div>
                 </div>

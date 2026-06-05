@@ -2,10 +2,10 @@
 
 import { useState, useMemo } from "react";
 import { RefreshCw, TrendingDown, ArrowRight, CheckCircle2 } from "lucide-react";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/use-products";
 
 interface CartItem {
-  id: number;
+  id: string | number;
   name: string;
   price: number;
   image: string;
@@ -13,9 +13,9 @@ interface CartItem {
 }
 
 interface SubstitutionSuggestion {
-  originalId: number;
+  originalId: string | number;
   originalName: string;
-  suggestedId: number;
+  suggestedId: string | number;
   suggestedName: string;
   suggestedPrice: number;
   saving: number;
@@ -23,29 +23,30 @@ interface SubstitutionSuggestion {
 
 interface SubstitutionSuggestionsProps {
   cartItems: CartItem[];
-  onApply: (originalId: number, suggestedId: number) => void;
+  onApply: (originalId: string | number, suggestedId: string | number) => void;
 }
 
 export default function SubstitutionSuggestions({ cartItems, onApply }: SubstitutionSuggestionsProps) {
+  const { products } = useProducts();
   const [expanded, setExpanded] = useState(false);
   const [applied, setApplied] = useState<Set<string>>(new Set());
 
   const suggestions = useMemo(() => {
     const result: SubstitutionSuggestion[] = [];
-    const similarProducts = products.filter((p) => p.stock !== "out_of_stock");
+    const similarProducts = products.filter((p) => p.stock > 0);
 
     for (const item of cartItems) {
-      const original = products.find((p) => p.id === item.id);
+      const original = products.find((p) => String(p.id) === String(item.id));
       if (!original) continue;
 
       const cheaper = similarProducts
         .filter(
           (p) =>
-            p.id !== original.id &&
+            String(p.id) !== String(original.id) &&
             p.category === original.category &&
             p.price < original.price &&
-            p.stock === "in_stock" &&
-            p.rating >= original.rating - 0.5
+            p.stock > 0 &&
+            (p.rating ?? 4.5) >= (original.rating ?? 4.5) - 0.5
         )
         .sort((a, b) => a.price - b.price)
         .slice(0, 1);
@@ -63,7 +64,7 @@ export default function SubstitutionSuggestions({ cartItems, onApply }: Substitu
     }
 
     return result;
-  }, [cartItems]);
+  }, [cartItems, products]);
 
   const totalSavings = suggestions.reduce((acc, s) => acc + s.saving, 0);
 
@@ -104,11 +105,10 @@ export default function SubstitutionSuggestions({ cartItems, onApply }: Substitu
               return (
                 <div
                   key={key}
-                  className={`rounded-xl border p-3 transition-colors ${
-                    isApplied
+                  className={`rounded-xl border p-3 transition-colors ${isApplied
                       ? "border-[#0c831f] bg-[#e8f5e9]"
                       : "border-[#e8e8e8] hover:border-[#0c831f]"
-                  }`}
+                    }`}
                 >
                   <div className="flex items-start gap-3">
                     <div className="flex-1 min-w-0">
@@ -125,7 +125,7 @@ export default function SubstitutionSuggestions({ cartItems, onApply }: Substitu
                         <span className="text-sm font-bold text-[#0c831f]">₹{suggestion.suggestedPrice}</span>
                         <ArrowRight className="w-3 h-3 text-[#999]" />
                         <span className="text-xs text-[#999] line-through">
-                          ₹{products.find((p) => p.id === suggestion.originalId)?.price ?? ""}
+                          ₹{products.find((p) => String(p.id) === String(suggestion.originalId))?.price ?? ""}
                         </span>
                       </div>
                     </div>

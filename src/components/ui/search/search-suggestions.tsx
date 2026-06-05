@@ -3,7 +3,7 @@
 import { useState, useMemo } from "react";
 import { Search, Mic, Clock, TrendingUp, X, ArrowRight } from "lucide-react";
 import { useSearchHistoryStore } from "@/store/search-history-store";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/use-products";
 
 interface SearchSuggestionsProps {
   query: string;
@@ -42,6 +42,7 @@ function levenshteinDistance(a: string, b: string): number {
 }
 
 export default function SearchSuggestions({ query, onSelect, onVoiceSearch, isListening }: SearchSuggestionsProps) {
+  const { products } = useProducts();
   const { queries, removeQuery, clearHistory } = useSearchHistoryStore();
   const [showHistory, setShowHistory] = useState(true);
 

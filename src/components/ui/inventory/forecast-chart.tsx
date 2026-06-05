@@ -3,6 +3,7 @@
 import { TrendingUp, TrendingDown, Minus } from "lucide-react";
 import type { DemandForecast } from "@/types/inventory";
 import StatusBadge from "@/components/ui/admin/reusable-status-badge";
+import { AnimatedLoader } from "@/components/ui/animated-loader";
 
 interface ForecastChartProps {
   forecasts: DemandForecast[];
@@ -109,17 +110,7 @@ function ForecastCard({ forecast }: { forecast: DemandForecast }) {
 
 export default function ForecastChart({ forecasts, isLoading }: ForecastChartProps) {
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 4 }).map((_, i) => (
-          <div key={i} className="rounded-xl border border-[#e8e8e8] p-4">
-            <div className="skeleton-shimmer h-5 w-48 rounded-lg" />
-            <div className="mt-2 skeleton-shimmer h-4 w-72 rounded-lg" />
-            <div className="mt-3 skeleton-shimmer h-2 w-full rounded-full" />
-          </div>
-        ))}
-      </div>
-    );
+    return <AnimatedLoader text="Loading forecast data..." />;
   }
 
   if (forecasts.length === 0) {

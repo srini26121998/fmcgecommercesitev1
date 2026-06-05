@@ -238,9 +238,11 @@ export const DashboardOverviewSchema = z.object({
   customers: CustomersKpiSchema,
   liveOrders: z.array(LiveOrderSchema),
   lowStockAlerts: z.array(StockAlertSchema),
-  vendorPayments: z.array(VendorPaymentSchema),
+  vendorPayments: z.array(VendorPaymentSchema).optional(),
+  upcomingPayments: z.array(VendorPaymentSchema).optional(),
   topProducts: z.array(TopProductSchema),
   acquisitionMetrics: z.array(AcquisitionMetricSchema),
+  inventoryReport: z.any().optional(),
   // Optional extended presentation data
   categorySales: z.array(CategorySalesSchema).optional(),
   orderStatusBreakdown: z.array(OrderStatusBreakdownSchema).optional(),

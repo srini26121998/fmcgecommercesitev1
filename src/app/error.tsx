@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { useEffect } from "react";
@@ -10,7 +10,12 @@ interface ErrorProps {
 
 export default function Error({ error, reset }: ErrorProps) {
   useEffect(() => {
-    console.error("[App Error Boundary]", error.message, error.digest);
+    console.error("[App Error Boundary] Caught error:", error.message);
+    if (error.stack) {
+      console.error("[App Error Boundary] Stack trace:", error.stack);
+    }
+    console.error("[App Error Boundary] Digest:", error.digest);
+    console.error("[App Error Boundary] Path where error occurred:", window?.location?.href);
   }, [error]);
 
   return (

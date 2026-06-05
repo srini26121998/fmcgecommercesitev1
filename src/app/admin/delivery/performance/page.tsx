@@ -107,7 +107,7 @@ export default function PartnerPerformancePage() {
                             <Star className="h-3 w-3 text-[#d97706] fill-current" />
                             {perf.avgRating.toFixed(1)}
                           </span>
-                          <span>·</span>
+                          <span>₹</span>
                           <span>{perf.totalDeliveries} deliveries</span>
                         </div>
                       </div>
@@ -129,14 +129,14 @@ export default function PartnerPerformancePage() {
             {selectedPerformance && (
               <section className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm">
                 <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0c831f]">Detail</p>
-                <h3 className="text-sm font-black text-[#1a1a1a]">{selectedPerformance.partnerName} — Performance</h3>
+                <h3 className="text-sm font-black text-[#1a1a1a]">{selectedPerformance.partnerName} ₹ Performance</h3>
 
                 <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
                   {[
                     { label: "Deliveries", value: selectedPerformance.totalDeliveries, icon: <Clock className="h-4 w-4" />, color: "text-[#2563eb]", bg: "bg-[#eff6ff]" },
                     { label: "On-Time Rate", value: `${selectedPerformance.onTimeRate.toFixed(1)}%`, icon: <TrendingUp className="h-4 w-4" />, color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
                     { label: "Avg Rating", value: selectedPerformance.avgRating.toFixed(1), icon: <Star className="h-4 w-4" />, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
-                    { label: "Earnings", value: `₹${(selectedPerformance.totalEarnings / 1000).toFixed(1)}K`, icon: <DollarSign className="h-4 w-4" />, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
+                    { label: "Earnings", value: `?${(selectedPerformance.totalEarnings / 1000).toFixed(1)}K`, icon: <DollarSign className="h-4 w-4" />, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
                   ].map((stat) => (
                     <div key={stat.label} className={`rounded-xl ${stat.bg} p-3`}>
                       <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export default function PartnerPerformancePage() {
                             {perf.avgRating.toFixed(1)}
                           </span>
                         </td>
-                        <td className="py-3 font-bold text-[#0c831f]">₹{(perf.totalEarnings / 1000).toFixed(1)}K</td>
+                        <td className="py-3 font-bold text-[#0c831f]">?{(perf.totalEarnings / 1000).toFixed(1)}K</td>
                         <td className="py-3">
                           <span className={`flex items-center gap-1 text-xs font-bold ${
                             perf.trend === "up" ? "text-[#0c831f]" :
@@ -239,7 +239,7 @@ export default function PartnerPerformancePage() {
                           }`}>
                             {perf.trend === "up" ? <TrendingUp className="h-3.5 w-3.5" /> :
                              perf.trend === "down" ? <TrendingDown className="h-3.5 w-3.5" /> :
-                             <span className="h-3.5 w-3.5 flex items-center justify-center">—</span>}
+                             <span className="h-3.5 w-3.5 flex items-center justify-center">₹</span>}
                             {perf.trend}
                           </span>
                         </td>
@@ -260,3 +260,4 @@ export default function PartnerPerformancePage() {
     </DashboardLayout>
   );
 }
+

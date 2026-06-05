@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -100,7 +100,7 @@ export default function DeliveryPartnersPage() {
               </div>
               <div className="mt-3 space-y-1.5 text-xs text-[#666]">
                 <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-[#2563eb]" /> {p.zone} - {p.vehicle}</p>
-                <p className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-[#d97706]" /> {p.rating} rating · {p.deliveries} deliveries</p>
+                <p className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-[#d97706]" /> {p.rating} rating ₹ {p.deliveries} deliveries</p>
               </div>
               <div className="mt-3 flex items-center justify-between border-t border-[#e8e8e8] pt-3">
                 <span className="text-[10px] font-mono text-[#999]">{p.id}</span>
@@ -275,3 +275,4 @@ export default function DeliveryPartnersPage() {
     </DashboardLayout>
   );
 }
+

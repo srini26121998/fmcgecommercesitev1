@@ -99,7 +99,6 @@ export const menuItems: MenuItem[] = [
       { icon: Boxes, label: "Stock Management", href: "/admin/inventory" },
       { icon: Warehouse, label: "Warehouses", href: "/admin/inventory/warehouses" },
       { icon: MoveHorizontal, label: "Stock Transfers", href: "/admin/inventory/stock-transfers" },
-      { icon: ShieldAlert, label: "Safety Stock", href: "/admin/inventory/safety-stock" },
       { icon: Clock, label: "FEFO Dashboard", href: "/admin/inventory/fefo" },
       { icon: TrendingUp, label: "Forecast Dashboard", href: "/admin/inventory/forecast" },
     ],

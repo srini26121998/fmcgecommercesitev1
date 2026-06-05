@@ -82,25 +82,25 @@ export default function VendorReportsPage() {
           />
           <ReusableCard
             title="Total Gross Sales"
-            value={summary ? `₹${(summary.totalGrossSales / 10000000).toFixed(2)}Cr` : "—"}
+            value={summary ? `?${(summary.totalGrossSales / 10000000).toFixed(2)}Cr` : "₹"}
             icon={<TrendingUp className="h-5 w-5" />}
             color="text-[#0c831f]"
             bgColor="bg-[#e8f5e9]"
           />
           <ReusableCard
             title="Total Commission"
-            value={summary ? `₹${(summary.totalCommission / 100000).toFixed(1)}L` : "—"}
+            value={summary ? `?${(summary.totalCommission / 100000).toFixed(1)}L` : "₹"}
             icon={<DollarSign className="h-5 w-5" />}
             color="text-[#9333ea]"
             bgColor="bg-[#f3e8ff]"
           />
           <ReusableCard
             title="Pending Payouts"
-            value={summary ? `₹${(summary.totalPendingPayout / 1000).toFixed(1)}K` : "—"}
+            value={summary ? `?${(summary.totalPendingPayout / 1000).toFixed(1)}K` : "₹"}
             icon={<Banknote className="h-5 w-5" />}
             color="text-[#d97706]"
             bgColor="bg-[#fffbeb]"
-            subtitle={summary ? `Avg rating: ${summary.avgRating}★` : undefined}
+            subtitle={summary ? `Avg rating: ${summary.avgRating}?` : undefined}
           />
         </div>
 
@@ -137,7 +137,7 @@ export default function VendorReportsPage() {
                   </div>
                   <div>
                     <span className="font-bold text-[#1a1a1a]">{r.vendorName}</span>
-                    <span className="block text-[10px] text-[#999]">{r.vendorId} · {r.category}</span>
+                    <span className="block text-[10px] text-[#999]">{r.vendorId} ₹ {r.category}</span>
                   </div>
                 </div>
               ),
@@ -147,7 +147,7 @@ export default function VendorReportsPage() {
               header: "Gross Sales",
               align: "right",
               sortable: true,
-              render: (r) => <span className="font-bold">₹{(r.grossSales / 100000).toFixed(1)}L</span>,
+              render: (r) => <span className="font-bold">?{(r.grossSales / 100000).toFixed(1)}L</span>,
             },
             {
               key: "commission",
@@ -156,7 +156,7 @@ export default function VendorReportsPage() {
               width: "110px",
               render: (r) => (
                 <div className="text-right">
-                  <span className="font-bold text-[#9333ea]">₹{(r.commission / 1000).toFixed(1)}K</span>
+                  <span className="font-bold text-[#9333ea]">?{(r.commission / 1000).toFixed(1)}K</span>
                   <span className="block text-[10px] text-[#999]">{r.commissionRate}%</span>
                 </div>
               ),
@@ -167,7 +167,7 @@ export default function VendorReportsPage() {
               align: "right",
               width: "110px",
               hideOnMobile: true,
-              render: (r) => <span className="font-bold text-[#0c831f]">₹{(r.netPayout / 100000).toFixed(1)}L</span>,
+              render: (r) => <span className="font-bold text-[#0c831f]">?{(r.netPayout / 100000).toFixed(1)}L</span>,
             },
             {
               key: "rating",
@@ -254,10 +254,10 @@ export default function VendorReportsPage() {
               <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#666]">Financial Summary</h4>
               <div className="space-y-2.5">
                 {[
-                  { label: "Gross Sales", value: `₹${(selectedVendor.grossSales / 100000).toFixed(2)}L` },
-                  { label: `Commission (${selectedVendor.commissionRate}%)`, value: `-₹${(selectedVendor.commission / 1000).toFixed(1)}K` },
-                  { label: "Net Payout", value: `₹${(selectedVendor.netPayout / 100000).toFixed(2)}L`, highlight: true },
-                  { label: "Pending Payout", value: `₹${(selectedVendor.pendingPayout / 1000).toFixed(1)}K` },
+                  { label: "Gross Sales", value: `?${(selectedVendor.grossSales / 100000).toFixed(2)}L` },
+                  { label: `Commission (${selectedVendor.commissionRate}%)`, value: `-?${(selectedVendor.commission / 1000).toFixed(1)}K` },
+                  { label: "Net Payout", value: `?${(selectedVendor.netPayout / 100000).toFixed(2)}L`, highlight: true },
+                  { label: "Pending Payout", value: `?${(selectedVendor.pendingPayout / 1000).toFixed(1)}K` },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -311,3 +311,4 @@ export default function VendorReportsPage() {
     </DashboardLayout>
   );
 }
+

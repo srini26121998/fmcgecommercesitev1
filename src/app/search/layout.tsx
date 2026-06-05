@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+﻿import { Metadata } from "next";
 import { env } from "@/lib/env";
 
 export const metadata: Metadata = {

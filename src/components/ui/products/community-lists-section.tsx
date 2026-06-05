@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { Users, Heart, ChevronRight, Bookmark, BookmarkCheck, Star, TrendingUp } from "lucide-react";
 import { useCommunityListsStore, type CommunityList } from "@/store/community-lists-store";
-import { useCartStore } from "@/store/cart-store";
+import { useUserCart } from "@/hooks/use-user-cart";
 import { toast } from "sonner";
 
 export default function CommunityListsSection() {
@@ -114,7 +114,7 @@ function CommunityListCard({
   onToggleFollow: () => void;
 }) {
   const [expanded, setExpanded] = useState(false);
-  const { addToCart } = useCartStore();
+  const { addToCart } = useUserCart();
   const displayItems = expanded ? list.items : list.items.slice(0, 2);
 
   return (
@@ -186,14 +186,8 @@ function CommunityListCard({
               <p className="text-xs text-[#ff4f8b] font-bold">₹{item.price}</p>
             </div>
             <button
-              onClick={() => {
-                addToCart({
-                  id: item.id,
-                  name: item.name,
-                  price: item.price,
-                  image: item.image,
-                  quantity: 1,
-                });
+              onClick={async () => {
+                await addToCart(item.id, 1);
                 toast.success(`${item.name} added to cart 🛒`);
               }}
               className="flex-shrink-0 w-8 h-8 rounded-lg bg-[#fff0f6] flex items-center justify-center hover:bg-[#ff4f8b] hover:text-white transition-colors text-[#ff4f8b]"

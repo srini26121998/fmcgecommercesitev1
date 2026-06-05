@@ -17,17 +17,19 @@ interface PricingItem {
   cost: number;
   margin: number;
   tax: number;
+  [key: string]: any;
 }
 
 interface PriceEditorProps {
   items: PricingItem[];
-  onUpdate?: (id: string, data: { price?: number; mrp?: number; costPrice?: number; taxRate?: number }) => Promise<boolean>;
+  onUpdate?: (id: string, data: { name?: string; price?: number; mrp?: number; costPrice?: number; taxRate?: number }) => Promise<boolean>;
   isLoading?: boolean;
 }
 
-type SortField = "name" | "price" | "mrp" | "cost" | "margin" | "tax";
+type SortField = "name" | "brand" | "category" | "status" | "stock" | "price" | "mrp" | "cost" | "margin" | "tax";
 type SortDir = "asc" | "desc";
 type MarginFilter = "all" | "high" | "medium" | "low";
+type ColumnKey = "product" | "brand" | "category" | "status" | "stock" | "price" | "mrp" | "cost" | "margin" | "tax" | "actions";
 
 export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorProps) {
   // ── Sorting ──────────────────────────────────────────────
@@ -42,12 +44,41 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
+  // ── Columns ──────────────────────────────────────────────
+  const [columns, setColumns] = useState<ColumnKey[]>([
+    "product", "brand", "category", "status", "stock", "price", "mrp", "cost", "margin", "tax", "actions"
+  ]);
+  const [draggedCol, setDraggedCol] = useState<ColumnKey | null>(null);
+
+  const handleDragStart = (e: React.DragEvent, col: ColumnKey) => {
+    setDraggedCol(col);
+    if (e.dataTransfer) {
+      e.dataTransfer.effectAllowed = "move";
+    }
+  };
+
+  const handleDrop = (e: React.DragEvent, targetCol: ColumnKey) => {
+    e.preventDefault();
+    if (!draggedCol || draggedCol === targetCol || targetCol === "actions" || draggedCol === "actions") return;
+    const newCols = [...columns];
+    const sourceIdx = newCols.indexOf(draggedCol);
+    const targetIdx = newCols.indexOf(targetCol);
+    newCols.splice(sourceIdx, 1);
+    newCols.splice(targetIdx, 0, draggedCol);
+    setColumns(newCols);
+    setDraggedCol(null);
+  };
+
+  const handleDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
   const [viewItem, setViewItem] = useState<PricingItem | null>(null);
 
   // ── Edit Drawer ──────────────────────────────────────────
   const [editItem, setEditItem] = useState<PricingItem | null>(null);
-  const [editForm, setEditForm] = useState<{ price: number; mrp: number; cost: number; tax: number }>({
-    price: 0, mrp: 0, cost: 0, tax: 0,
+  const [editForm, setEditForm] = useState<{ name: string; price: number | ""; mrp: number | ""; cost: number | ""; tax: number }>({
+    name: "", price: 0, mrp: 0, cost: 0, tax: 0,
   });
   const [saving, setSaving] = useState(false);
 
@@ -60,7 +91,7 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
 
   const openEditDrawer = (item: PricingItem) => {
     setEditItem(item);
-    setEditForm({ price: item.price, mrp: item.mrp, cost: item.cost, tax: item.tax });
+    setEditForm({ name: item.name, price: item.price, mrp: item.mrp, cost: item.cost, tax: item.tax });
   };
 
   const closeEditDrawer = () => { setEditItem(null); };
@@ -70,9 +101,10 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
     setSaving(true);
     try {
       const ok = await onUpdate(editItem.id, {
-        price: editForm.price,
-        mrp: editForm.mrp,
-        costPrice: editForm.cost,
+        name: editForm.name,
+        price: Number(editForm.price) || 0,
+        mrp: Number(editForm.mrp) || 0,
+        costPrice: Number(editForm.cost) || 0,
         taxRate: editForm.tax,
       });
       if (ok) {
@@ -114,8 +146,15 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
       data = data.filter((i) => String(i.tax) === taxFilter);
     }
     data.sort((a, b) => {
-      const av = sortField === "name" ? a.name : a[sortField];
-      const bv = sortField === "name" ? b.name : b[sortField];
+      let av: any = a[sortField];
+      let bv: any = b[sortField];
+      if (sortField === "name") { av = a.name; bv = b.name; }
+      else if (sortField === "category") { av = a.categoryName || a.category || ""; bv = b.categoryName || b.category || ""; }
+      else if (sortField === "stock") { av = a.stock?.qtyAvailable ?? a.stock ?? 0; bv = b.stock?.qtyAvailable ?? b.stock ?? 0; }
+      
+      if (av === undefined || av === null) av = "";
+      if (bv === undefined || bv === null) bv = "";
+      
       if (av < bv) return sortDir === "asc" ? -1 : 1;
       if (av > bv) return sortDir === "asc" ? 1 : -1;
       return 0;
@@ -132,7 +171,6 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
   const applyTaxFilter = (v: string) => { setTaxFilter(v); setPage(1); };
 
 
-  // ── Sort icon helper ─────────────────────────────────────
   const SortIcon = ({ field }: { field: SortField }) => {
     if (sortField !== field) return <ChevronsUpDown className="inline h-3 w-3 ml-1 text-[#ccc]" />;
     return sortDir === "asc"
@@ -140,7 +178,127 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
       : <ChevronDown className="inline h-3 w-3 ml-1 text-[#0c831f]" />;
   };
 
-  const thClass = "px-4 py-3 text-right cursor-pointer select-none hover:text-[#0c831f] transition-colors";
+  const getHeaderProps = (col: ColumnKey) => {
+    const isFrozen = col === "actions";
+    const baseThClass = `px-4 py-3 select-none transition-colors whitespace-nowrap ${
+      isFrozen ? "sticky right-0 z-20 bg-[#f9fafb] shadow-[-4px_0_12px_rgba(0,0,0,0.05)] w-28 text-right" : ""
+    } ${draggedCol === col ? "opacity-50 bg-[#e8e8e8]" : ""}`;
+    
+    let alignmentClass = "text-left";
+    let isSortable = true;
+    let field: SortField | null = null;
+    let label = "";
+
+    switch (col) {
+      case "product": alignmentClass = "text-left"; field = "name"; label = "Product"; break;
+      case "brand": alignmentClass = "text-left"; field = "brand"; label = "Brand"; break;
+      case "category": alignmentClass = "text-left"; field = "category"; label = "Category"; break;
+      case "status": alignmentClass = "text-left"; field = "status"; label = "Status"; break;
+      case "stock": alignmentClass = "text-left"; field = "stock"; label = "Stock"; break;
+      case "price": alignmentClass = "text-center"; field = "price"; label = "Selling Price"; break;
+      case "mrp": alignmentClass = "text-center"; field = "mrp"; label = "MRP"; break;
+      case "cost": alignmentClass = "text-center"; field = "cost"; label = "Cost Price"; break;
+      case "margin": alignmentClass = "text-right"; field = "margin"; label = "Margin"; break;
+      case "tax": alignmentClass = "text-right"; field = "tax"; label = "Tax"; break;
+      case "actions": alignmentClass = "text-right"; isSortable = false; label = "Actions"; break;
+    }
+
+    return {
+      className: `${baseThClass} ${alignmentClass} ${isSortable ? "cursor-pointer hover:text-[#0c831f]" : "text-[#888]"}`,
+      onClick: isSortable ? () => handleSort(field as SortField) : undefined,
+      label,
+      field,
+      draggable: !isFrozen,
+      col
+    };
+  };
+
+  const renderCell = (item: PricingItem, col: ColumnKey) => {
+    const isFrozen = col === "actions";
+    const baseTdClass = `px-4 py-3 ${isFrozen ? "sticky right-0 z-10 bg-white group-hover:bg-[#f9fafb] shadow-[-4px_0_12px_rgba(0,0,0,0.05)] transition-colors" : ""}`;
+
+    switch (col) {
+      case "product":
+        return (
+          <td key={col} className={`${baseTdClass} min-w-[200px]`}>
+            <p className="font-bold text-[#1a1a1a] truncate max-w-[200px]">{item.name}</p>
+            <p className="text-[10px] text-[#999]">{item.sku}</p>
+            <p className="text-[10px] text-[#999]">{item.barcode}</p>
+          </td>
+        );
+      case "brand":
+        return <td key={col} className={`${baseTdClass} text-left text-[#666]`}>{item.brand || "—"}</td>;
+      case "category":
+        return <td key={col} className={`${baseTdClass} text-left text-[#666]`}>{item.categoryName || item.category || "—"}</td>;
+      case "status":
+        return (
+          <td key={col} className={`${baseTdClass} text-left`}>
+            <span className={`inline-flex rounded-full px-2 py-0.5 text-[10px] font-bold uppercase tracking-wider ${
+              item.status === 'active' ? 'bg-[#e8f5e9] text-[#0c831f]' : 'bg-[#f3f4f6] text-[#666]'
+            }`}>
+              {item.status || "—"}
+            </span>
+          </td>
+        );
+      case "stock":
+        return <td key={col} className={`${baseTdClass} text-left text-[#666]`}>{item.stock?.qtyAvailable ?? item.stock ?? 0} {item.unit || ""}</td>;
+      case "price":
+        return <td key={col} className={`${baseTdClass} text-center font-bold`}>₹{item.price}</td>;
+      case "mrp":
+        return <td key={col} className={`${baseTdClass} text-center text-[#999] line-through`}>₹{item.mrp}</td>;
+      case "cost":
+        return <td key={col} className={`${baseTdClass} text-center text-[#666]`}>₹{item.cost}</td>;
+      case "margin":
+        const marginColor =
+          item.margin >= 25 ? "text-[#0c831f]" :
+          item.margin >= 10 ? "text-[#d97706]" :
+          "text-[#dc2626]";
+        return (
+          <td key={col} className={`${baseTdClass} text-right`}>
+            <div className="flex items-center justify-end gap-1">
+              <span className={`font-bold ${marginColor}`}>{item.margin}%</span>
+              {item.margin >= 25 ? (
+                <TrendingUp className="h-3 w-3 text-[#0c831f]" />
+              ) : item.margin < 10 ? (
+                <TrendingDown className="h-3 w-3 text-[#dc2626]" />
+              ) : null}
+            </div>
+          </td>
+        );
+      case "tax":
+        return <td key={col} className={`${baseTdClass} text-right`}>{item.tax}%</td>;
+      case "actions":
+        return (
+          <td key={col} className={`${baseTdClass} text-right`}>
+            <div className="flex items-center justify-end gap-1">
+              <button
+                onClick={() => setViewItem(item)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#eff6ff] text-[#3b82f6] transition hover:bg-[#dbeafe]"
+                title="View"
+              >
+                <Eye className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => openEditDrawer(item)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#e8f5e9] text-[#0c831f] transition hover:bg-[#dcfce7]"
+                title="Edit pricing"
+              >
+                <Edit3 className="h-3.5 w-3.5" />
+              </button>
+              <button
+                onClick={() => deleteItem(item)}
+                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#fef2f2] text-[#dc2626] transition hover:bg-[#fee2e2]"
+                title="Delete"
+              >
+                <Trash2 className="h-3.5 w-3.5" />
+              </button>
+            </div>
+          </td>
+        );
+      default:
+        return null;
+    }
+  };
 
   return (
     <>
@@ -180,86 +338,31 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
       <div className="overflow-x-auto rounded-xl border border-[#e8e8e8] bg-white">
         <table className="w-full">
           <thead>
-            <tr className="bg-[#f9fafb] text-left text-[10px] font-semibold uppercase tracking-wide text-[#888]">
-              <th
-                className="px-4 py-3 cursor-pointer select-none hover:text-[#0c831f] transition-colors"
-                onClick={() => handleSort("name")}
-              >
-                Product <SortIcon field="name" />
-              </th>
-              <th className={thClass} onClick={() => handleSort("price")}>
-                Selling Price <SortIcon field="price" />
-              </th>
-              <th className={thClass} onClick={() => handleSort("mrp")}>
-                MRP <SortIcon field="mrp" />
-              </th>
-              <th className={thClass} onClick={() => handleSort("cost")}>
-                Cost Price <SortIcon field="cost" />
-              </th>
-              <th className={thClass} onClick={() => handleSort("margin")}>
-                Margin <SortIcon field="margin" />
-              </th>
-              <th className={thClass} onClick={() => handleSort("tax")}>
-                Tax <SortIcon field="tax" />
-              </th>
-              <th className="w-28 px-4 py-3 text-right">Actions</th>
+            <tr className="bg-[#f9fafb] text-[10px] font-semibold uppercase tracking-wide text-[#888]">
+              {columns.map((col) => {
+                const props = getHeaderProps(col);
+                return (
+                  <th
+                    key={col}
+                    className={props.className}
+                    onClick={props.onClick}
+                    draggable={props.draggable}
+                    onDragStart={(e) => props.draggable && handleDragStart(e, col)}
+                    onDrop={(e) => props.draggable && handleDrop(e, col)}
+                    onDragOver={handleDragOver}
+                  >
+                    {props.label} {props.field && <SortIcon field={props.field} />}
+                  </th>
+                );
+              })}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e8e8e8]">
-            {displayItems.map((item) => {
-              const marginColor =
-                item.margin >= 25 ? "text-[#0c831f]" :
-                item.margin >= 10 ? "text-[#d97706]" :
-                "text-[#dc2626]";
-
-              return (
-                <tr key={item.id} className="text-sm transition hover:bg-[#f9fafb]">
-                  <td className="px-4 py-3">
-                    <p className="font-bold text-[#1a1a1a]">{item.name}</p>
-                    <p className="text-[10px] text-[#999]">{item.sku}</p>
-                  </td>
-                  <td className="px-4 py-3 text-right font-bold">₹{item.price}</td>
-                  <td className="px-4 py-3 text-right text-[#999] line-through">₹{item.mrp}</td>
-                  <td className="px-4 py-3 text-right text-[#666]">₹{item.cost}</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <span className={`font-bold ${marginColor}`}>{item.margin}%</span>
-                      {item.margin >= 25 ? (
-                        <TrendingUp className="h-3 w-3 text-[#0c831f]" />
-                      ) : item.margin < 10 ? (
-                        <TrendingDown className="h-3 w-3 text-[#dc2626]" />
-                      ) : null}
-                    </div>
-                  </td>
-                  <td className="px-4 py-3 text-right">{item.tax}%</td>
-                  <td className="px-4 py-3 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <button
-                        onClick={() => setViewItem(item)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-[#666] transition hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
-                        title="View"
-                      >
-                        <Eye className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => openEditDrawer(item)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-[#666] transition hover:bg-[#e8f5e9] hover:text-[#0c831f]"
-                        title="Edit pricing"
-                      >
-                        <Edit3 className="h-3.5 w-3.5" />
-                      </button>
-                      <button
-                        onClick={() => deleteItem(item)}
-                        className="flex h-7 w-7 items-center justify-center rounded-lg text-[#666] transition hover:bg-[#fef2f2] hover:text-[#dc2626]"
-                        title="Delete"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              );
-            })}
+            {displayItems.map((item) => (
+              <tr key={item.id} className="text-sm transition hover:bg-[#f9fafb] group">
+                {columns.map((col) => renderCell(item, col))}
+              </tr>
+            ))}
           </tbody>
         </table>
 
@@ -462,14 +565,14 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
               <p className="text-[10px] font-bold uppercase tracking-wide text-[#999]">Live Margin Preview</p>
               <div className="mt-1 flex items-center gap-2">
                 <span className={`text-2xl font-black ${
-                  editForm.mrp > 0 && ((editForm.mrp - editForm.cost) / editForm.mrp) * 100 >= 25
+                  Number(editForm.mrp) > 0 && ((Number(editForm.mrp) - Number(editForm.cost)) / Number(editForm.mrp)) * 100 >= 25
                     ? "text-[#0c831f]"
-                    : editForm.mrp > 0 && ((editForm.mrp - editForm.cost) / editForm.mrp) * 100 >= 10
+                    : Number(editForm.mrp) > 0 && ((Number(editForm.mrp) - Number(editForm.cost)) / Number(editForm.mrp)) * 100 >= 10
                     ? "text-[#d97706]"
                     : "text-[#dc2626]"
                 }`}>
-                  {editForm.mrp > 0
-                    ? (((editForm.mrp - editForm.cost) / editForm.mrp) * 100).toFixed(1)
+                  {Number(editForm.mrp) > 0
+                    ? (((Number(editForm.mrp) - Number(editForm.cost)) / Number(editForm.mrp)) * 100).toFixed(1)
                     : "0.0"}%
                 </span>
                 <span className="text-xs text-[#999]">margin on MRP</span>
@@ -478,11 +581,21 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
           )}
 
           <div>
+            <label className="mb-1.5 block text-xs font-bold text-[#666]">Product (Title)</label>
+            <input
+              type="text"
+              value={editForm.name}
+              onChange={(e) => setEditForm((f) => ({ ...f, name: e.target.value }))}
+              className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm font-bold text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
+            />
+          </div>
+
+          <div>
             <label className="mb-1.5 block text-xs font-bold text-[#666]">Selling Price (₹)</label>
             <input
               type="number"
               value={editForm.price}
-              onChange={(e) => setEditForm((f) => ({ ...f, price: Number(e.target.value) }))}
+              onChange={(e) => setEditForm((f) => ({ ...f, price: e.target.value === "" ? "" : Number(e.target.value) }))}
               min="0"
               step="0.01"
               className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm font-bold text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
@@ -494,14 +607,14 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
             <input
               type="number"
               value={editForm.mrp}
-              onChange={(e) => setEditForm((f) => ({ ...f, mrp: Number(e.target.value) }))}
+              onChange={(e) => setEditForm((f) => ({ ...f, mrp: e.target.value === "" ? "" : Number(e.target.value) }))}
               min="0"
               step="0.01"
               className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm font-bold text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
             />
-            {editForm.mrp > 0 && editForm.price > 0 && (
+            {Number(editForm.mrp) > 0 && Number(editForm.price) > 0 && (
               <p className="mt-1 text-[10px] text-[#0c831f]">
-                Discount: {(((editForm.mrp - editForm.price) / editForm.mrp) * 100).toFixed(1)}% off MRP
+                Discount: {(((Number(editForm.mrp) - Number(editForm.price)) / Number(editForm.mrp)) * 100).toFixed(1)}% off MRP
               </p>
             )}
           </div>
@@ -511,14 +624,14 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
             <input
               type="number"
               value={editForm.cost}
-              onChange={(e) => setEditForm((f) => ({ ...f, cost: Number(e.target.value) }))}
+              onChange={(e) => setEditForm((f) => ({ ...f, cost: e.target.value === "" ? "" : Number(e.target.value) }))}
               min="0"
               step="0.01"
               className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm font-bold text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
             />
-            {editForm.price > 0 && editForm.cost > 0 && (
+            {Number(editForm.price) > 0 && Number(editForm.cost) > 0 && (
               <p className="mt-1 text-[10px] text-[#999]">
-                Gross profit: ₹{(editForm.price - editForm.cost).toFixed(2)} per unit
+                Gross profit: ₹{(Number(editForm.price) - Number(editForm.cost)).toFixed(2)} per unit
               </p>
             )}
           </div>
@@ -535,6 +648,71 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
               ))}
             </select>
           </div>
+
+          {editItem && (
+            <div className="space-y-4 pt-4 border-t border-[#e8e8e8]">
+              <p className="text-[10px] font-bold uppercase tracking-wide text-[#999]">Additional Details (Read-only)</p>
+              
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">SKU</label>
+                  <input type="text" value={editItem.sku || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Barcode</label>
+                  <input type="text" value={editItem.barcode || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+              </div>
+              
+              <div>
+                <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Description</label>
+                <textarea value={editItem.description || ""} disabled className="h-20 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] p-3 text-xs text-[#666] resize-none" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Brand</label>
+                  <input type="text" value={editItem.brand || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Category</label>
+                  <input type="text" value={editItem.categoryName || editItem.category || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Unit</label>
+                  <input type="text" value={editItem.unit || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Weight</label>
+                  <input type="text" value={editItem.weight || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Status</label>
+                  <input type="text" value={editItem.status || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Stock Available</label>
+                  <input type="text" value={editItem.stock?.qtyAvailable ?? editItem.stock ?? 0} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Warehouse</label>
+                  <input type="text" value={editItem.warehouse || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Supplier</label>
+                  <input type="text" value={editItem.supplier || ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Created At</label>
+                  <input type="text" value={editItem.createdAt ? new Date(editItem.createdAt).toLocaleDateString() : ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+                <div>
+                  <label className="mb-1.5 block text-[10px] font-bold text-[#666]">Updated At</label>
+                  <input type="text" value={editItem.updatedAt ? new Date(editItem.updatedAt).toLocaleDateString() : ""} disabled className="h-9 w-full rounded-lg border border-[#e8e8e8] bg-[#f9fafb] px-3 text-xs text-[#666]" />
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Summary card */}
           <div className="rounded-xl border border-[#e8e8e8] bg-[#f9fafb] p-4 space-y-2 text-xs">
@@ -554,7 +732,7 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
             <div className="flex justify-between border-t border-[#e8e8e8] pt-2">
               <span className="text-[#999]">Tax amount</span>
               <span className="font-bold text-[#1a1a1a]">
-                ₹{((editForm.price * editForm.tax) / 100).toFixed(2)}
+                ₹{((Number(editForm.price) * editForm.tax) / 100).toFixed(2)}
               </span>
             </div>
           </div>

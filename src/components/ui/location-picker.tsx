@@ -49,15 +49,15 @@ export default function LocationPicker({ className, showOnMobile = false }: Loca
           }flex ${className || ""}`}
           aria-label="Select delivery location"
         >
-          <div className="flex items-center gap-1.5 pr-3 border-r border-[#e8e8e8]">
-            <div className="relative">
-              <MapPin className="w-4 h-4 text-[#0c831f] flex-shrink-0" />
-              <div className="absolute -top-0.5 -right-0.5 w-2 h-2 bg-[#0c831f] rounded-full animate-pulse" />
+          <div className="flex items-center gap-2 sm:gap-3 pr-3 sm:pr-4 border-r border-[#e8e8e8]">
+            <div className="relative bg-[#f8f9fa] p-1.5 sm:p-2 rounded-xl border border-[#e8e8e8] hidden sm:block">
+              <MapPin className="w-4 h-4 sm:w-5 sm:h-5 text-[#0c831f] flex-shrink-0" />
+              <div className="absolute -top-1 -right-1 w-2.5 h-2.5 bg-[#0c831f] rounded-full animate-pulse border-2 border-white" />
             </div>
             <div className="text-left min-w-0">
-              <p className="text-[9px] text-[#666] leading-none">Delivering to</p>
-              <div className="flex items-center gap-1.5 leading-none mt-0.5">
-                <p className="text-xs font-bold text-[#1a1a1a] truncate max-w-28">
+              <p className="text-[10px] sm:text-xs font-medium text-[#666] leading-none mb-1">Delivering to</p>
+              <div className="flex items-center gap-1.5 leading-none">
+                <p className="text-xs sm:text-sm font-black text-[#1a1a1a] truncate max-w-[100px] sm:max-w-[160px]">
                   {defaultAddress ? (
                     getShortArea(defaultAddress)
                   ) : (
@@ -65,10 +65,10 @@ export default function LocationPicker({ className, showOnMobile = false }: Loca
                   )}
                 </p>
                 <div className="flex items-center gap-0.5 px-1.5 py-0.5 bg-[#e8f5e9] rounded-full flex-shrink-0">
-                  <Zap className="w-2.5 h-2.5 text-[#0c831f]" />
-                  <span className="text-[9px] font-bold text-[#0c831f]">10 mins</span>
+                  <Zap className="w-3 h-3 text-[#0c831f]" />
+                  <span className="text-[10px] font-black text-[#0c831f]">10 mins</span>
                 </div>
-                <ChevronDown className="w-3 h-3 text-[#666] flex-shrink-0" />
+                <ChevronDown className="w-3.5 h-3.5 text-[#666] flex-shrink-0" />
               </div>
             </div>
           </div>

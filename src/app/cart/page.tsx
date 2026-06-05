@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -6,6 +6,7 @@ import Image from "next/image";
 import {
   Clock3,
   ChevronRight,
+  ChevronLeft,
   Truck,
   ReceiptText,
   Tag,
@@ -18,7 +19,7 @@ import {
   Share2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useCartStore } from "@/store/cart-store";
+import { useUserCart } from "@/hooks/use-user-cart";
 import { useSavedItemsStore } from "@/store/saved-items-store";
 import { useShareCartStore } from "@/store/share-cart-store";
 import Navbar from "@/components/ui/navbar";
@@ -28,10 +29,11 @@ import SwipeActions from "@/components/ui/mobile/swipe-actions";
 import SaveForLater from "@/components/ui/cart/save-for-later";
 import ShareCartModal from "@/components/ui/cart/share-cart-modal";
 import BillRow from "@/components/ui/a11y/bill-row";
+import { SafeProductImage } from "@/components/ui/safe-image";
 
 export default function CartPage() {
-  const { cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart } =
-    useCartStore();
+  const { cartItems: cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, applyCoupon, removeCoupon, cartDetails } =
+    useUserCart();
   const [isHydrated, setIsHydrated] = useState(false);
   
   useEffect(() => {
@@ -39,8 +41,10 @@ export default function CartPage() {
   }, []);
 
   // All hooks MUST be declared before any early return (Rules of Hooks)
-  const [couponCode, setCouponCode] = useState("");
-  const [appliedCoupon, setAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
+  // We use our new useUserCart hook to manage coupons on the backend if logged in.
+  // Otherwise we manage local UI state.
+  const [localCouponCode, setLocalCouponCode] = useState("");
+  const [localAppliedCoupon, setLocalAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
   const [refreshing, setRefreshing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
@@ -64,19 +68,27 @@ export default function CartPage() {
     [cart]
   );
   const deliveryFee = useMemo(
-    () => (itemTotal > 499 || itemTotal === 0 ? 0 : 25),
-    [itemTotal]
+    () => {
+      if (cartDetails?.deliveryFee !== undefined) return cartDetails.deliveryFee;
+      return itemTotal > 499 || itemTotal === 0 ? 0 : 25;
+    },
+    [itemTotal, cartDetails]
   );
-  const handlingFee = useMemo(() => (itemTotal > 0 ? 5 : 0), [itemTotal]);
+  const handlingFee = useMemo(() => (itemTotal > 0 && cartDetails?.deliveryFee === undefined ? 5 : 0), [itemTotal, cartDetails]);
   
   const discountAmount = useMemo(() => {
-    if (!appliedCoupon) return 0;
-    return Math.round((itemTotal * appliedCoupon.discount) / 100);
-  }, [itemTotal, appliedCoupon]);
+    if (cartDetails?.couponDiscount !== undefined) return cartDetails.couponDiscount;
+    if (cartDetails?.discountAmount !== undefined) return cartDetails.discountAmount;
+    if (!localAppliedCoupon) return 0;
+    return Math.round((itemTotal * localAppliedCoupon.discount) / 100);
+  }, [itemTotal, localAppliedCoupon, cartDetails]);
 
   const total = useMemo(
-    () => Math.max(0, itemTotal + deliveryFee + handlingFee - discountAmount),
-    [itemTotal, deliveryFee, handlingFee, discountAmount]
+    () => {
+      if (cartDetails?.total) return cartDetails.total;
+      return Math.max(0, itemTotal + deliveryFee + handlingFee - discountAmount);
+    },
+    [itemTotal, deliveryFee, handlingFee, discountAmount, cartDetails]
   );
 
   // Early return when not hydrated — safe because all hooks are declared above
@@ -126,33 +138,38 @@ export default function CartPage() {
     <main className="min-h-screen bg-[#f2f2f2] pb-36 md:pb-16">
       <Navbar />
 
-      <div className="pt-16">
+      <div className="pt-[72px] sm:pt-20">
         <div className="bg-white border-b border-[#e8e8e8]">
           <Container>
             <div className="flex flex-col gap-3 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <div>
-                <p className="text-xs font-bold uppercase tracking-wide text-[#0c831f]">
-                  My Cart
-                </p>
-                <div className="flex items-center gap-3">
-                  <h1 className="text-2xl font-black text-[#1a1a1a]">
-                    {cart.length > 0
-                      ? `${totalItems} ${totalItems === 1 ? "item" : "items"} in your cart`
-                      : "Your cart is empty"}
-                  </h1>
-                  {cart.length > 0 && (
-                    <button 
-                      onClick={() => {
-                        if (confirm("Are you sure you want to clear your cart?")) {
-                          clearCart();
-                          toast.success("Cart cleared");
-                        }
-                      }}
-                      className="text-xs font-bold text-[#ff4f8b] hover:underline"
-                    >
-                      Clear All
-                    </button>
-                  )}
+              <div className="flex items-start gap-2">
+                <Link href="/" className="mt-1 p-1.5 -ml-2 hover:bg-[#f2f2f2] rounded-full transition-colors flex-shrink-0" aria-label="Go back">
+                  <ChevronLeft className="w-6 h-6 text-[#1a1a1a]" />
+                </Link>
+                <div>
+                  <p className="text-xs font-bold uppercase tracking-wide text-[#0c831f]">
+                    My Cart
+                  </p>
+                  <div className="flex items-center gap-3">
+                    <h1 className="text-2xl font-black text-[#1a1a1a]">
+                      {cart.length > 0
+                        ? `${totalItems} ${totalItems === 1 ? "item" : "items"} in your cart`
+                        : "Your cart is empty"}
+                    </h1>
+                    {cart.length > 0 && (
+                      <button 
+                        onClick={() => {
+                          if (confirm("Are you sure you want to clear your cart?")) {
+                            clearCart();
+                            toast.success("Cart cleared");
+                          }
+                        }}
+                        className="text-xs font-bold text-[#ff4f8b] hover:underline"
+                      >
+                        Clear All
+                      </button>
+                    )}
+                  </div>
                 </div>
               </div>
 
@@ -218,10 +235,10 @@ export default function CartPage() {
                     </div>
 
                     <div className="divide-y divide-[#f0f0f0]">
-                      {cart.map((item) => (
+                      {cart.map((item, index) => (
                         <SwipeActions
-                          key={item.id}
-                          id={`cart-${item.id}`}
+                          key={`${item.id}-${index}`}
+                          id={`cart-${item.id}-${index}`}
                           rightActions={[
                             {
                               icon: Trash2,
@@ -247,7 +264,7 @@ export default function CartPage() {
                           className="flex gap-3 p-3 sm:gap-4 sm:p-4"
                         >
                           <div className="relative h-20 w-20 flex-shrink-0 overflow-hidden rounded-lg bg-[#f2f2f2] sm:h-24 sm:w-24">
-                            <Image
+                            <SafeProductImage
                               src={item.image}
                               alt={item.name}
                               fill
@@ -338,19 +355,20 @@ export default function CartPage() {
                 </section>
 
                 <aside className="space-y-3 lg:sticky lg:top-20 lg:h-fit">
-                   {appliedCoupon ? (
+                   {(cartDetails?.couponCode || localAppliedCoupon) ? (
                      <div className="rounded-xl border border-[#0c831f] bg-[#e8f5e9] p-3 flex items-center justify-between">
                        <div>
                         <p className="text-xs font-bold text-[#0c831f]">
-                          Coupon Applied: {appliedCoupon.code}
+                          Coupon Applied: {cartDetails?.couponCode || localAppliedCoupon?.code}
                         </p>
                         <p className="text-[10px] text-[#0c831f]">
                           You saved &#8377;{discountAmount} on this order
                         </p>
                        </div>
                        <button 
-                        onClick={() => {
-                          setAppliedCoupon(null);
+                        onClick={async () => {
+                          await removeCoupon();
+                          setLocalAppliedCoupon(null);
                           setCouponMessage(null);
                           toast.info("Coupon removed");
                         }}
@@ -366,9 +384,9 @@ export default function CartPage() {
                           <input
                             type="text"
                             placeholder="Enter coupon code"
-                            value={couponCode}
+                            value={localCouponCode}
                             onChange={(e) => {
-                              setCouponCode(e.target.value);
+                              setLocalCouponCode(e.target.value);
                               setCouponMessage(null);
                             }}
                             className="w-full rounded-lg border border-[#e8e8e8] px-3 py-2 text-sm outline-none focus:border-[#ff4f8b] pr-10"
@@ -376,29 +394,50 @@ export default function CartPage() {
                           <Tag className="absolute right-3 top-2.5 h-4 w-4 text-[#999]" />
                         </div>
                         <button 
-                          onClick={() => {
-                            const coupons: Record<string, number> = {
-                              "SAVE20": 20,
-                              "FIRST50": 50,
-                              "WELCOME10": 10
-                            };
-                            const code = couponCode.toUpperCase();
-                            if (coupons[code]) {
-                              setAppliedCoupon({ code, discount: coupons[code] });
-                              setCouponMessage("Coupon applied!");
-                              toast.success(`Coupon ${code} applied!`);
-                            } else {
-                              setCouponMessage("Invalid code");
-                              toast.error("Invalid coupon code");
-                            }
-                          }}
+                          onClick={async () => {
+                             if (!localCouponCode) return;
+                             
+                             const code = localCouponCode.toUpperCase();
+                             const res = await applyCoupon(code);
+                             
+                             if (res && res.success === false && res.message?.includes("login")) {
+                               // Fallback to local coupon logic
+                               const coupons: Record<string, { discount: number; type: "percent" | "fixed"; minAmount: number }> = {
+                                 "SAVE20":   { discount: 20,  type: "percent", minAmount: 0 },
+                                 "FIRST50":  { discount: 50,  type: "fixed",   minAmount: 299 },
+                                 "WELCOME10":{ discount: 10,  type: "percent", minAmount: 0 },
+                                 "FMCG100":  { discount: 100, type: "fixed",   minAmount: 499 },
+                                 "SUPER15":  { discount: 15,  type: "percent", minAmount: 199 },
+                               };
+                               const coupon = coupons[code];
+                               if (coupon) {
+                                 if (itemTotal < coupon.minAmount) {
+                                   setCouponMessage(`Min order ₹${coupon.minAmount} required`);
+                                   toast.error(`Minimum order ₹${coupon.minAmount} needed for ${code}`);
+                                   return;
+                                 }
+                                 setLocalAppliedCoupon({ code, discount: coupon.type === "percent" ? coupon.discount : Math.round((coupon.discount / itemTotal) * 100) });
+                                 setCouponMessage("Coupon applied!");
+                                 toast.success(`Coupon ${code} applied!`);
+                               } else {
+                                 setCouponMessage("Invalid code");
+                                 toast.error("Invalid coupon code");
+                               }
+                             } else if (res && res.success) {
+                               setCouponMessage("Coupon applied!");
+                               toast.success(`Coupon ${code} applied successfully!`);
+                             } else if (res) {
+                               setCouponMessage(res.message || "Invalid code");
+                               toast.error(res.message || "Invalid coupon code");
+                             }
+                           }}
                           className="rounded-lg bg-[#ff4f8b] px-4 py-2 text-sm font-bold text-white transition hover:bg-[#e63872]"
                         >
                           Apply
                         </button>
                        </div>
                        {couponMessage && (
-                         <p className={`text-[10px] font-bold ${appliedCoupon ? "text-[#0c831f]" : "text-[#ff4f8b]"}`}>
+                         <p className={`text-[10px] font-bold ${(cartDetails?.couponCode || localAppliedCoupon) ? "text-[#0c831f]" : "text-[#ff4f8b]"}`}>
                            {couponMessage}
                          </p>
                        )}
@@ -422,7 +461,7 @@ export default function CartPage() {
                           </>
                         }
                       />
-                      {appliedCoupon && (
+                      {(cartDetails?.couponCode || localAppliedCoupon) && (
                         <BillRow
                           label="Coupon discount"
                           value={

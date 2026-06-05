@@ -24,7 +24,7 @@ import {
   RefreshCw,
 } from "lucide-react";
 
-// ── Report Hub Sections ───────────────────────────────────
+// -- Report Hub Sections -----------------------------------
 
 const reportSections = [
   {
@@ -85,7 +85,7 @@ const reportSections = [
     href: "/admin/reports/cohort",
     icon: Group,
     title: "Cohort Analysis",
-    description: "User retention cohorts — track how customer groups engage over time.",
+    description: "User retention cohorts ₹ track how customer groups engage over time.",
     color: "text-[#2563eb]",
     bg: "bg-[#eff6ff]",
     badge: "12 cohorts",
@@ -119,12 +119,12 @@ const reportSections = [
   },
 ];
 
-// ── Top-level KPIs (static summary for the hub) ───────────
+// -- Top-level KPIs (static summary for the hub) -----------
 
 const topKPIs = [
-  { label: "Total Revenue (MTD)", value: "₹1.32Cr", change: "+12.5%", trend: "up" as const },
+  { label: "Total Revenue (MTD)", value: "?1.32Cr", change: "+12.5%", trend: "up" as const },
   { label: "Total Orders (MTD)", value: "32,450", change: "+10.1%", trend: "up" as const },
-  { label: "Avg Order Value", value: "₹847", change: "+6.8%", trend: "up" as const },
+  { label: "Avg Order Value", value: "?847", change: "+6.8%", trend: "up" as const },
   { label: "Return Rate", value: "2.3%", change: "-0.5%", trend: "down" as const },
   { label: "Active Vendors", value: "42", change: "+3", trend: "up" as const },
   { label: "GST Pending", value: "2 filings", change: "Due Jun 20", trend: "down" as const },
@@ -137,7 +137,7 @@ export default function ReportsPage() {
         <ReusablePageHeader
           breadcrumb="Admin"
           title="Reports & Analytics"
-          subtitle="Comprehensive analytics hub — sales, inventory, vendor, customer, tax, and financial reports."
+          subtitle="Comprehensive analytics hub ₹ sales, inventory, vendor, customer, tax, and financial reports."
         />
 
         {/* Top KPI Strip */}
@@ -203,7 +203,7 @@ export default function ReportsPage() {
             {[
               { label: "Reports Generated", value: "48", icon: <BarChart3 className="h-4 w-4 text-[#2563eb]" />, bg: "bg-[#eff6ff]" },
               { label: "Data Points Tracked", value: "1.2M+", icon: <Activity className="h-4 w-4 text-[#0c831f]" />, bg: "bg-[#e8f5e9]" },
-              { label: "Revenue Tracked", value: "₹6.2Cr", icon: <DollarSign className="h-4 w-4 text-[#9333ea]" />, bg: "bg-[#f3e8ff]" },
+              { label: "Revenue Tracked", value: "?6.2Cr", icon: <DollarSign className="h-4 w-4 text-[#9333ea]" />, bg: "bg-[#f3e8ff]" },
             ].map((stat) => (
               <div key={stat.label} className="flex items-center gap-3">
                 <div className={`flex h-9 w-9 items-center justify-center rounded-lg ${stat.bg}`}>
@@ -230,3 +230,4 @@ export default function ReportsPage() {
     </DashboardLayout>
   );
 }
+

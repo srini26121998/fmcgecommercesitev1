@@ -72,10 +72,14 @@ export default function CategoryClient({
             onClick={() => setShowSort(!showSort)}
             aria-expanded={showSort}
             aria-haspopup="listbox"
-            className="flex items-center gap-1.5 min-h-[44px] h-8 px-3 rounded-lg bg-white border border-[#e8e8e8] text-xs font-semibold text-[#1a1a1a] hover:border-[#ccc] transition-colors"
+            className="flex items-center gap-2 min-h-[44px] h-10 px-4 rounded-xl bg-white border-2 border-[#f2f2f2] text-sm font-bold text-[#1a1a1a] hover:border-[#ff4f8b] hover:text-[#ff4f8b] hover:shadow-md transition-all duration-300 group shadow-sm"
           >
-            {sortOptions.find((o) => o.value === sort)?.label ?? "Sort"}
-            <ChevronDown className="w-3.5 h-3.5 text-[#999]" />
+            <span className="flex-1 text-left">
+              {sortOptions.find((o) => o.value === sort)?.label ?? "Sort"}
+            </span>
+            <div className={`w-6 h-6 rounded-md flex items-center justify-center transition-all duration-300 ${showSort ? 'bg-[#ff4f8b] text-white rotate-180' : 'bg-[#f8f9fa] text-[#666] group-hover:bg-[#fff0f6] group-hover:text-[#ff4f8b]'}`}>
+              <ChevronDown className="w-3.5 h-3.5" />
+            </div>
           </button>
 
           {showSort && (
@@ -84,7 +88,7 @@ export default function CategoryClient({
                 className="fixed inset-0 z-10"
                 onClick={() => setShowSort(false)}
               />
-              <div className="absolute right-0 top-full mt-1 z-20 bg-white border border-[#e8e8e8] rounded-lg shadow-lg py-1 min-w-[180px]" role="listbox" aria-label="Sort options">
+              <div className="absolute right-0 top-full mt-2 z-20 bg-white border-2 border-[#f2f2f2] rounded-xl shadow-xl py-2 min-w-[200px] overflow-hidden" role="listbox" aria-label="Sort options">
                 {sortOptions.map((option) => (
                   <button
                     key={option.value}
@@ -92,13 +96,16 @@ export default function CategoryClient({
                     role="option"
                     aria-selected={sort === option.value}
                     onClick={() => handleSortChange(option.value)}
-                    className={`w-full text-left px-3 py-2 text-xs font-medium transition-colors ${
+                    className={`w-full text-left px-4 py-2.5 text-sm font-semibold transition-all duration-200 flex items-center justify-between group ${
                       sort === option.value
                         ? "text-[#ff4f8b] bg-[#fff0f6]"
-                        : "text-[#1a1a1a] hover:bg-[#f9f9f9]"
+                        : "text-[#444] hover:bg-[#fafafa] hover:text-[#1a1a1a]"
                     }`}
                   >
                     {option.label}
+                    {sort === option.value && (
+                      <div className="w-1.5 h-1.5 rounded-full bg-[#ff4f8b] shadow-[0_0_8px_rgba(255,79,139,0.5)]" />
+                    )}
                   </button>
                 ))}
               </div>
@@ -111,7 +118,7 @@ export default function CategoryClient({
       {paginated.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-20 text-center">
           <span className="text-5xl mb-4">{categoryEmoji}</span>
-          <p className="text-base font-bold text-[#1a1a1a]">No products yet</p>
+          <p className="text-base font-bold text-[#1a1a1a]">No product is available</p>
           <p className="text-sm text-[#999] mt-1">Check back soon!</p>
         </div>
       ) : (

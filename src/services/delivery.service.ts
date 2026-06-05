@@ -2,11 +2,6 @@
 // Architecture: UI → Component → Hook → Service → Axios → API Gateway → Backend
 //
 // This service is the single source of truth for all delivery-related data.
-// Currently returns mock data. To connect to a real backend:
-//   1. Import apiClient from "@/lib/api-client"
-//   2. Set NEXT_PUBLIC_API_BASE_URL
-//   3. Replace mock returns with apiClient calls
-//   4. No UI / hook changes needed — types are shared.
 
 import type {
   DeliveryPartner,
@@ -24,17 +19,7 @@ import type {
   AssignDeliveryFormData,
   UpdateDeliveryStatusFormData,
 } from "@/types/delivery";
-import {
-  mockDeliveryPartners,
-  mockPartnerProfiles,
-  mockLiveDeliveries,
-  mockDeliveryRoutes,
-  mockDeliveryStatusEntries,
-  mockPartnerPerformance,
-  mockDeliveryAnalytics,
-  mockSLADashboard,
-  delay,
-} from "@/data/admin/delivery";
+import { apiClient } from "@/lib/api-client";
 
 // ── Delivery Service ──────────────────────────────────────
 
@@ -49,39 +34,31 @@ export const deliveryService = {
   async getPartners(
     params?: Partial<DeliveryQueryParams>
   ): Promise<DeliveryApiResponse<PaginatedResponse<DeliveryPartner>>> {
-    await delay(300);
-
-    let filtered = [...mockDeliveryPartners];
-
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.zone?.toLowerCase().includes(q) ||
-          p.id.toLowerCase().includes(q)
-      );
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/fleet", { params });
+      return {
+        success: true,
+        data: response.data,
+      };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to fetch partners from API", error);
+      throw error;
     }
-    if (params?.status && params.status !== "all") {
-      filtered = filtered.filter((p) => p.status === params.status);
-    }
-    if (params?.zone) {
-      filtered = filtered.filter((p) => p.zone === params.zone);
-    }
+  },
 
-    const page = params?.page || 1;
-    const pageSize = params?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-
-    return {
-      success: true,
-      data: {
-        items: filtered.slice(start, start + pageSize),
-        pagination: { page, pageSize, total },
-      },
-      meta: { cachedAt: new Date().toISOString() },
-    };
+  /**
+   * Add a new delivery partner/rider
+   */
+  async createPartner(
+    data: any
+  ): Promise<DeliveryApiResponse<DeliveryPartner>> {
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/delivery/fleet", data);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to create partner", error);
+      throw error;
+    }
   },
 
   /**
@@ -90,14 +67,15 @@ export const deliveryService = {
   async getPartnerProfile(
     partnerId: string
   ): Promise<DeliveryApiResponse<PartnerProfile | null>> {
-    await delay(200);
-    const profile = mockPartnerProfiles.find((p) => p.id === partnerId) || null;
-    return { success: true, data: profile };
+    try {
+      const response = await apiClient.get<any>(`/api/v1/admin/delivery/fleet/${partnerId}`);
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error(`[deliveryService] Failed to fetch partner profile for ${partnerId}`, error);
+      throw error;
+    }
   },
 
-  /**
-   * Update partner status (online/offline/busy/available).
-   */
   /**
    * Update partner status (online/offline/busy/available).
    */
@@ -105,16 +83,13 @@ export const deliveryService = {
     partnerId: string,
     status: string
   ): Promise<DeliveryApiResponse<boolean>> {
-    await delay(250);
-    const partner = mockDeliveryPartners.find((p) => p.id === partnerId);
-    if (partner) {
-      partner.status = status as any;
+    try {
+      await apiClient.patch(`/api/v1/admin/delivery/fleet/${partnerId}/status`, { status });
+      return { success: true, data: true };
+    } catch (error: any) {
+      console.error(`[deliveryService] Failed to update partner status for ${partnerId}`, error);
+      throw error;
     }
-    const profile = mockPartnerProfiles.find((p) => p.id === partnerId);
-    if (profile) {
-      profile.status = status as any;
-    }
-    return { success: true, data: true };
   },
 
   // ═══════════════════════════════════════════════════════
@@ -127,52 +102,13 @@ export const deliveryService = {
   async getLiveDeliveries(
     params?: Partial<DeliveryQueryParams>
   ): Promise<DeliveryApiResponse<PaginatedResponse<LiveDelivery>>> {
-    await delay(300);
-
-    let filtered = [...mockLiveDeliveries];
-
-    if (params?.status && params.status !== "all") {
-      filtered = filtered.filter((d) => d.status === params.status);
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/live", { params });
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to fetch live deliveries", error);
+      throw error;
     }
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (d) =>
-          d.customer.toLowerCase().includes(q) ||
-          d.orderId.toLowerCase().includes(q) ||
-          d.partner.toLowerCase().includes(q)
-      );
-    }
-    if (params?.zone) {
-      filtered = filtered.filter((d) => d.zone === params.zone);
-    }
-
-    // Sort: active first, delivered last
-    const priority: Record<string, number> = {
-      assigned: 0,
-      picked_up: 1,
-      in_transit: 2,
-      out_for_delivery: 3,
-      delivered: 4,
-      failed: 5,
-      returned: 5,
-      cancelled: 5,
-    };
-    filtered.sort((a, b) => (priority[a.status] ?? 5) - (priority[b.status] ?? 5));
-
-    const page = params?.page || 1;
-    const pageSize = params?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-
-    return {
-      success: true,
-      data: {
-        items: filtered.slice(start, start + pageSize),
-        pagination: { page, pageSize, total },
-      },
-      meta: { cachedAt: new Date().toISOString() },
-    };
   },
 
   /**
@@ -183,9 +119,13 @@ export const deliveryService = {
     lat: number,
     lng: number
   ): Promise<DeliveryApiResponse<boolean>> {
-    await delay(50);
-    // In real implementation, this would emit via Socket.IO
-    return { success: true, data: true };
+    try {
+      await apiClient.post(`/api/v1/admin/delivery/live/${deliveryId}/location`, { lat, lng });
+      return { success: true, data: true };
+    } catch (error: any) {
+      console.error(`[deliveryService] Failed to send live location update for ${deliveryId}`, error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -198,27 +138,13 @@ export const deliveryService = {
   async getRoutes(
     params?: Partial<DeliveryQueryParams>
   ): Promise<DeliveryApiResponse<PaginatedResponse<DeliveryRoute>>> {
-    await delay(300);
-
-    let filtered = [...mockDeliveryRoutes];
-
-    if (params?.status && params.status !== "all") {
-      filtered = filtered.filter((r) => r.status === params.status);
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/routes", { params });
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to fetch delivery routes", error);
+      throw error;
     }
-    if (params?.zone) {
-      filtered = filtered.filter((r) => r.zone.toLowerCase().includes(params.zone!.toLowerCase()));
-    }
-
-    const page = params?.page || 1;
-    const pageSize = params?.pageSize || 10;
-
-    return {
-      success: true,
-      data: {
-        items: filtered.slice((page - 1) * pageSize, page * pageSize),
-        pagination: { page, pageSize, total: filtered.length },
-      },
-    };
   },
 
   /**
@@ -227,18 +153,26 @@ export const deliveryService = {
   async optimizeRoute(
     zone: string
   ): Promise<DeliveryApiResponse<DeliveryRoute | null>> {
-    await delay(1500);
-    const route = mockDeliveryRoutes.find((r) => r.zone === zone) || null;
-    return { success: true, data: route ? { ...route, status: "optimized", optimizedAt: new Date().toISOString() } : null };
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/delivery/routes/optimize", { zone });
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error(`[deliveryService] Failed to optimize route for zone ${zone}`, error);
+      throw error;
+    }
   },
 
   /**
    * Optimize all pending routes.
    */
   async optimizeAllRoutes(): Promise<DeliveryApiResponse<number>> {
-    await delay(2000);
-    const count = mockDeliveryRoutes.filter((r) => r.status === "pending").length;
-    return { success: true, data: count };
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/delivery/routes/optimize-all", {});
+      return { success: true, data: response.data?.optimizedCount || response.data || 0 };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to optimize all routes", error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -251,38 +185,13 @@ export const deliveryService = {
   async getDeliveryStatuses(
     params?: Partial<DeliveryQueryParams>
   ): Promise<DeliveryApiResponse<PaginatedResponse<DeliveryStatusEntry>>> {
-    await delay(300);
-
-    let filtered = [...mockDeliveryStatusEntries];
-
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (d) =>
-          d.orderId.toLowerCase().includes(q) ||
-          d.customer.toLowerCase().includes(q) ||
-          d.partner?.toLowerCase().includes(q)
-      );
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/status", { params });
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to fetch delivery status entries", error);
+      throw error;
     }
-    if (params?.status && params.status !== "all") {
-      filtered = filtered.filter((d) => d.status === params.status);
-    }
-    if (params?.zone) {
-      filtered = filtered.filter((d) => d.zone === params.zone);
-    }
-
-    const page = params?.page || 1;
-    const pageSize = params?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-
-    return {
-      success: true,
-      data: {
-        items: filtered.slice(start, start + pageSize),
-        pagination: { page, pageSize, total },
-      },
-    };
   },
 
   /**
@@ -291,19 +200,13 @@ export const deliveryService = {
   async updateDeliveryStatus(
     data: UpdateDeliveryStatusFormData
   ): Promise<DeliveryApiResponse<boolean>> {
-    await delay(300);
-    const idx = mockDeliveryStatusEntries.findIndex(
-      (e) => e.id === data.deliveryId || e.orderId === data.deliveryId
-    );
-    if (idx !== -1) {
-      mockDeliveryStatusEntries[idx] = {
-        ...mockDeliveryStatusEntries[idx],
-        status: data.status,
-        note: data.note || mockDeliveryStatusEntries[idx].note,
-      };
+    try {
+      await apiClient.patch(`/api/v1/admin/delivery/status/${data.deliveryId}`, data);
       return { success: true, data: true };
+    } catch (error: any) {
+      console.error(`[deliveryService] Failed to update delivery status for ${data.deliveryId}`, error);
+      throw error;
     }
-    return { success: false, data: false, error: "Delivery entry not found" };
   },
 
   /**
@@ -312,18 +215,13 @@ export const deliveryService = {
   async assignDelivery(
     data: AssignDeliveryFormData
   ): Promise<DeliveryApiResponse<boolean>> {
-    await delay(350);
-    const idx = mockDeliveryStatusEntries.findIndex((e) => e.orderId === data.orderId);
-    const partner = mockDeliveryPartners.find((p) => p.id === data.partnerId);
-    if (idx !== -1 && partner) {
-      mockDeliveryStatusEntries[idx] = {
-        ...mockDeliveryStatusEntries[idx],
-        partner: partner.name,
-        status: "assigned",
-      };
+    try {
+      await apiClient.post("/api/v1/admin/delivery/assign", data);
       return { success: true, data: true };
+    } catch (error: any) {
+      console.error(`[deliveryService] Failed to assign delivery for order ${data.orderId}`, error);
+      throw error;
     }
-    return { success: false, data: false, error: "Order not found" };
   },
 
   // ═══════════════════════════════════════════════════════
@@ -337,9 +235,13 @@ export const deliveryService = {
     partnerId: string,
     params?: Partial<AnalyticsQueryParams>
   ): Promise<DeliveryApiResponse<PerformanceOverview | null>> {
-    await delay(250);
-    const perf = mockPartnerPerformance.find((p) => p.partnerId === partnerId) || null;
-    return { success: true, data: perf };
+    try {
+      const response = await apiClient.get<any>(`/api/v1/admin/delivery/fleet/${partnerId}/performance`, { params });
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error(`[deliveryService] Failed to fetch performance for partner ${partnerId}`, error);
+      throw error;
+    }
   },
 
   /**
@@ -348,8 +250,13 @@ export const deliveryService = {
   async getAllPartnerPerformance(
     params?: Partial<AnalyticsQueryParams>
   ): Promise<DeliveryApiResponse<PerformanceOverview[]>> {
-    await delay(300);
-    return { success: true, data: mockPartnerPerformance };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/fleet/performance", { params });
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to fetch performance for all partners", error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -362,8 +269,13 @@ export const deliveryService = {
   async getAnalytics(
     params?: Partial<AnalyticsQueryParams>
   ): Promise<DeliveryApiResponse<DeliveryAnalytics>> {
-    await delay(400);
-    return { success: true, data: mockDeliveryAnalytics };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/analytics", { params });
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to fetch delivery analytics", error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -374,8 +286,13 @@ export const deliveryService = {
    * Get SLA compliance dashboard data.
    */
   async getSLADashboard(): Promise<DeliveryApiResponse<SLADashboard>> {
-    await delay(350);
-    return { success: true, data: mockSLADashboard };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/sla");
+      return { success: true, data: response.data || response };
+    } catch (error: any) {
+      console.error("[deliveryService] Failed to fetch SLA dashboard", error);
+      throw error;
+    }
   },
 };
 

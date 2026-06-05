@@ -1,10 +1,13 @@
 "use client";
 
-import { X, BarChart3, Star, Trash2, Plus } from "lucide-react";
+import { Fragment, useState, useEffect, useCallback } from "react";
+
+import { X, BarChart3, Star, Trash2, Plus, Loader2 } from "lucide-react";
 import Link from "next/link";
-import { useComparisonStore } from "@/store/comparison-store";
+import { useComparisonStore, type ComparisonItem } from "@/store/comparison-store";
 import { useEscapeKey } from "@/lib/hooks/useKeyboardNavigation";
 import { SafeProductImage } from "@/components/ui/safe-image";
+import { useProductCompare } from "@/hooks/use-products";
 
 interface ComparisonDrawerProps {
   open: boolean;
@@ -17,10 +20,124 @@ export default function ComparisonDrawer({
 }: ComparisonDrawerProps) {
   const { comparison, removeFromComparison, clearComparison } =
     useComparisonStore();
+  const { loadCompare, loading: apiLoading } = useProductCompare();
+
+  // Enriched product data from the API (keyed by product id)
+  const [apiData, setApiData] = useState<Record<string, any>>({});
+
+  // Call GET /api/v1/products/compare whenever the drawer opens with items
+  useEffect(() => {
+    if (!open || comparison.length === 0) return;
+    const ids = comparison.map((i) => String(i.id));
+    loadCompare(ids).then((results) => {
+      if (results && results.length > 0) {
+        const map: Record<string, any> = {};
+        results.forEach((p: any) => {
+          const key = String(p.id || p._id);
+          map[key] = p;
+        });
+        setApiData(map);
+      }
+    });
+  }, [open, comparison.length]); // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Helper: get enriched API field for a comparison item
+  const getApiField = useCallback(
+    (item: ComparisonItem, field: string) => apiData[String(item.id)]?.[field],
+    [apiData]
+  );
 
   useEscapeKey(open, onClose);
 
   if (!open) return null;
+
+  const features = [
+    {
+      label: "Price",
+      render: (item: ComparisonItem) => (
+        <span className="text-sm font-black text-[#1a1a1a]">₹{item.price}</span>
+      ),
+    },
+    {
+      label: "Old Price",
+      render: (item: ComparisonItem) => (
+        <span className="text-xs text-[#999] line-through">₹{item.oldPrice}</span>
+      ),
+    },
+    {
+      label: "Discount",
+      render: (item: ComparisonItem) => {
+        const discount = Math.round(
+          ((item.oldPrice - item.price) / item.oldPrice) * 100
+        );
+        return discount > 0 ? (
+          <span className="text-xs font-bold text-[#ff4f8b] bg-[#fff0f6] px-2 py-1 rounded-full">
+            {discount}% OFF
+          </span>
+        ) : (
+          <span className="text-xs text-[#ccc]">—</span>
+        );
+      },
+    },
+    {
+      label: "Rating",
+      render: (item: ComparisonItem) => (
+        <div className="flex items-center gap-1 bg-[#0c831f] text-white text-xs font-bold px-2 py-1 rounded-lg">
+          <Star className="w-3 h-3 fill-white" />
+          {item.rating}
+        </div>
+      ),
+    },
+    {
+      label: "Brand",
+      render: (item: ComparisonItem) => {
+        const brand = getApiField(item, "brand") || getApiField(item, "brandName");
+        return brand
+          ? <span className="text-xs font-semibold text-[#1a1a1a]">{brand}</span>
+          : <span className="text-xs text-[#ccc]">—</span>;
+      },
+    },
+    {
+      label: "Weight / Volume",
+      render: (item: ComparisonItem) => {
+        const weight = getApiField(item, "weight") || getApiField(item, "unit") || getApiField(item, "unitValue");
+        return weight
+          ? <span className="text-xs font-semibold text-[#666]">{weight}</span>
+          : <span className="text-xs text-[#ccc]">—</span>;
+      },
+    },
+    {
+      label: "Category",
+      render: (item: ComparisonItem) => (
+        <span className="text-xs font-semibold text-[#666] capitalize">
+          {item.category.replace(/-/g, " ")}
+        </span>
+      ),
+    },
+    {
+      label: "Stock",
+      render: (item: ComparisonItem) => {
+        const stockColors: Record<string, string> = {
+          in_stock: "text-[#0c831f] bg-[#e8f5e9]",
+          low_stock: "text-[#f59e0b] bg-[#fef3c7]",
+          out_of_stock: "text-[#ff4f8b] bg-[#fff0f6]",
+        };
+        return (
+          <span
+            className={`text-[10px] font-bold px-2 py-1 rounded-full ${
+              stockColors[item.stock] ?? ""
+            }`}
+          >
+            {item.stock === "in_stock"
+              ? "In Stock"
+              : item.stock === "low_stock"
+              ? "Few left"
+              : "Sold Out"}
+          </span>
+        );
+      },
+    },
+  ];
 
   return (
     <>
@@ -41,6 +158,19 @@ export default function ComparisonDrawer({
               <span className="text-xs font-semibold text-[#ff4f8b] bg-[#ff4f8b]/10 px-2 py-0.5 rounded-full">
                 {comparison.length} / 4
               </span>
+            )}
+            {/* API sync indicator */}
+            {comparison.length > 0 && (
+              apiLoading ? (
+                <span className="flex items-center gap-1 text-[10px] text-[#999] font-medium">
+                  <Loader2 className="w-3 h-3 animate-spin" />
+                  Syncing...
+                </span>
+              ) : Object.keys(apiData).length > 0 ? (
+                <span className="flex items-center gap-1 text-[10px] text-[#0c831f] font-bold bg-[#e8f5e9] px-2 py-0.5 rounded-full">
+                  ✓ Live data
+                </span>
+              ) : null
             )}
           </div>
           <div className="flex items-center gap-2">
@@ -65,7 +195,18 @@ export default function ComparisonDrawer({
 
         {/* Content */}
         <div className="flex-1 overflow-y-auto px-4 py-4">
-          {comparison.length === 0 ? (
+          {/* API loading skeleton */}
+          {apiLoading && comparison.length > 0 ? (
+            <div className="flex gap-4 overflow-x-auto py-4">
+              {comparison.map((item) => (
+                <div key={item.id} className="flex flex-col items-center gap-3 min-w-[140px]">
+                  <div className="w-28 h-28 rounded-xl bg-[#f2f2f2] animate-pulse" />
+                  <div className="h-3 w-24 rounded-full bg-[#f2f2f2] animate-pulse" />
+                  <div className="h-3 w-16 rounded-full bg-[#f2f2f2] animate-pulse" />
+                </div>
+              ))}
+            </div>
+          ) : comparison.length === 0 ? (
             <div className="text-center py-12">
               <div className="w-16 h-16 rounded-full bg-[#f2f2f2] flex items-center justify-center mx-auto mb-3">
                 <BarChart3 className="w-8 h-8 text-[#ccc]" />
@@ -88,109 +229,51 @@ export default function ComparisonDrawer({
           ) : (
             <div className="overflow-x-auto -mx-4 px-4">
               <div className="min-w-[600px]">
-                {/* Product headers */}
-                <div className="grid gap-3" style={{ gridTemplateColumns: `120px repeat(${comparison.length}, 1fr)` }}>
-                  {/* Labels column */}
-                  <div className="space-y-4 pt-16">
-                    {["Price", "Old Price", "Discount", "Rating", "Category", "Stock"].map(
-                      (label) => (
-                        <div
-                          key={label}
-                          className="h-9 flex items-center text-xs font-bold text-[#999] uppercase tracking-wide"
+                {/* Comparison Table */}
+                <div className="grid gap-x-4" style={{ gridTemplateColumns: `120px repeat(${comparison.length}, 1fr)` }}>
+                  {/* Header Row (Images & Names) */}
+                  <div className="invisible" /> {/* Empty cell for top-left */}
+                  
+                  {comparison.map((item) => (
+                    <div key={item.id} className="flex flex-col items-center text-center pb-4">
+                      <div className="relative w-28 h-28 rounded-xl bg-[#f2f2f2] mb-3 shadow-sm shrink-0">
+                        <SafeProductImage
+                          src={item.image}
+                          alt={item.name}
+                          className="object-cover rounded-xl"
+                          loading="lazy"
+                          fill
+                        />
+                        <button
+                          onClick={() => removeFromComparison(item.id)}
+                          className="absolute -top-2 -right-2 z-10 w-7 h-7 rounded-full bg-white shadow-md border border-[#e8e8e8] flex items-center justify-center hover:bg-[#fff0f6] hover:border-[#ff4f8b] transition-colors"
+                          aria-label={`Remove ${item.name} from comparison`}
                         >
-                          {label}
-                        </div>
-                      )
-                    )}
-                  </div>
-
-                  {/* Product columns */}
-                  {comparison.map((item) => {
-                    const discount = Math.round(
-                      ((item.oldPrice - item.price) / item.oldPrice) * 100
-                    );
-                    const stockColors: Record<string, string> = {
-                      in_stock: "text-[#0c831f] bg-[#e8f5e9]",
-                      low_stock: "text-[#f59e0b] bg-[#fef3c7]",
-                      out_of_stock: "text-[#ff4f8b] bg-[#fff0f6]",
-                    };
-
-                    return (
-                      <div key={item.id} className="text-center space-y-4">
-                        {/* Image + Name */}
-                        <div className="relative">
-                          <div className="w-full aspect-square rounded-xl bg-[#f2f2f2] flex items-center justify-center mb-2 overflow-hidden">
-                            <SafeProductImage
-                              src={item.image}
-                              alt={item.name}
-                              className="rounded-xl"
-                              loading="lazy"
-                              fill
-                            />
-                          </div>
-                          <button
-                            onClick={() => removeFromComparison(item.id)}
-                            className="absolute -top-1 -right-1 w-6 h-6 rounded-full bg-white shadow-sm border border-[#e8e8e8] flex items-center justify-center hover:bg-[#fff0f6] hover:border-[#ff4f8b] transition-colors"
-                            aria-label={`Remove ${item.name} from comparison`}
-                          >
-                            <X className="w-3 h-3 text-[#666]" />
-                          </button>
-                          <p className="text-xs font-bold text-[#1a1a1a] leading-tight line-clamp-2 min-h-[2rem]">
-                            {item.name}
-                          </p>
-                        </div>
-
-                        {/* Price */}
-                        <div className="h-9 flex items-center justify-center text-sm font-black text-[#1a1a1a]">
-                          ₹{item.price}
-                        </div>
-
-                        {/* Old Price */}
-                        <div className="h-9 flex items-center justify-center text-xs text-[#999] line-through">
-                          ₹{item.oldPrice}
-                        </div>
-
-                        {/* Discount */}
-                        <div className="h-9 flex items-center justify-center">
-                          {discount > 0 ? (
-                            <span className="text-xs font-bold text-[#ff4f8b] bg-[#fff0f6] px-2 py-1 rounded-full">
-                              {discount}% OFF
-                            </span>
-                          ) : (
-                            <span className="text-xs text-[#ccc]">—</span>
-                          )}
-                        </div>
-
-                        {/* Rating */}
-                        <div className="h-9 flex items-center justify-center">
-                          <div className="flex items-center gap-1 bg-[#0c831f] text-white text-xs font-bold px-2 py-1 rounded-lg">
-                            <Star className="w-3 h-3 fill-white" />
-                            {item.rating}
-                          </div>
-                        </div>
-
-                        {/* Category */}
-                        <div className="h-9 flex items-center justify-center text-xs font-semibold text-[#666]">
-                          {item.category}
-                        </div>
-
-                        {/* Stock */}
-                        <div className="h-9 flex items-center justify-center">
-                          <span
-                            className={`text-[10px] font-bold px-2 py-1 rounded-full ${
-                              stockColors[item.stock] ?? ""
-                            }`}
-                          >
-                            {item.stock === "in_stock"
-                              ? "In Stock"
-                              : item.stock === "low_stock"
-                              ? "Few left"
-                              : "Sold Out"}
-                          </span>
-                        </div>
+                          <X className="w-3.5 h-3.5 text-[#666]" />
+                        </button>
                       </div>
-                    );
-                  })}
+                      <p className="text-xs font-bold text-[#1a1a1a] leading-tight line-clamp-2 max-w-[140px]">
+                        {item.name}
+                      </p>
+                    </div>
+                  ))}
+
+                  {/* Feature Rows */}
+                  {features.map((feature) => (
+                    <Fragment key={feature.label}>
+                      {/* Row Label */}
+                      <div className="flex items-center text-[11px] font-bold text-[#999] uppercase tracking-wider py-4 border-t border-[#f2f2f2]">
+                        {feature.label}
+                      </div>
+
+                      {/* Row Values */}
+                      {comparison.map((item) => (
+                        <div key={`${item.id}-${feature.label}`} className="flex items-center justify-center py-4 border-t border-[#f2f2f2]">
+                          {feature.render(item)}
+                        </div>
+                      ))}
+                    </Fragment>
+                  ))}
                 </div>
               </div>
             </div>

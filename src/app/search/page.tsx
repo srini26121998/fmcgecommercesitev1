@@ -1,6 +1,7 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo, useRef, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import ProductCard from "@/components/ui/products/product-card";
 import Navbar from "@/components/ui/navbar";
 import BottomNav from "@/components/ui/mobile/bottom-nav";
@@ -20,14 +21,13 @@ import {
   Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
-import { products } from "@/data/products";
 import { useDebounce } from "@/lib/hooks/useDebounce";
 import ErrorBoundary from "@/components/ui/error-boundary";
 import EmptyState from "@/components/ui/empty-state";
-import ComparisonDrawer from "@/components/ui/products/comparison-drawer";
-import { BarChart3 } from "lucide-react";
-import { useComparisonStore } from "@/store/comparison-store";
 import type { ProductSortOption } from "@/lib/types";
+import { useProducts, useProductBarcode } from "@/hooks/use-products";
+import { useEffect } from "react";
+import { Loader2 } from "lucide-react";
 
 const filterCategories = [
   "All",
@@ -48,25 +48,51 @@ const SORT_OPTIONS = [
 ] as const;
 
 export default function SearchPage() {
+  const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
   const debouncedSearchQuery = useDebounce(searchQuery, 300);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [showScanner, setShowScanner] = useState(false);
+  const [isScanningBarcode, setIsScanningBarcode] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { addQuery } = useSearchHistoryStore();
+  const { getByBarcode } = useProductBarcode();
 
   const handleRefresh = useCallback(async () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
     toast.success("Search refreshed! ✓", { duration: 1500 });
   }, []);
 
-  const handleBarcodeScan = useCallback((barcode: string) => {
-    setSearchQuery(barcode);
-    addQuery(barcode);
+  /**
+   * Barcode scan handler — wired to the real API.
+   * Flow: scan → GET /api/v1/products/barcode/:code
+   *   → Found: navigate directly to /product/:id
+   *   → Not found: fall back to text search for the scanned code
+   */
+  const handleBarcodeScan = useCallback(async (barcode: string) => {
     setShowScanner(false);
-    toast.success(`Scanned: ${barcode}`, { duration: 2000 });
-  }, [addQuery]);
+    setIsScanningBarcode(true);
+    addQuery(barcode);
+
+    try {
+      const product = await getByBarcode(barcode);
+      if (product) {
+        toast.success(`Found: ${product.name}`, { duration: 2500 });
+        router.push(`/product/${product.id}`);
+      } else {
+        // Barcode not in DB — fall back to text search
+        setSearchQuery(barcode);
+        toast.info(`No exact match — showing search results for "${barcode}"`, { duration: 3000 });
+      }
+    } catch {
+      // API error — silently fall back to text search
+      setSearchQuery(barcode);
+      toast.info(`Searching for "${barcode}"...`, { duration: 2000 });
+    } finally {
+      setIsScanningBarcode(false);
+    }
+  }, [addQuery, getByBarcode, router]);
 
   const handleSelectSuggestion = useCallback((query: string) => {
     setSearchQuery(query);
@@ -110,9 +136,6 @@ export default function SearchPage() {
     ...defaultFilterState,
   });
 
-  const [showComparison, setShowComparison] = useState(false);
-  const comparisonCount = useComparisonStore((s) => s.comparison.length);
-
   const activeFilterCount = getActiveFilterCount(activeFilters);
 
   const clearAllActiveFilters = () => {
@@ -147,72 +170,22 @@ export default function SearchPage() {
     }));
   };
 
-  // ---- Computed filtered products ----
-  const filteredProducts = useMemo(() => {
-    let result = [...products];
-
-    if (debouncedSearchQuery) {
-      const q = debouncedSearchQuery.toLowerCase();
-      result = result.filter(
-        (p) =>
-          p.name.toLowerCase().includes(q) ||
-          p.category.toLowerCase().includes(q)
-      );
-    }
-
-    const categoryFilter = activeFilters.category !== "All" ? activeFilters.category : selectedCategory;
-    if (categoryFilter !== "All") {
-      result = result.filter((p) => p.category === categoryFilter);
-    }
-
-    if (activeFilters.priceRanges.length > 0) {
-      result = result.filter((p) =>
-        activeFilters.priceRanges.some((idx) => {
-          const range = PRICE_RANGES[idx];
-          return p.price >= range.min && p.price < range.max;
-        })
-      );
-    }
-
-    if (activeFilters.discounts.length > 0) {
-      result = result.filter((p) => {
-        const discount = Math.round(((p.oldPrice - p.price) / p.oldPrice) * 100);
-        return activeFilters.discounts.some((idx) => {
-          const opt = DISCOUNT_OPTIONS[idx];
-          return discount >= opt.min;
-        });
-      });
-    }
-
-    if (activeFilters.ratings.length > 0) {
-      result = result.filter((p) =>
-        activeFilters.ratings.some((idx) => {
-          const opt = RATING_OPTIONS[idx];
-          return (p.rating || 0) >= opt.min;
-        })
-      );
-    }
-
-    if (activeFilters.stock.length > 0) {
-      result = result.filter((p) =>
-        activeFilters.stock.includes(p.stock)
-      );
-    }
-
-    switch (sortBy) {
-      case "price-low":
-        result.sort((a, b) => a.price - b.price);
-        break;
-      case "price-high":
-        result.sort((a, b) => b.price - a.price);
-        break;
-      case "rating":
-        result.sort((a, b) => (b.rating || 0) - (a.rating || 0));
-        break;
-    }
-
-    return result;
-  }, [debouncedSearchQuery, selectedCategory, activeFilters, sortBy]);
+  const { products: filteredProducts, loading, updateFilters } = useProducts({
+    search: debouncedSearchQuery,
+    category: activeFilters.category !== "All" ? activeFilters.category : (selectedCategory !== "All" ? selectedCategory : undefined),
+    sortBy: sortBy === "relevance" ? undefined : sortBy.replace("-low", "").replace("-high", ""),
+    sortOrder: sortBy.includes("-high") ? "desc" : "asc"
+  });
+  
+  // Sync filters whenever they change
+  useEffect(() => {
+    updateFilters({
+      search: debouncedSearchQuery,
+      category: activeFilters.category !== "All" ? activeFilters.category : (selectedCategory !== "All" ? selectedCategory : undefined),
+      sortBy: sortBy === "relevance" ? undefined : sortBy.replace("-low", "").replace("-high", ""),
+      sortOrder: sortBy.includes("-high") ? "desc" : "asc"
+    });
+  }, [debouncedSearchQuery, selectedCategory, activeFilters, sortBy, updateFilters]);
 
   return (
     <ErrorBoundary>
@@ -220,7 +193,7 @@ export default function SearchPage() {
     <main className="min-h-screen bg-[#f2f2f2] pb-20 md:pb-0">
       <Navbar />
 
-      <div className="pt-16">
+      <div className="pt-[72px] sm:pt-20">
         {/* Search Bar */}
         <div className="bg-white border-b border-[#e8e8e8] px-3 sm:px-4 md:px-6 py-3">
           <div className="max-w-[1400px] mx-auto">
@@ -229,11 +202,14 @@ export default function SearchPage() {
                 <Search className="w-4 h-4 text-[#999] flex-shrink-0" aria-hidden="true" />
                 <button
                   onClick={() => setShowScanner(true)}
-                  className="p-1.5 hover:bg-[#e8e8e8] rounded-lg transition-colors mr-1"
-                  aria-label="Scan barcode"
-                  title="Scan barcode"
+                  disabled={isScanningBarcode}
+                  className="p-1.5 hover:bg-[#e8e8e8] rounded-lg transition-colors mr-1 disabled:opacity-50 disabled:cursor-not-allowed"
+                  aria-label={isScanningBarcode ? "Looking up barcode..." : "Scan barcode"}
+                  title={isScanningBarcode ? "Looking up barcode..." : "Scan barcode"}
                 >
-                  <Scan className="w-4 h-4 text-[#999] hover:text-[#ff4f8b] transition-colors" />
+                  {isScanningBarcode
+                    ? <Loader2 className="w-4 h-4 text-[#ff4f8b] animate-spin" />
+                    : <Scan className="w-4 h-4 text-[#999] hover:text-[#ff4f8b] transition-colors" />}
                 </button>
                 <input
                   ref={searchInputRef}
@@ -417,12 +393,24 @@ export default function SearchPage() {
           </div>
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-            {filteredProducts.map((product) => (
-              <ProductCard key={product.id} product={product} />
-            ))}
+            {loading ? (
+               <div className="col-span-full py-10 flex justify-center">
+                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff4f8b]"></div>
+               </div>
+            ) : (
+              filteredProducts.map((product) => (
+                <ProductCard key={product.id} product={{
+                  ...product,
+                  oldPrice: product.mrp,
+                  rating: 4.5,
+                  image: product.media?.[0]?.url || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&h=400&q=80",
+                  stock: product.stock > 0 ? "in_stock" : "out_of_stock"
+                } as any} />
+              ))
+            )}
           </div>
 
-          {filteredProducts.length === 0 && (
+          {!loading && filteredProducts.length === 0 && (
             <EmptyState
               variant={activeFilterCount > 0 ? "filtered" : "search"}
               actions={
@@ -444,24 +432,6 @@ export default function SearchPage() {
 
       <BottomNav />
 
-      {/* ─── Comparison Floating Button ─── */}
-      {comparisonCount > 0 && (
-        <button
-          onClick={() => setShowComparison(true)}
-          className="fixed bottom-20 md:bottom-6 right-4 z-30 min-w-[44px] min-h-[44px] h-12 px-4 rounded-full bg-[#0c831f] text-white shadow-lg flex items-center gap-2 hover:bg-[#0a6e1a] active:scale-95 transition-all duration-200"
-          aria-label={`Compare ${comparisonCount} products`}
-        >
-          <BarChart3 className="w-4 h-4" />
-          <span className="text-xs font-bold">Compare ({comparisonCount})</span>
-        </button>
-      )}
-
-      {/* ─── Comparison Drawer ─── */}
-      <ComparisonDrawer
-        open={showComparison}
-        onClose={() => setShowComparison(false)}
-      />
-
       {/* ─── Advanced Filters ─── */}
       <AdvancedFilters
         isOpen={showFilters}
@@ -471,7 +441,20 @@ export default function SearchPage() {
         onClear={() => { setActiveFilters({ ...defaultFilterState }); }}
       />
 
-       {/* Barcode Scanner Modal */}
+      {/* ─── Barcode Lookup Overlay ─── */}
+      {isScanningBarcode && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
+          <div className="bg-white rounded-2xl shadow-2xl px-8 py-8 flex flex-col items-center gap-4 mx-4">
+            <div className="w-16 h-16 rounded-full bg-[#fff0f6] flex items-center justify-center">
+              <Loader2 className="w-8 h-8 text-[#ff4f8b] animate-spin" />
+            </div>
+            <p className="text-base font-bold text-[#1a1a1a]">Looking up product...</p>
+            <p className="text-xs text-[#999] text-center">Checking barcode against our catalogue</p>
+          </div>
+        </div>
+      )}
+
+       {/* ─── Barcode Scanner Modal ─── */}
       {showScanner && (
         <CameraScanner
           onScan={handleBarcodeScan}

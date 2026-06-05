@@ -3,20 +3,23 @@
 import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { useAuthStore } from "@/store/auth-store";
-import { Loader2 } from "lucide-react";
+import { getAdminToken } from "@/services/auth.service";
+import { AnimatedLoader } from "@/components/ui/animated-loader";
 
 interface AdminGuardProps {
   children: React.ReactNode;
 }
 
 /**
- * AdminGuard wraps admin pages and ensures the user is authenticated
- * with an admin role before rendering children.
+ * AdminGuard wraps admin pages and ensures the user has a valid admin
+ * session before rendering children.
  *
- * Behaviour:
- * - Waits for Zustand persist to rehydrate
- * - If not logged in or not admin → redirect to homepage
- * - If admin → render children
+ * Auth check priority:
+ *  1. sessionStorage `admin_token` — set by authService.adminLogin()
+ *     This carries a backend-issued ADMIN-role JWT.
+ *  2. Zustand auth-store — legacy customer auth with role === "admin".
+ *
+ * If neither check passes → redirect to /admin/login.
  */
 export default function AdminGuard({ children }: AdminGuardProps) {
   const router = useRouter();
@@ -38,11 +41,19 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   useEffect(() => {
     if (!hydrated) return;
 
+    // Primary check: dedicated admin token in sessionStorage
+    const adminToken = getAdminToken();
+    if (adminToken) {
+      setChecked(true);
+      return;
+    }
+
+    // Secondary check: Zustand store (legacy — role must be "admin")
     const { isLoggedIn, user } = useAuthStore.getState();
     const isAdmin = isLoggedIn && user?.role === "admin";
 
     if (!isAdmin) {
-      router.replace("/");
+      router.replace("/admin/login");
     } else {
       setChecked(true);
     }
@@ -51,10 +62,7 @@ export default function AdminGuard({ children }: AdminGuardProps) {
   if (!checked) {
     return (
       <div className="fixed inset-0 z-[100] flex items-center justify-center bg-white">
-        <div className="flex flex-col items-center gap-3">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0c831f]" />
-          <p className="text-sm font-medium text-[#666]">Verifying access...</p>
-        </div>
+        <AnimatedLoader text="Verifying access..." />
       </div>
     );
   }

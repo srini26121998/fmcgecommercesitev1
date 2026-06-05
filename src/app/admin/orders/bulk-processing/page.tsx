@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -47,7 +47,7 @@ export default function BulkProcessingPage() {
               <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0c831f]">Orders</p>
               <h1 className="mt-1 text-xl font-bold text-[#1a1a1a] sm:text-2xl">Bulk Processing</h1>
               <p className="mt-1.5 text-xs text-[#666]">
-                Process multiple orders at once — status updates, partner assignments, and cancellations.
+                Process multiple orders at once ₹ status updates, partner assignments, and cancellations.
               </p>
             </div>
             <div className="flex items-center gap-2">
@@ -90,8 +90,8 @@ export default function BulkProcessingPage() {
               </span>
             ) },
             { key: "count", header: "Orders", width: "80px", align: "center" },
-            { key: "success", header: "Success", width: "80px", align: "center", render: (b) => <span className="text-[#0c831f] font-bold">{(b as BulkJob).success ?? "—"}</span> },
-            { key: "failed", header: "Failed", width: "70px", align: "center", render: (b) => <span className="text-[#dc2626] font-bold">{(b as BulkJob).failed ?? "—"}</span> },
+            { key: "success", header: "Success", width: "80px", align: "center", render: (b) => <span className="text-[#0c831f] font-bold">{(b as BulkJob).success ?? "₹"}</span> },
+            { key: "failed", header: "Failed", width: "70px", align: "center", render: (b) => <span className="text-[#dc2626] font-bold">{(b as BulkJob).failed ?? "₹"}</span> },
             { key: "status", header: "Status", width: "110px", render: (b) => <StatusBadge status={(b as BulkJob).status} /> },
             { key: "date", header: "Date", width: "110px", hideOnMobile: true },
             { key: "processedBy", header: "By", width: "110px", hideOnMobile: true },
@@ -118,7 +118,7 @@ export default function BulkProcessingPage() {
               onChange={(e) => setActionType(e.target.value)}
               className="mt-1 w-full rounded-xl border border-[#e8e8e8] bg-white px-4 py-2.5 text-sm font-bold text-[#1a1a1a] outline-none focus:border-[#0c831f]/50"
             >
-              <option value="status_update">Status Update → Preparing</option>
+              <option value="status_update">Status Update ? Preparing</option>
               <option value="assign_partners">Assign Partners (Auto)</option>
               <option value="bulk_cancel">Bulk Cancel</option>
             </select>
@@ -167,7 +167,7 @@ export default function BulkProcessingPage() {
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Processed By</p>
-                <p className="font-semibold text-[#666]">{viewJob.processedBy || "—"}</p>
+                <p className="font-semibold text-[#666]">{viewJob.processedBy || "₹"}</p>
               </div>
             </div>
 
@@ -191,11 +191,11 @@ export default function BulkProcessingPage() {
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Success</p>
-                <p className="font-semibold text-[#0c831f]">{viewJob.success ?? "—"}</p>
+                <p className="font-semibold text-[#0c831f]">{viewJob.success ?? "₹"}</p>
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Failed</p>
-                <p className="font-semibold text-[#dc2626]">{viewJob.failed ?? "—"}</p>
+                <p className="font-semibold text-[#dc2626]">{viewJob.failed ?? "₹"}</p>
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Status</p>
@@ -217,3 +217,4 @@ export default function BulkProcessingPage() {
     </DashboardLayout>
   );
 }
+

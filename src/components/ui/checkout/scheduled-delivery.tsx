@@ -1,6 +1,7 @@
 "use client";
 
 import { Truck, Calendar, Clock, CheckCircle2 } from "lucide-react";
+import { CustomSelect } from "@/components/ui/custom-select";
 
 interface ScheduledDeliveryProps {
   scheduledDate: string;
@@ -25,7 +26,7 @@ export default function ScheduledDelivery({
   onTimeChange,
 }: ScheduledDeliveryProps) {
   return (
-    <section className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
+    <section className="rounded-xl border border-[#e8e8e8] bg-white relative z-20">
       <div className="flex items-center gap-2 border-b border-[#e8e8e8] px-4 py-3">
         <Calendar className="h-4 w-4 text-[#ff4f8b]" />
         <h2 className="text-sm font-black text-[#1a1a1a]">Schedule Delivery</h2>
@@ -53,7 +54,7 @@ export default function ScheduledDelivery({
               value={scheduledDate}
               onChange={(e) => onDateChange(e.target.value)}
               min={new Date().toISOString().split("T")[0]}
-              className="w-full h-11 rounded-lg border border-[#e8e8e8] px-3 text-sm outline-none focus:border-[#ff4f8b]"
+              className="w-full h-11 rounded-xl border border-[#e8e8e8] px-4 text-sm font-medium outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 bg-[#f9f9f9] text-[#1a1a1a]"
             />
           </div>
           <div>
@@ -61,17 +62,12 @@ export default function ScheduledDelivery({
               <Clock className="w-3.5 h-3.5" />
               Time Slot
             </label>
-            <select
+            <CustomSelect
               value={scheduledTime}
-              onChange={(e) => onTimeChange(e.target.value)}
-              className="w-full h-11 rounded-lg border border-[#e8e8e8] px-3 text-sm outline-none focus:border-[#ff4f8b]"
-            >
-              {TIME_SLOTS.map((slot) => (
-                <option key={slot.value} value={slot.value}>
-                  {slot.label}
-                </option>
-              ))}
-            </select>
+              onChange={onTimeChange}
+              options={TIME_SLOTS}
+              placeholder="Select time slot"
+            />
           </div>
         </div>
 

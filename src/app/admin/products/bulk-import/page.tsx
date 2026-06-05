@@ -7,7 +7,7 @@ import { toast } from "sonner";
 import { useBulkUpload } from "@/hooks/use-products";
 
 export default function BulkImportPage() {
-  const { records, loading, uploading, error, fetchHistory, uploadFile } = useBulkUpload();
+  const { records, loading, uploading, error, fetchHistory, uploadFile, downloadTemplateFile } = useBulkUpload();
   const [dragOver, setDragOver] = useState(false);
 
   const handleDrop = async (e: React.DragEvent) => {
@@ -17,7 +17,7 @@ export default function BulkImportPage() {
     if (file) {
       const result = await uploadFile(file);
       if (result) {
-        toast.success(`Import started — Job ID: ${result.jobId}`);
+        toast.success(`Import started ₹ Job ID: ${result.jobId}`);
       } else {
         toast.error("Upload failed");
       }
@@ -33,7 +33,7 @@ export default function BulkImportPage() {
       if (file) {
         const result = await uploadFile(file);
         if (result) {
-          toast.success(`Import started — Job ID: ${result.jobId}`);
+          toast.success(`Import started ₹ Job ID: ${result.jobId}`);
         } else {
           toast.error("Upload failed");
         }
@@ -126,7 +126,15 @@ export default function BulkImportPage() {
                 ))}
               </div>
               <button
-                onClick={() => toast.success("Downloading template...")}
+                onClick={async () => {
+                  toast.info("Downloading template...");
+                  const success = await downloadTemplateFile();
+                  if (success) {
+                    toast.success("Template downloaded successfully");
+                  } else {
+                    toast.error("Failed to download template");
+                  }
+                }}
                 className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl border border-[#e8e8e8] bg-white py-2.5 text-sm font-bold text-[#1a1a1a] hover:bg-[#f6f7f6] transition-all"
               >
                 <Download className="h-4 w-4" />
@@ -153,11 +161,14 @@ export default function BulkImportPage() {
                       <div>
                         <p className="text-sm font-bold text-[#1a1a1a]">{imp.fileName}</p>
                         <p className="text-xs text-[#999]">
-                          {imp.rows} rows · {imp.success} success · {imp.failed} failed
+                          {new Date(imp.uploadedAt).toLocaleString('en-US', {
+                            dateStyle: 'medium',
+                            timeStyle: 'short'
+                          })}
                         </p>
                       </div>
                       <span
-                        className={`text-xs font-bold ${
+                        className={`flex items-center gap-1.5 text-xs font-bold ${
                           imp.status === "completed"
                             ? "text-[#0c831f]"
                             : imp.status === "processing"
@@ -165,11 +176,13 @@ export default function BulkImportPage() {
                             : "text-[#dc2626]"
                         }`}
                       >
-                        {imp.status === "completed"
-                          ? "✓ Completed"
-                          : imp.status === "processing"
-                          ? "⟳ Processing"
-                          : "✗ Failed"}
+                        {imp.status === "completed" ? (
+                          <><CheckCircle className="h-3.5 w-3.5" /> Completed</>
+                        ) : imp.status === "processing" ? (
+                          <><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Processing</>
+                        ) : (
+                          <><AlertTriangle className="h-3.5 w-3.5" /> Failed</>
+                        )}
                       </span>
                     </div>
                   ))}
@@ -182,3 +195,4 @@ export default function BulkImportPage() {
     </DashboardLayout>
   );
 }
+

@@ -26,6 +26,7 @@ import type {
   CreateRoleFormData,
   CreateApiKeyFormData,
   UpdateConfigFormData,
+  GlobalSettings,
 } from "@/types/settings";
 import type { PaginationState } from "@/lib/types";
 
@@ -307,14 +308,12 @@ export function useAuditLogs(initialParams?: Partial<SettingsQueryParams>) {
   }, []);
 
   const uniqueActions = useMemo(
-    () => [...new Set(mockAuditLogs.map((l) => l.action))],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => [...new Set(logs.map((l) => l.action))],
     [logs]
   ) as string[];
 
   const uniqueEntities = useMemo(
-    () => [...new Set(mockAuditLogs.map((l) => l.entity))],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    () => [...new Set(logs.map((l) => l.entity))],
     [logs]
   ) as string[];
 
@@ -328,9 +327,6 @@ export function useAuditLogs(initialParams?: Partial<SettingsQueryParams>) {
     refresh: fetchLogs,
   };
 }
-
-// Re-export to avoid import issues in mock that references outside module
-import { mockAuditLogs } from "@/data/admin/settings";
 
 // ── System Configs Hook ──────────────────────────────────
 
@@ -480,4 +476,51 @@ export function useNotificationSettings() {
   }, []);
 
   return { channels, eventMappings, loading, error, toggleChannel, refresh: fetchData };
+}
+
+// ── Global Settings Hook ──────────────────────────────────
+
+export function useGlobalSettings() {
+  const [settings, setSettings] = useState<GlobalSettings | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [saving, setSaving] = useState(false);
+
+  const fetchSettings = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const res = await settingsService.getGlobalSettings();
+      if (res.success) setSettings(res.data);
+      else setError(res.error || "Failed to load global settings");
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load global settings");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => { fetchSettings(); }, [fetchSettings]);
+
+  const updateSettings = useCallback(async (data: GlobalSettings) => {
+    setSaving(true);
+    setError(null);
+    try {
+      const res = await settingsService.updateGlobalSettings(data);
+      if (res.success) {
+        setSettings(res.data);
+        return true;
+      } else {
+        setError(res.error || "Failed to update global settings");
+        return false;
+      }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update global settings");
+      return false;
+    } finally {
+      setSaving(false);
+    }
+  }, []);
+
+  return { settings, loading, error, saving, updateSettings, refresh: fetchSettings };
 }

@@ -80,8 +80,8 @@ export default function DeliveryAnalyticsPage() {
                 { label: "Successful", value: analytics.summary.successfulDeliveries.toLocaleString(), sub: `${((analytics.summary.successfulDeliveries / analytics.summary.totalDeliveries) * 100).toFixed(1)}%`, icon: <CheckCircle2 className="h-4 w-4" />, color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
                 { label: "On-Time", value: analytics.summary.onTimeDeliveries.toLocaleString(), sub: `${((analytics.summary.onTimeDeliveries / analytics.summary.totalDeliveries) * 100).toFixed(1)}%`, icon: <TrendingUp className="h-4 w-4" />, color: "text-[#059669]", bg: "bg-[#ecfdf5]" },
                 { label: "Delayed", value: analytics.summary.delayedDeliveries.toLocaleString(), sub: `${((analytics.summary.delayedDeliveries / analytics.summary.totalDeliveries) * 100).toFixed(1)}%`, icon: <AlertTriangle className="h-4 w-4" />, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
-                { label: "Avg Time", value: analytics.summary.avgDeliveryTime, sub: `₹${(analytics.summary.revenue / analytics.summary.totalDeliveries).toFixed(0)}/del`, icon: <Clock className="h-4 w-4" />, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
-                { label: "Revenue", value: `₹${(analytics.summary.revenue / 100000).toFixed(2)}L`, sub: `${analytics.summary.totalDistance}`, icon: <DollarSign className="h-4 w-4" />, color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
+                { label: "Avg Time", value: analytics.summary.avgDeliveryTime, sub: `?${(analytics.summary.revenue / analytics.summary.totalDeliveries).toFixed(0)}/del`, icon: <Clock className="h-4 w-4" />, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
+                { label: "Revenue", value: `?${(analytics.summary.revenue / 100000).toFixed(2)}L`, sub: `${analytics.summary.totalDistance}`, icon: <DollarSign className="h-4 w-4" />, color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
               ].map((stat) => (
                 <div key={stat.label} className={`rounded-xl ${stat.bg} p-3`}>
                   <div className="flex items-center gap-1.5">
@@ -193,7 +193,7 @@ export default function DeliveryAnalyticsPage() {
                       item.deliveries > max.deliveries ? item : max
                     ).hour}
                   </span>
-                  {" · "}
+                  {" ₹ "}
                   {analytics.hourlyDistribution.reduce((sum, item) => sum + item.deliveries, 0).toLocaleString()} total
                 </p>
               </section>
@@ -268,7 +268,7 @@ export default function DeliveryAnalyticsPage() {
               <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
                 {[
                   { label: "Total Distance", value: analytics.summary.totalDistance, icon: <MapPin className="h-5 w-5" /> },
-                  { label: "Fuel Cost", value: `₹${(analytics.summary.totalFuelCost / 1000).toFixed(1)}K`, icon: <Fuel className="h-5 w-5" /> },
+                  { label: "Fuel Cost", value: `?${(analytics.summary.totalFuelCost / 1000).toFixed(1)}K`, icon: <Fuel className="h-5 w-5" /> },
                   { label: "Failed Rate", value: `${((analytics.summary.failedDeliveries / analytics.summary.totalDeliveries) * 100).toFixed(1)}%`, icon: <XCircle className="h-5 w-5" /> },
                   { label: "Avg Delivery", value: analytics.summary.avgDeliveryTime, icon: <Clock className="h-5 w-5" /> },
                 ].map((metric) => (
@@ -288,3 +288,4 @@ export default function DeliveryAnalyticsPage() {
     </DashboardLayout>
   );
 }
+

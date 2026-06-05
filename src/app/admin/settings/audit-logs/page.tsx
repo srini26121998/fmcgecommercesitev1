@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useAuditLogs } from "@/hooks/use-settings";
 import DashboardLayout from "../../dashboard-layout";
@@ -123,3 +123,4 @@ export default function AuditLogsPage() {
     </DashboardLayout>
   );
 }
+

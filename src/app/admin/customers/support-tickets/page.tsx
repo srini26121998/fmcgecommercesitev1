@@ -7,7 +7,7 @@ import ReusableSearchBar from "@/components/ui/admin/reusable-search";
 import ReusableCard from "@/components/ui/admin/reusable-card";
 import StatusBadge from "@/components/ui/admin/reusable-status-badge";
 import ReusableModal from "@/components/ui/admin/reusable-modal";
-import { MessageSquare, Eye, Reply, CheckCircle, Clock, AlertTriangle, RefreshCw, Filter } from "lucide-react";
+import { MessageSquare, Eye, Reply, CheckCircle, Clock, AlertTriangle, RefreshCw, Filter, Plus, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useSupportTickets } from "@/hooks/use-customers";
 import type { SupportTicket } from "@/types/customers";
@@ -17,10 +17,57 @@ export default function SupportTicketsPage() {
     tickets, loading, error, search, setSearch,
     statusFilter, setStatusFilter, priorityFilter, setPriorityFilter,
     pagination, summary, setPage, setPageSize, fetchTickets,
-    updateTicketStatus,
+    updateTicketStatus, createTicket, updateTicket,
   } = useSupportTickets();
   const [showDetailModal, setShowDetailModal] = useState<SupportTicket | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [showEditModal, setShowEditModal] = useState<SupportTicket | null>(null);
   const [assigning, setAssigning] = useState<string | null>(null);
+
+  // Form states for Create
+  const [createForm, setCreateForm] = useState({
+    userId: 0,
+    userName: "",
+    userEmail: "",
+    subject: "",
+    description: "",
+    status: "open",
+    priority: "medium"
+  });
+
+  // Form states for Edit
+  const [editForm, setEditForm] = useState({
+    status: "",
+  });
+
+  const handleCreateSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const payload = {
+      ...createForm,
+      userId: Number(createForm.userId)
+    };
+    const success = await createTicket(payload);
+    if (success) {
+      toast.success("Ticket created successfully");
+      setShowCreateModal(false);
+      setCreateForm({ userId: 0, userName: "", userEmail: "", subject: "", description: "", status: "open", priority: "medium" });
+    }
+  };
+
+  const openEditModal = (ticket: SupportTicket) => {
+    setEditForm({ status: ticket.status });
+    setShowEditModal(ticket);
+  };
+
+  const handleEditSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!showEditModal) return;
+    const success = await updateTicket(showEditModal.id, editForm);
+    if (success) {
+      toast.success("Ticket updated successfully");
+      setShowEditModal(null);
+    }
+  };
 
   const handleAssign = async (ticketId: string) => {
     setAssigning(ticketId);
@@ -53,9 +100,14 @@ export default function SupportTicketsPage() {
               <h1 className="mt-1 text-xl font-bold text-[#1a1a1a] sm:text-2xl">Support Tickets</h1>
               <p className="mt-1.5 text-xs text-[#666]">Manage customer support requests, assign agents, and track resolution.</p>
             </div>
-            <button onClick={fetchTickets} className="flex items-center gap-1.5 rounded-xl border border-[#e8e8e8] bg-white px-3 py-1.5 text-xs font-bold text-[#666] hover:bg-[#f6f7f6]">
-              <RefreshCw className="h-3.5 w-3.5" /> Refresh
-            </button>
+            <div className="flex gap-2">
+              <button onClick={() => setShowCreateModal(true)} className="flex items-center gap-1.5 rounded-xl bg-[#0c831f] px-3 py-1.5 text-xs font-bold text-white hover:bg-[#0a6a18]">
+                <Plus className="h-3.5 w-3.5" /> Create Ticket
+              </button>
+              <button onClick={fetchTickets} className="flex items-center gap-1.5 rounded-xl border border-[#e8e8e8] bg-white px-3 py-1.5 text-xs font-bold text-[#666] hover:bg-[#f6f7f6]">
+                <RefreshCw className="h-3.5 w-3.5" /> Refresh
+              </button>
+            </div>
           </div>
         </section>
 
@@ -109,23 +161,35 @@ export default function SupportTicketsPage() {
               onPageChange={setPage}
               onPageSizeChange={(s) => { setPageSize(s); }}
               columns={[
-                { key: "id", header: "Ticket", width: "100px", render: (t: SupportTicket) => <span className="font-semibold text-[#0c831f]">{t.id}</span> },
-                { key: "customer", header: "Customer", render: (t: SupportTicket) => <span className="font-semibold text-[#1a1a1a]">{t.customer}</span> },
-                { key: "subject", header: "Subject", sortable: true, hideOnMobile: true },
-                { key: "priority", header: "Priority", width: "90px", render: (t: SupportTicket) => <StatusBadge status={t.priority} /> },
-                { key: "status", header: "Status", width: "110px", render: (t: SupportTicket) => <StatusBadge status={t.status} /> },
-                { key: "assignedTo", header: "Assigned", width: "120px", hideOnMobile: true, render: (t: SupportTicket) => t.assignedTo ?? <span className="text-[#999]">—</span> },
-                { key: "createdAt", header: "Created", width: "130px", hideOnMobile: true },
+                { key: "id", header: "Ticket", width: "100px", render: (t: any) => <span className="font-semibold text-[#0c831f]">{t.id}</span> },
+                { key: "customer", header: "Customer", render: (t: any) => (
+                  <div className="flex flex-col">
+                    <span className="font-semibold text-[#1a1a1a]">{t.userName || t.customer}</span>
+                    <span className="text-[10px] text-[#666]">{t.userEmail || t.email} {t.userId ? `(ID: ${t.userId})` : ''}</span>
+                  </div>
+                )},
+                { key: "subject", header: "Subject", render: (t: any) => (
+                  <div className="flex flex-col">
+                    <span className="font-medium text-[#1a1a1a]">{t.subject}</span>
+                    <span className="text-xs text-[#666] truncate max-w-[200px]" title={t.description}>{t.description}</span>
+                  </div>
+                )},
+                { key: "priority", header: "Priority", width: "90px", render: (t: any) => <StatusBadge status={t.priority || "medium"} /> },
+                { key: "status", header: "Status", width: "110px", render: (t: any) => <StatusBadge status={t.status || "open"} /> },
+                { key: "createdAt", header: "Created", width: "130px", hideOnMobile: true, render: (t: any) => (
+                  <span className="text-xs text-[#666]">{t.createdAt ? t.createdAt.split('T')[0] : '—'}</span>
+                )},
               ]}
               actions={[
                 { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: (t: SupportTicket) => setShowDetailModal(t) },
+                { label: "Edit", icon: <Pencil className="h-3.5 w-3.5" />, onClick: (t: SupportTicket) => openEditModal(t) },
                 { label: "Assign", icon: <Reply className="h-3.5 w-3.5" />, onClick: (t: SupportTicket) => handleAssign(t.id), show: (t: SupportTicket) => t.status === "open" },
                 { label: "Resolve", icon: <CheckCircle className="h-3.5 w-3.5" />, onClick: (t: SupportTicket) => handleResolve(t.id), show: (t: SupportTicket) => t.status === "in_progress" },
               ]}
             />
 
             {/* Empty State */}
-            {!loading && !error && tickets.length === 0 && (
+            {!loading && !error && (!tickets || tickets.length === 0) && (
               <div className="rounded-2xl border border-[#e8e8e8] bg-white p-12 text-center">
                 <MessageSquare className="mx-auto h-8 w-8 text-[#ccc]" />
                 <p className="mt-2 text-sm font-bold text-[#666]">No tickets match your filters</p>
@@ -166,7 +230,7 @@ export default function SupportTicketsPage() {
             )}
 
             {/* Messages */}
-            {showDetailModal.messages.length > 0 && (
+            {showDetailModal.messages && showDetailModal.messages.length > 0 && (
               <div>
                 <p className="mb-2 text-xs font-bold uppercase tracking-wide text-[#666]">Conversation</p>
                 <div className="space-y-2">
@@ -208,6 +272,78 @@ export default function SupportTicketsPage() {
           </div>
         )}
       </ReusableModal>
+
+      {/* Create Ticket Modal */}
+      <ReusableModal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Support Ticket" size="md">
+        <form onSubmit={handleCreateSubmit} className="space-y-4">
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-[#666]">User ID</label>
+              <input required type="number" value={createForm.userId} onChange={(e) => setCreateForm({ ...createForm, userId: Number(e.target.value) })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]" />
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-[#666]">User Name</label>
+              <input required type="text" value={createForm.userName} onChange={(e) => setCreateForm({ ...createForm, userName: e.target.value })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]" />
+            </div>
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-[#666]">User Email</label>
+            <input required type="email" value={createForm.userEmail} onChange={(e) => setCreateForm({ ...createForm, userEmail: e.target.value })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-[#666]">Subject</label>
+            <input required type="text" value={createForm.subject} onChange={(e) => setCreateForm({ ...createForm, subject: e.target.value })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]" />
+          </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-[#666]">Description</label>
+            <textarea required value={createForm.description} onChange={(e) => setCreateForm({ ...createForm, description: e.target.value })} rows={3} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]" />
+          </div>
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-[#666]">Status</label>
+              <select value={createForm.status} onChange={(e) => setCreateForm({ ...createForm, status: e.target.value })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]">
+                <option value="open">Open</option>
+                <option value="in_progress">In Progress</option>
+                <option value="resolved">Resolved</option>
+                <option value="closed">Closed</option>
+              </select>
+            </div>
+            <div className="space-y-1">
+              <label className="text-xs font-bold text-[#666]">Priority</label>
+              <select value={createForm.priority} onChange={(e) => setCreateForm({ ...createForm, priority: e.target.value })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]">
+                <option value="low">Low</option>
+                <option value="medium">Medium</option>
+                <option value="high">High</option>
+                <option value="urgent">Urgent</option>
+              </select>
+            </div>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border border-[#e8e8e8] bg-white px-4 py-2 text-sm font-bold text-[#666] hover:bg-[#f6f7f6]">Cancel</button>
+            <button type="submit" className="rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18]">Create Ticket</button>
+          </div>
+        </form>
+      </ReusableModal>
+
+      {/* Edit Ticket Modal */}
+      <ReusableModal open={!!showEditModal} onClose={() => setShowEditModal(null)} title="Edit Support Ticket" size="sm">
+        <form onSubmit={handleEditSubmit} className="space-y-4">
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-[#666]">Status</label>
+            <select value={editForm.status} onChange={(e) => setEditForm({ ...editForm, status: e.target.value })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]">
+              <option value="open">Open</option>
+              <option value="in_progress">In Progress</option>
+              <option value="resolved">Resolved</option>
+              <option value="closed">Closed</option>
+            </select>
+          </div>
+          <div className="flex justify-end gap-3 pt-4">
+            <button type="button" onClick={() => setShowEditModal(null)} className="rounded-xl border border-[#e8e8e8] bg-white px-4 py-2 text-sm font-bold text-[#666] hover:bg-[#f6f7f6]">Cancel</button>
+            <button type="submit" className="rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18]">Save Changes</button>
+          </div>
+        </form>
+      </ReusableModal>
     </DashboardLayout>
   );
 }
+

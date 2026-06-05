@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState, useCallback } from "react";
+import { useMemo, useState, useCallback, useEffect } from "react";
 import type { ReactNode } from "react";
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
+import { AnimatedLoader } from "@/components/ui/animated-loader";
 
 interface Column<T> {
   key: string;
@@ -46,6 +47,9 @@ interface ReusableTableProps<T> {
   onPageChange?: (page: number) => void;
   onPageSizeChange?: (pageSize: number) => void;
   pageSizeOptions?: number[];
+  sortKey?: string | null;
+  sortDir?: "asc" | "desc";
+  onSortChange?: (key: string, dir: "asc" | "desc") => void;
 }
 
 export function ReusableTable<T>({
@@ -65,12 +69,20 @@ export function ReusableTable<T>({
   onPageChange,
   onPageSizeChange,
   pageSizeOptions = [10, 25, 50, 100],
+  sortKey: externalSortKey,
+  sortDir: externalSortDir,
+  onSortChange,
 }: ReusableTableProps<T>) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
-  const [sortKey, setSortKey] = useState<string | null>(null);
-  const [sortDir, setSortDir] = useState<"asc" | "desc">("asc");
+  const [internalSortKey, setInternalSortKey] = useState<string | null>(null);
+  const [internalSortDir, setInternalSortDir] = useState<"asc" | "desc">("asc");
+
+  const sortKey = externalSortKey !== undefined ? externalSortKey : internalSortKey;
+  const sortDir = externalSortDir !== undefined ? externalSortDir : internalSortDir;
 
   const sortedData = useMemo(() => {
+    // If onSortChange is provided, assume backend sorting or controlled sorting
+    if (onSortChange && externalSortKey !== undefined) return data;
     if (!sortKey) return data;
     return [...data].sort((a, b) => {
       const aVal = (a as Record<string, unknown>)[sortKey];
@@ -78,16 +90,57 @@ export function ReusableTable<T>({
       const cmp = String(aVal).localeCompare(String(bVal));
       return sortDir === "asc" ? cmp : -cmp;
     });
-  }, [data, sortKey, sortDir]);
+  }, [data, sortKey, sortDir, onSortChange, externalSortKey]);
+
+  // -- Drag and Drop State --
+  const [colOrder, setColOrder] = useState<string[]>([]);
+
+  useEffect(() => {
+    setColOrder(columns.map((c) => c.key));
+  }, [columns]);
+
+  const orderedColumns = useMemo(() => {
+    if (colOrder.length === 0) return columns;
+    const colMap = new Map(columns.map((c) => [c.key, c]));
+    return colOrder.map((key) => colMap.get(key)).filter(Boolean) as Column<T>[];
+  }, [columns, colOrder]);
+
+  // -- Drag and Drop Handlers --
+  const handleColDragStart = (e: React.DragEvent, key: string) => {
+    e.dataTransfer.setData("text/plain/col", key);
+  };
+
+  const handleColDragOver = (e: React.DragEvent) => {
+    e.preventDefault();
+  };
+
+  const handleColDrop = (e: React.DragEvent, targetKey: string) => {
+    e.preventDefault();
+    const sourceKey = e.dataTransfer.getData("text/plain/col");
+    if (!sourceKey || sourceKey === targetKey) return;
+    setColOrder((prev) => {
+      const newOrder = [...prev];
+      const srcIdx = newOrder.indexOf(sourceKey);
+      const tgtIdx = newOrder.indexOf(targetKey);
+      if (srcIdx > -1 && tgtIdx > -1) {
+        newOrder.splice(srcIdx, 1);
+        newOrder.splice(tgtIdx, 0, sourceKey);
+      }
+      return newOrder;
+    });
+  };
 
   const handleSort = useCallback((key: string) => {
-    if (sortKey === key) {
-      setSortDir((d) => (d === "asc" ? "desc" : "asc"));
+    const isSameKey = sortKey === key;
+    const newDir = isSameKey && sortDir === "asc" ? "desc" : "asc";
+
+    if (onSortChange) {
+      onSortChange(key, newDir);
     } else {
-      setSortKey(key);
-      setSortDir("asc");
+      setInternalSortKey(key);
+      setInternalSortDir(newDir);
     }
-  }, [sortKey]);
+  }, [sortKey, sortDir, onSortChange]);
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
@@ -110,22 +163,7 @@ export function ReusableTable<T>({
   const totalPages = total ? Math.ceil(total / pageSize) : 1;
 
   if (isLoading) {
-    return (
-      <div className="space-y-3">
-        {Array.from({ length: 5 }).map((_, i) => (
-          <div key={i} className="flex gap-4">
-            {columns.map((col) => (
-              <div
-                key={col.key}
-                className="h-8 skeleton-shimmer rounded-lg"
-                style={{ width: col.width || "100%", flex: col.width ? "none" : 1 }}
-              />
-            ))}
-            {actions && <div className="h-8 w-20 skeleton-shimmer rounded-lg" />}
-          </div>
-        ))}
-      </div>
-    );
+    return <AnimatedLoader text="Loading records..." />;
   }
 
   if (data.length === 0) {
@@ -154,13 +192,12 @@ export function ReusableTable<T>({
               <button
                 key={action.label}
                 onClick={() => action.onClick(Array.from(selectedIds))}
-                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${
-                  action.variant === "danger"
+                className={`flex items-center gap-1.5 rounded-lg px-2.5 py-1.5 text-xs font-bold transition-all ${action.variant === "danger"
                     ? "bg-[#fef2f2] text-[#dc2626] hover:bg-[#fee2e2]"
                     : action.variant === "success"
-                    ? "bg-[#e8f5e9] text-[#0c831f] hover:bg-[#d0f0d4]"
-                    : "bg-white text-[#666] hover:bg-[#f6f7f6] border border-[#e8e8e8]"
-                }`}
+                      ? "bg-[#e8f5e9] text-[#0c831f] hover:bg-[#d0f0d4]"
+                      : "bg-white text-[#666] hover:bg-[#f6f7f6] border border-[#e8e8e8]"
+                  }`}
               >
                 {action.icon}
                 {action.label}
@@ -178,7 +215,7 @@ export function ReusableTable<T>({
 
       {/* Table */}
       <div className="overflow-x-auto rounded-xl border border-[#e8e8e8] bg-white">
-        <table className="w-full">
+        <table className="w-full admin-table-responsive">
           <thead>
             <tr className="bg-[#f9fafb] text-left text-[9px] font-medium uppercase tracking-wider text-[#666]">
               {enableSelection && (
@@ -191,22 +228,27 @@ export function ReusableTable<T>({
                   />
                 </th>
               )}
-              {columns.map((col) => (
+              {orderedColumns.map((col) => (
                 <th
                   key={col.key}
-                  className={`px-3 py-2 ${col.hideOnMobile ? "hidden md:table-cell" : ""} ${
-                    col.sortable ? "cursor-pointer select-none hover:text-[#1a1a1a]" : ""
-                  }`}
+                  draggable
+                  onDragStart={(e) => handleColDragStart(e, col.key)}
+                  onDragOver={handleColDragOver}
+                  onDrop={(e) => handleColDrop(e, col.key)}
+                  className={`px-3 py-2 ${col.hideOnMobile ? "hidden md:table-cell" : ""} ${col.sortable ? "cursor-pointer select-none hover:text-[#1a1a1a]" : ""
+                    }`}
                   style={{ width: col.width, textAlign: col.align || "left" }}
                   onClick={() => col.sortable && handleSort(col.key)}
                 >
-                  <div className={`flex items-center gap-1 ${
-                    col.align === "right"
+                  <div className={`flex items-center gap-1 ${col.align === "right"
                       ? "justify-end"
                       : col.align === "center"
-                      ? "justify-center"
-                      : "justify-start"
-                  }`}>
+                        ? "justify-center"
+                        : "justify-start"
+                    }`}>
+                    <div className="cursor-grab hover:text-black opacity-50 hover:opacity-100 mr-1" title="Drag to reorder column" onClick={e => e.stopPropagation()}>
+                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="9" cy="12" r="1" /><circle cx="9" cy="5" r="1" /><circle cx="9" cy="19" r="1" /><circle cx="15" cy="12" r="1" /><circle cx="15" cy="5" r="1" /><circle cx="15" cy="19" r="1" /></svg>
+                    </div>
                     {col.header}
                     {col.sortable && (
                       <span className="text-[#999]">
@@ -224,7 +266,7 @@ export function ReusableTable<T>({
                   </div>
                 </th>
               ))}
-              {actions && <th className="w-24 px-3 py-2 text-right">Actions</th>}
+              {actions && <th className="w-24 px-3 py-2 text-left sticky right-0 bg-[#f9fafb] shadow-[-1px_0_0_0_#e8e8e8] z-10">Actions</th>}
             </tr>
           </thead>
           <tbody className="divide-y divide-[#e8e8e8]">
@@ -234,11 +276,9 @@ export function ReusableTable<T>({
               return (
                 <tr
                   key={id}
-                  className={`text-xs font-normal text-[#334155] transition-all duration-150 ${
-                    onRowClick ? "cursor-pointer" : ""
-                  } ${
-                    isSelected ? "bg-[#e8f5e9]/40" : "hover:bg-[#f9fafb]"
-                  }`}
+                  className={`group text-xs font-normal text-[#334155] transition-all duration-150 ${onRowClick ? "cursor-pointer" : ""
+                    } ${isSelected ? "bg-[#e8f5e9]/40" : "hover:bg-[#f9fafb]"
+                    }`}
                   onClick={() => onRowClick?.(item)}
                 >
                   {enableSelection && (
@@ -252,18 +292,19 @@ export function ReusableTable<T>({
                       />
                     </td>
                   )}
-                  {columns.map((col) => (
+                  {orderedColumns.map((col) => (
                     <td
                       key={col.key}
-                      className={`px-3 py-2 whitespace-nowrap ${col.hideOnMobile ? "hidden md:table-cell" : ""}`}
+                      data-label={col.header}
+                      className={`md:px-3 md:py-2 max-md:px-0 max-md:py-1.5 max-md:whitespace-normal md:whitespace-nowrap ${col.hideOnMobile ? "hidden md:table-cell" : "flex md:table-cell"}`}
                       style={{ textAlign: col.align || "left" }}
                     >
                       {col.render ? col.render(item) : String((item as Record<string, unknown>)[col.key] ?? "")}
                     </td>
                   ))}
                   {actions && (
-                    <td className="px-3 py-2 whitespace-nowrap">
-                      <div className="flex items-center justify-end gap-1">
+                    <td data-label="Actions" className={`md:px-3 md:py-2 max-md:px-0 max-md:py-2 max-md:whitespace-normal md:whitespace-nowrap md:sticky right-0 z-10 md:shadow-[-1px_0_0_0_#e8e8e8] flex md:table-cell ${isSelected ? "bg-[#f4f9f5]" : "bg-white group-hover:bg-[#f9fafb]"}`}>
+                      <div className="flex items-center justify-start gap-1">
                         {actions
                           .filter((a) => !a.show || a.show(item))
                           .map((action) => (
@@ -273,15 +314,14 @@ export function ReusableTable<T>({
                                 e.stopPropagation();
                                 action.onClick(item);
                               }}
-                              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all hover:scale-105 ${
-                                action.variant === "danger"
+                              className={`flex h-7 w-7 items-center justify-center rounded-lg transition-all hover:scale-105 ${action.variant === "danger"
                                   ? "text-[#dc2626] hover:bg-[#fef2f2]"
                                   : action.variant === "success"
-                                  ? "text-[#0c831f] hover:bg-[#e8f5e9]"
-                                  : action.variant === "warning"
-                                  ? "text-[#d97706] hover:bg-[#fffbeb]"
-                                  : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
-                              }`}
+                                    ? "text-[#0c831f] hover:bg-[#e8f5e9]"
+                                    : action.variant === "warning"
+                                      ? "text-[#d97706] hover:bg-[#fffbeb]"
+                                      : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
+                                }`}
                               title={action.label}
                             >
                               {action.icon}
@@ -299,7 +339,7 @@ export function ReusableTable<T>({
 
       {/* Pagination */}
       {total && total > pageSize && (
-        <div className="mt-4 flex items-center justify-between">
+        <div className="mt-4 flex flex-col sm:flex-row items-center justify-between gap-4 pagination-responsive">
           <div className="flex items-center gap-2">
             <span className="text-xs text-[#666]">Rows per page:</span>
             <select

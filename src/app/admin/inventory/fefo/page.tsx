@@ -1,12 +1,12 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "../../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
 import ReusableSearchBar from "@/components/ui/admin/reusable-search";
 import ReusableCard from "@/components/ui/admin/reusable-card";
 import StatusBadge from "@/components/ui/admin/reusable-status-badge";
-import { CalendarDays, AlertTriangle, CheckCircle, Clock, Eye, RefreshCw, X } from "lucide-react";
+import { CalendarDays, AlertTriangle, CheckCircle, Clock, Eye, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { useFEFO } from "@/hooks/use-inventory";
 import type { FEFOBatch } from "@/types/inventory";
@@ -17,7 +17,13 @@ export default function FEFOPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
 
-  const { batches, loading, refresh } = useFEFO();
+  const { batches, loading, error, refresh } = useFEFO();
+
+  useEffect(() => {
+    if (error) {
+      toast.error(error);
+    }
+  }, [error]);
 
   const [viewBatch, setViewBatch] = useState<FEFOBatch | null>(null);
 
@@ -152,3 +158,4 @@ export default function FEFOPage() {
     </DashboardLayout>
   );
 }
+

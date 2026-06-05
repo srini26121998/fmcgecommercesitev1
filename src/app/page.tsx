@@ -1,4 +1,4 @@
-import { Metadata } from "next";
+﻿import { Metadata } from "next";
 import Navbar from "@/components/ui/navbar";
 import Hero from "@/components/ui/home/hero";
 import CategoryPills from "@/components/ui/home/category-pills";

@@ -80,7 +80,7 @@ export const usePushNotificationStore = create<PushSubscriptionState>()(
             try {
               sub = await registration.pushManager.subscribe({
                 userVisibleOnly: true,
-                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey),
+                applicationServerKey: urlBase64ToUint8Array(vapidPublicKey) as any,
               });
             } catch {
               console.warn("[Push] VAPID key invalid — simulating subscription for demo");
@@ -103,7 +103,7 @@ export const usePushNotificationStore = create<PushSubscriptionState>()(
             });
           }
         } catch (err) {
-          console.error("[Push] Subscription failed:", err);
+          console.warn("[Push] Subscription failed:", err);
           set({ isSubscribed: false });
         }
       },
@@ -118,7 +118,7 @@ export const usePushNotificationStore = create<PushSubscriptionState>()(
           }
           set({ isSubscribed: false, subscription: null });
         } catch (err) {
-          console.error("[Push] Unsubscribe failed:", err);
+          console.warn("[Push] Unsubscribe failed:", err);
         }
       },
     }),

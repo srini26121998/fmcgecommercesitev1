@@ -1,22 +1,22 @@
 "use client";
 
 import Link from "next/link";
-import { ChevronRight, Clock, Trash2 } from "lucide-react";
+import { ChevronRight, Clock, Trash2, Minus, Plus } from "lucide-react";
 import { useRecentlyViewedStore } from "@/store/recently-viewed-store";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/use-products";
 import { SafeProductImage } from "@/components/ui/safe-image";
-import { useCartStore } from "@/store/cart-store";
+import AddToCartButton from "@/components/ui/products/add-to-cart-button";
 import { toast } from "sonner";
 import { useRef } from "react";
 
 export default function RecentlyViewed() {
+  const { products } = useProducts();
   const { items, clearRecentlyViewed } = useRecentlyViewedStore();
-  const addToCart = useCartStore((s) => s.addToCart);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const viewedProducts = items
     .map((v) => {
-      const p = products.find((prod) => prod.id === v.id);
+      const p = products.find((prod) => String(prod.id) === String(v.id));
       return p ? { ...p, viewedAt: v.viewedAt } : null;
     })
     .filter(Boolean)
@@ -24,7 +24,7 @@ export default function RecentlyViewed() {
 
   if (viewedProducts.length === 0) return null;
 
-  const isOutOfStock = (stock: string) => stock === "out_of_stock";
+  const isOutOfStock = (stock: number) => stock <= 0;
 
   function scroll(dir: number) {
     const el = scrollRef.current;
@@ -90,36 +90,34 @@ export default function RecentlyViewed() {
                         {product!.name}
                       </p>
                     </Link>
-                    <div className="flex items-center justify-between mt-1.5">
-                      <div className="flex-1">
+                    <div className="mt-1.5">
+                      <div className="flex items-center gap-1">
                         <span className={`text-sm font-black ${oos ? "text-[#999] line-through" : "text-[#1a1a1a]"}`}>₹{product!.price}</span>
                       </div>
-                      {oos ? (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            toast("Price alert feature coming soon!");
-                          }}
-                          className="text-[10px] font-semibold bg-[#fafafa] text-[#ff4f8b] rounded-md px-2 py-0.5 border border-[#ff4f8b]/20 hover:bg-[#fff0f6] transition-colors"
-                        >
-                          NOTIFY
-                        </button>
-                       ) : (
-                        <button
-                          type="button"
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            addToCart({ id: product!.id, name: product!.name, price: product!.price, image: product!.image, quantity: 1 });
-                            toast.success("Added to cart 🛒");
-                          }}
-                          className="min-h-[44px] h-7 px-2.5 rounded-md text-[11px] font-bold text-white bg-[#ff4f8b] hover:bg-[#e63872] active:scale-95 transition-all shadow-sm"
-                        >
-                          ADD
-                        </button>
-                      )}
+                      <div className="mt-2">
+                        {oos ? (
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toast("Price alert feature coming soon!");
+                            }}
+                            className="w-full h-8 sm:h-9 rounded-lg text-xs font-bold bg-[#fafafa] text-[#ff4f8b] border border-[#ff4f8b]/20 hover:bg-[#fff0f6] transition-colors"
+                          >
+                            NOTIFY
+                          </button>
+                        ) : (
+                          <AddToCartButton
+                            productId={product!.id}
+                            productName={product!.name}
+                            productPrice={product!.price}
+                            productImage={product!.image}
+                            themeColor="pink"
+                            size="md"
+                          />
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>

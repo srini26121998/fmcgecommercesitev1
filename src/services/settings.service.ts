@@ -2,11 +2,6 @@
 // Architecture: UI → Component → Hook → Service → Axios → API Gateway → Backend
 //
 // This service is the single source of truth for all settings-related data.
-// Currently returns mock data. To connect to a real backend:
-//   1. Import apiClient from "@/lib/api-client"
-//   2. Set NEXT_PUBLIC_API_BASE_URL
-//   3. Replace mock returns with apiClient calls
-//   4. No UI / hook changes needed — types are shared.
 
 import type {
   SettingsUser,
@@ -28,22 +23,9 @@ import type {
   GstReturn,
   NotificationChannel,
   NotificationEventMapping,
+  GlobalSettings,
 } from "@/types/settings";
-import {
-  mockSettingsUsers,
-  mockRoles,
-  mockFeatureFlags,
-  mockThemeSettings,
-  mockApiKeys,
-  mockAuditLogs,
-  mockSystemConfigs,
-  mockPaymentMethods,
-  mockTaxRates,
-  mockGstReturns,
-  mockNotificationChannels,
-  mockNotificationEventMappings,
-  delay,
-} from "@/data/admin/settings";
+import { apiClient } from "@/lib/api-client";
 
 // ── Settings Service ──────────────────────────────────────
 
@@ -55,67 +37,43 @@ export const settingsService = {
   async getUsers(
     params?: Partial<SettingsQueryParams>
   ): Promise<SettingsApiResponse<PaginatedResponse<SettingsUser>>> {
-    await delay(300);
-
-    let filtered = [...mockSettingsUsers];
-
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (u) =>
-          u.name.toLowerCase().includes(q) ||
-          u.email.toLowerCase().includes(q) ||
-          u.id.toLowerCase().includes(q)
-      );
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/users", { params });
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch users:", error);
+      throw error;
     }
-    if (params?.status && params.status !== "all") {
-      filtered = filtered.filter((u) => u.status === params.status);
-    }
-    if (params?.role && params.role !== "all") {
-      filtered = filtered.filter((u) => u.role === params.role);
-    }
-
-    const page = params?.page || 1;
-    const pageSize = params?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-
-    return {
-      success: true,
-      data: {
-        items: filtered.slice(start, start + pageSize),
-        pagination: { page, pageSize, total },
-      },
-      meta: { cachedAt: new Date().toISOString() },
-    };
   },
 
   async getUserById(userId: string): Promise<SettingsApiResponse<SettingsUser | null>> {
-    await delay(200);
-    const user = mockSettingsUsers.find((u) => u.id === userId) || null;
-    return { success: true, data: user };
+    try {
+      const response = await apiClient.get<any>(`/api/v1/admin/settings/users/${userId}`);
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error(`[settingsService] Failed to fetch user ${userId}:`, error);
+      throw error;
+    }
   },
 
   async createUser(data: CreateUserFormData): Promise<SettingsApiResponse<SettingsUser>> {
-    await delay(400);
-    const newUser: SettingsUser = {
-      id: `USR-${String(mockSettingsUsers.length + 1).padStart(3, "0")}`,
-      name: data.name,
-      email: data.email,
-      role: data.role as SettingsUser["role"],
-      team: data.team,
-      status: "active",
-      mfaEnabled: data.mfaRequired || false,
-      lastLogin: undefined,
-      createdAt: new Date().toISOString().split("T")[0],
-      permissions: [],
-    };
-    return { success: true, data: newUser };
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/settings/users", data);
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to create user:", error);
+      throw error;
+    }
   },
 
   async updateUserStatus(userId: string, status: string): Promise<SettingsApiResponse<boolean>> {
-    await delay(250);
-    return { success: true, data: true };
+    try {
+      await apiClient.patch(`/api/v1/admin/settings/users/${userId}/status`, { status });
+      return { success: true, data: true };
+    } catch (error) {
+      console.error(`[settingsService] Failed to update user status for ${userId}:`, error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -125,37 +83,23 @@ export const settingsService = {
   async getRoles(
     params?: Partial<SettingsQueryParams>
   ): Promise<SettingsApiResponse<PaginatedResponse<Role>>> {
-    await delay(300);
-    let filtered = [...mockRoles];
-
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter((r) => r.name.toLowerCase().includes(q));
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/roles", { params });
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch roles:", error);
+      throw error;
     }
-
-    return {
-      success: true,
-      data: {
-        items: filtered,
-        pagination: { page: 1, pageSize: filtered.length, total: filtered.length },
-      },
-    };
   },
 
   async createRole(data: CreateRoleFormData): Promise<SettingsApiResponse<Role>> {
-    await delay(400);
-    const newRole: Role = {
-      id: `ROL-${String(mockRoles.length + 1).padStart(3, "0")}`,
-      name: data.name,
-      level: "manager",
-      description: data.description,
-      usersCount: 0,
-      isProtected: false,
-      isDefault: false,
-      permissions: data.permissions,
-      createdAt: new Date().toISOString(),
-    };
-    return { success: true, data: newRole };
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/settings/roles", data);
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to create role:", error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -165,32 +109,23 @@ export const settingsService = {
   async getFeatureFlags(
     params?: Partial<SettingsQueryParams>
   ): Promise<SettingsApiResponse<PaginatedResponse<FeatureFlag>>> {
-    await delay(300);
-    let filtered = [...mockFeatureFlags];
-
-    if (params?.environment && params.environment !== "all") {
-      filtered = filtered.filter((f) => f.environment === params.environment);
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/feature-flags", { params });
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch feature flags:", error);
+      throw error;
     }
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (f) =>
-          f.name.toLowerCase().includes(q) || f.key.toLowerCase().includes(q)
-      );
-    }
-
-    return {
-      success: true,
-      data: {
-        items: filtered,
-        pagination: { page: 1, pageSize: filtered.length, total: filtered.length },
-      },
-    };
   },
 
   async toggleFeatureFlag(flagId: string, enabled: boolean): Promise<SettingsApiResponse<boolean>> {
-    await delay(200);
-    return { success: true, data: true };
+    try {
+      await apiClient.patch(`/api/v1/admin/settings/feature-flags/${flagId}`, { enabled });
+      return { success: true, data: true };
+    } catch (error) {
+      console.error(`[settingsService] Failed to toggle feature flag ${flagId}:`, error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -198,15 +133,25 @@ export const settingsService = {
   // ═══════════════════════════════════════════════════════
 
   async getThemeSettings(): Promise<SettingsApiResponse<ThemeSettings>> {
-    await delay(200);
-    return { success: true, data: { ...mockThemeSettings } };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/theme");
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch theme settings:", error);
+      throw error;
+    }
   },
 
   async updateThemeSettings(
     data: Partial<ThemeSettings>
   ): Promise<SettingsApiResponse<ThemeSettings>> {
-    await delay(250);
-    return { success: true, data: { ...mockThemeSettings, ...data, updatedAt: new Date().toISOString() } };
+    try {
+      const response = await apiClient.put<any>("/api/v1/admin/settings/theme", data);
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to update theme settings:", error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -216,56 +161,33 @@ export const settingsService = {
   async getApiKeys(
     params?: Partial<SettingsQueryParams>
   ): Promise<SettingsApiResponse<PaginatedResponse<ApiKey>>> {
-    await delay(300);
-    let filtered = [...mockApiKeys];
-
-    if (params?.status && params.status !== "all") {
-      filtered = filtered.filter((k) => k.status === params.status);
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/api-keys", { params });
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch API keys:", error);
+      throw error;
     }
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (k) =>
-          k.name.toLowerCase().includes(q) || k.prefix?.toLowerCase().includes(q)
-      );
-    }
-
-    const page = params?.page || 1;
-    const pageSize = params?.pageSize || 10;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-
-    return {
-      success: true,
-      data: {
-        items: filtered.slice(start, start + pageSize),
-        pagination: { page, pageSize, total },
-      },
-    };
   },
 
   async createApiKey(data: CreateApiKeyFormData): Promise<SettingsApiResponse<ApiKey>> {
-    await delay(400);
-    const newKey: ApiKey = {
-      id: `API-${String(mockApiKeys.length + 1).padStart(3, "0")}`,
-      name: data.name,
-      key: `fmcg_${Date.now().toString(36)}_${Math.random().toString(36).substring(2, 14)}`,
-      prefix: `fmcg_${data.name.toLowerCase().replace(/\s+/g, "_").substring(0, 8)}`,
-      status: "active",
-      permissions: data.permissions,
-      rateLimit: data.rateLimit || 1000,
-      allowedIPs: data.allowedIPs || [],
-      createdBy: "Current User",
-      createdAt: new Date().toISOString(),
-      expiresAt: data.expiresAt,
-      usageCount: 0,
-    };
-    return { success: true, data: newKey };
+    try {
+      const response = await apiClient.post<any>("/api/v1/admin/settings/api-keys", data);
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to create API key:", error);
+      throw error;
+    }
   },
 
   async revokeApiKey(keyId: string): Promise<SettingsApiResponse<boolean>> {
-    await delay(250);
-    return { success: true, data: true };
+    try {
+      await apiClient.delete(`/api/v1/admin/settings/api-keys/${keyId}`);
+      return { success: true, data: true };
+    } catch (error) {
+      console.error(`[settingsService] Failed to revoke API key ${keyId}:`, error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -275,42 +197,13 @@ export const settingsService = {
   async getAuditLogs(
     params?: Partial<SettingsQueryParams>
   ): Promise<SettingsApiResponse<PaginatedResponse<AuditLog>>> {
-    await delay(350);
-    let filtered = [...mockAuditLogs];
-
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (l) =>
-          l.performedBy.toLowerCase().includes(q) ||
-          l.details?.toLowerCase().includes(q) ||
-          l.entityName?.toLowerCase().includes(q)
-      );
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/audit-logs", { params });
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch audit logs:", error);
+      throw error;
     }
-    if (params?.action && params.action !== "all") {
-      filtered = filtered.filter((l) => l.action === params.action);
-    }
-    if (params?.entity && params.entity !== "all") {
-      filtered = filtered.filter((l) => l.entity === params.entity);
-    }
-
-    // Sort by timestamp descending (most recent first)
-    filtered.sort(
-      (a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime()
-    );
-
-    const page = params?.page || 1;
-    const pageSize = params?.pageSize || 15;
-    const total = filtered.length;
-    const start = (page - 1) * pageSize;
-
-    return {
-      success: true,
-      data: {
-        items: filtered.slice(start, start + pageSize),
-        pagination: { page, pageSize, total },
-      },
-    };
   },
 
   // ═══════════════════════════════════════════════════════
@@ -320,36 +213,25 @@ export const settingsService = {
   async getSystemConfigs(
     params?: Partial<SettingsQueryParams>
   ): Promise<SettingsApiResponse<PaginatedResponse<SystemConfig>>> {
-    await delay(300);
-    let filtered = [...mockSystemConfigs];
-
-    if (params?.category && params.category !== "all") {
-      filtered = filtered.filter((c) => c.category === params.category);
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/config", { params });
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch system configs:", error);
+      throw error;
     }
-    if (params?.search) {
-      const q = params.search.toLowerCase();
-      filtered = filtered.filter(
-        (c) =>
-          c.label.toLowerCase().includes(q) ||
-          c.key.toLowerCase().includes(q) ||
-          c.description?.toLowerCase().includes(q)
-      );
-    }
-
-    return {
-      success: true,
-      data: {
-        items: filtered,
-        pagination: { page: 1, pageSize: filtered.length, total: filtered.length },
-      },
-    };
   },
 
   async updateSystemConfig(
     data: UpdateConfigFormData
   ): Promise<SettingsApiResponse<boolean>> {
-    await delay(250);
-    return { success: true, data: true };
+    try {
+      await apiClient.put("/api/v1/admin/settings/config", data);
+      return { success: true, data: true };
+    } catch (error) {
+      console.error("[settingsService] Failed to update system config:", error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -357,13 +239,23 @@ export const settingsService = {
   // ═══════════════════════════════════════════════════════
 
   async getPaymentMethods(): Promise<SettingsApiResponse<PaymentMethodConfig[]>> {
-    await delay(200);
-    return { success: true, data: mockPaymentMethods };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/payments");
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch payment methods:", error);
+      throw error;
+    }
   },
 
   async togglePaymentMethod(methodId: string, enabled: boolean): Promise<SettingsApiResponse<boolean>> {
-    await delay(200);
-    return { success: true, data: true };
+    try {
+      await apiClient.patch(`/api/v1/admin/settings/payments/${methodId}`, { enabled });
+      return { success: true, data: true };
+    } catch (error) {
+      console.error(`[settingsService] Failed to toggle payment method ${methodId}:`, error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -371,13 +263,23 @@ export const settingsService = {
   // ═══════════════════════════════════════════════════════
 
   async getTaxRates(): Promise<SettingsApiResponse<TaxRate[]>> {
-    await delay(200);
-    return { success: true, data: mockTaxRates };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/taxes");
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch tax rates:", error);
+      throw error;
+    }
   },
 
   async getGstReturns(): Promise<SettingsApiResponse<GstReturn[]>> {
-    await delay(200);
-    return { success: true, data: mockGstReturns };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/gst-returns");
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch GST returns:", error);
+      throw error;
+    }
   },
 
   // ═══════════════════════════════════════════════════════
@@ -385,21 +287,60 @@ export const settingsService = {
   // ═══════════════════════════════════════════════════════
 
   async getNotificationChannels(): Promise<SettingsApiResponse<NotificationChannel[]>> {
-    await delay(200);
-    return { success: true, data: mockNotificationChannels };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/notifications/channels");
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch notification channels:", error);
+      throw error;
+    }
   },
 
   async getNotificationEventMappings(): Promise<SettingsApiResponse<NotificationEventMapping[]>> {
-    await delay(200);
-    return { success: true, data: mockNotificationEventMappings };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings/notifications/events");
+      return { success: true, data: response.data || response };
+    } catch (error) {
+      console.error("[settingsService] Failed to fetch notification event mappings:", error);
+      throw error;
+    }
   },
 
   async toggleNotificationChannel(
     channelName: string,
     enabled: boolean
   ): Promise<SettingsApiResponse<boolean>> {
-    await delay(200);
-    return { success: true, data: true };
+    try {
+      await apiClient.patch(`/api/v1/admin/settings/notifications/channels/${channelName}`, { enabled });
+      return { success: true, data: true };
+    } catch (error) {
+      console.error(`[settingsService] Failed to toggle notification channel ${channelName}:`, error);
+      throw error;
+    }
+  },
+
+  // ═══════════════════════════════════════════════════════
+  // GLOBAL SETTINGS
+  // ═══════════════════════════════════════════════════════
+
+  async getGlobalSettings(): Promise<SettingsApiResponse<GlobalSettings>> {
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/settings");
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      console.error("Failed to fetch global settings:", error);
+      throw error;
+    }
+  },
+
+  async updateGlobalSettings(data: GlobalSettings): Promise<SettingsApiResponse<GlobalSettings>> {
+    try {
+      const response = await apiClient.put<any>("/api/v1/admin/settings", data);
+      return { success: true, data: response.data };
+    } catch (error: any) {
+      console.error("Failed to update global settings:", error);
+      throw error;
+    }
   },
 };
 

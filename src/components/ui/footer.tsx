@@ -198,9 +198,9 @@ export default function Footer() {
               <Link href="/terms" className="hover:text-[#ff4f8b] transition-colors">Terms of Service</Link>
               <Link href="/sitemap" className="hover:text-[#ff4f8b] transition-colors">Sitemap</Link>
             </div>
-            <div className="flex items-center gap-3 text-xs text-[#999]">
+            {/* <div className="flex items-center gap-3 text-xs text-[#999]">
               <span>Made with ❤️ in India</span>
-            </div>
+            </div> */}
           </div>
         </div>
       </div>

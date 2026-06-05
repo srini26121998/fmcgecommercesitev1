@@ -106,7 +106,7 @@ export default function ReusableTable<T extends Record<string, unknown>>({
   return (
     <div className={`overflow-hidden rounded-xl border border-[#e8e8e8] bg-white ${className}`}>
       <div className="overflow-x-auto" style={{ scrollbarWidth: "thin", scrollbarColor: "#ccc transparent" }}>
-        <table className="w-full">
+        <table className="w-full admin-table-responsive">
           <thead>
             <tr className="border-b border-[#e8e8e8] bg-[#f9fafb]">
               {onSelectionChange && (
@@ -173,8 +173,9 @@ export default function ReusableTable<T extends Record<string, unknown>>({
                   {columns.map((col) => (
                     <td
                       key={col.key}
+                      data-label={col.header}
                       className={`px-3 ${compact ? "py-2.5" : "py-3"} text-sm ${
-                        col.hideOnMobile ? "hidden md:table-cell" : ""
+                        col.hideOnMobile ? "hidden md:table-cell" : "flex md:table-cell"
                       }`}
                     >
                       {col.render ? col.render(item) : (item[col.key] as React.ReactNode) ?? "—"}
@@ -189,7 +190,7 @@ export default function ReusableTable<T extends Record<string, unknown>>({
 
       {/* Pagination */}
       {pagination && (
-        <div className="flex flex-wrap items-center justify-between gap-3 border-t border-[#e8e8e8] bg-[#f9fafb] px-4 py-3">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4 border-t border-[#e8e8e8] bg-[#f9fafb] px-4 py-3 pagination-responsive">
           <div className="flex items-center gap-2 text-xs text-[#666]">
             <span>Show</span>
             <select

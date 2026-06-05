@@ -29,7 +29,7 @@ A modern, high-performance grocery e-commerce platform built with Next.js 15, Ty
 
 ### 2. Installation
 ```bash
-git clone https://github.com/santhoshganesan9972/FMCG-Ecommerce-Site-V1.git
+git clone https://github.com/your-username/FMCG-Ecommerce-Site-V1.git
 cd FMCG-Ecommerce-Site-V1
 npm install
 ```

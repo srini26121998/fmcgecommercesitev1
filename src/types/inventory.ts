@@ -24,22 +24,30 @@ export const InventoryItemSchema = z.object({
 export type InventoryItem = z.infer<typeof InventoryItemSchema>;
 
 // ── 2. Warehouse ──────────────────────────────────────────
-export type WarehouseType = "hub" | "cold_storage" | "depot";
+// Supports both the old frontend-only shape and the real backend API:
+//   Backend: { id: number, name, type: "WAREHOUSE"|"STORE", address, isActive, lat, lng, createdAt }
+export type WarehouseType = "hub" | "cold_storage" | "depot" | "WAREHOUSE" | "STORE";
 export type WarehouseStatus = "active" | "maintenance" | "full";
 
 export const WarehouseSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1),
-  type: z.enum(["hub", "cold_storage", "depot"] as const).default("hub"),
-  location: z.string().min(1),
+  // Accept real backend values (WAREHOUSE/STORE) as well as old frontend enums
+  type: z.string().default("hub"),
+  // location is the display field; address is the raw backend field
+  location: z.string().default(""),
   address: z.string().optional(),
   city: z.string().optional(),
   state: z.string().optional(),
   pincode: z.string().optional(),
-  capacity: z.number().int().positive(),
-  used: z.number().int().nonnegative(),
-  utilization: z.number().min(0).max(100),
+  // Capacity / utilisation fields are frontend-computed; optional so real API items work
+  capacity: z.number().int().nonnegative().default(0),
+  used: z.number().int().nonnegative().default(0),
+  utilization: z.number().min(0).max(100).default(0),
   status: z.enum(["active", "maintenance", "full"] as const).default("active"),
+  isActive: z.boolean().optional(),
+  lat: z.number().nullable().optional(),
+  lng: z.number().nullable().optional(),
   manager: z.string().optional(),
   contact: z.string().optional(),
   totalSkus: z.number().int().nonnegative().default(0),
@@ -69,6 +77,7 @@ export const StockTransferSchema = z.object({
   completedAt: z.string().optional().nullable(),
   eta: z.string().optional(),
   notes: z.string().optional(),
+  productId: z.string().optional(),
 });
 export type StockTransfer = z.infer<typeof StockTransferSchema>;
 

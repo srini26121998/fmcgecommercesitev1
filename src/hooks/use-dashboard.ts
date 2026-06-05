@@ -10,6 +10,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { dashboardService } from "@/services/dashboard.service";
+import { inventoryService } from "@/services/inventory.service";
 import type {
   DashboardOverview,
   DashboardQueryParams,
@@ -109,26 +110,57 @@ export function useDashboard(params?: Partial<DashboardQueryParams>): UseDashboa
     }));
 
     try {
-      const response = await dashboardService.getOverview(params);
+      const [
+        overviewRes,
+        invRes,
+      ] = await Promise.all([
+        dashboardService.getOverview(params).catch((err) => {
+          console.error("Failed to fetch dashboard overview:", err);
+          return { success: false, data: null, error: err?.message || "Failed to fetch dashboard overview" };
+        }),
+        inventoryService.getInventoryReport().catch((err) => {
+          console.warn("Failed to fetch inventory report:", err);
+          return { success: false, data: null };
+        }),
+      ]);
 
-      if (!response.success) {
-        throw new Error(response.error || "Failed to load dashboard data");
+      if (!overviewRes.success || !overviewRes.data) {
+        throw new Error(overviewRes.error || "Failed to fetch dashboard overview");
       }
 
+      const overviewData = overviewRes.data;
+      const inventoryReport = invRes.success && invRes.data ? invRes.data : null;
+
+      const liveOrdersData = overviewData.liveOrders || [];
+      const lowStockData = overviewData.lowStockAlerts || [];
+      const vendorPaymentsData = overviewData.vendorPayments || overviewData.upcomingPayments || [];
+      const topProductsData = overviewData.topProducts || [];
+      const acquisitionData = overviewData.acquisitionMetrics || [];
+
+      const updatedOverview: DashboardOverview = {
+        ...overviewData,
+        liveOrders: liveOrdersData,
+        lowStockAlerts: lowStockData,
+        vendorPayments: vendorPaymentsData,
+        topProducts: topProductsData,
+        acquisitionMetrics: acquisitionData,
+        inventoryReport,
+      };
+
       setState({
-        overview: response.data,
-        revenue: response.data.revenue,
-        orders: response.data.orders,
-        customers: response.data.customers,
-        liveOrders: response.data.liveOrders,
-        lowStockAlerts: response.data.lowStockAlerts,
-        vendorPayments: response.data.vendorPayments,
-        topProducts: response.data.topProducts,
-        acquisitionMetrics: response.data.acquisitionMetrics,
+        overview: updatedOverview,
+        revenue: overviewData.revenue,
+        orders: overviewData.orders,
+        customers: overviewData.customers,
+        liveOrders: liveOrdersData,
+        lowStockAlerts: lowStockData,
+        vendorPayments: vendorPaymentsData,
+        topProducts: topProductsData,
+        acquisitionMetrics: acquisitionData,
         loading: false,
         error: null,
         sections: {},
-        lastUpdated: response.meta?.cachedAt || new Date().toISOString(),
+        lastUpdated: overviewData.lastUpdated || new Date().toISOString(),
       });
     } catch (err) {
       const message =
@@ -172,28 +204,44 @@ export function useDashboard(params?: Partial<DashboardQueryParams>): UseDashboa
         let data: unknown;
         switch (section) {
           case "revenue":
-            data = (await dashboardService.getRevenue(params)).data;
+            const revRes = await dashboardService.getRevenue(params);
+            if (!revRes.success || !revRes.data) throw new Error(revRes.error || "Failed to fetch revenue");
+            data = revRes.data;
             break;
           case "orders":
-            data = (await dashboardService.getOrders(params)).data;
+            const ordRes = await dashboardService.getOrders(params);
+            if (!ordRes.success || !ordRes.data) throw new Error(ordRes.error || "Failed to fetch orders");
+            data = ordRes.data;
             break;
           case "customers":
-            data = (await dashboardService.getCustomers(params)).data;
+            const custRes = await dashboardService.getCustomers(params);
+            if (!custRes.success || !custRes.data) throw new Error(custRes.error || "Failed to fetch customers");
+            data = custRes.data;
             break;
           case "liveOrders":
-            data = (await dashboardService.getLiveOrders(params)).data;
+            const liveRes = await dashboardService.getLiveOrders(params);
+            if (!liveRes.success || !liveRes.data) throw new Error(liveRes.error || "Failed to fetch live orders");
+            data = liveRes.data;
             break;
           case "lowStockAlerts":
-            data = (await dashboardService.getLowStockAlerts(params)).data;
+            const lowRes = await dashboardService.getLowStockAlerts(params);
+            if (!lowRes.success || !lowRes.data) throw new Error(lowRes.error || "Failed to fetch low stock alerts");
+            data = lowRes.data;
             break;
           case "vendorPayments":
-            data = (await dashboardService.getVendorPayments(params)).data;
+            const payRes = await dashboardService.getVendorPayments(params);
+            if (!payRes.success || !payRes.data) throw new Error(payRes.error || "Failed to fetch vendor payments");
+            data = payRes.data;
             break;
           case "topProducts":
-            data = (await dashboardService.getTopProducts(params)).data;
+            const topRes = await dashboardService.getTopProducts(params);
+            if (!topRes.success || !topRes.data) throw new Error(topRes.error || "Failed to fetch top products");
+            data = topRes.data;
             break;
           case "acquisitionMetrics":
-            data = (await dashboardService.getAcquisitionMetrics(params)).data;
+            const acqRes = await dashboardService.getAcquisitionMetrics(params);
+            if (!acqRes.success || !acqRes.data) throw new Error(acqRes.error || "Failed to fetch acquisition metrics");
+            data = acqRes.data;
             break;
           default:
             throw new Error(`Unknown section: ${section}`);

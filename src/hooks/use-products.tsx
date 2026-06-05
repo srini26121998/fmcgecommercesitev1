@@ -1,7 +1,10 @@
 "use client";
 
 import { useState, useEffect, useCallback, useMemo } from "react";
-import { productService, categoryService } from "@/services/products.service";
+import { productService } from "@/services/products.service";
+import { categoriesService } from "@/services/categories.service";
+
+
 import { notifyProduct } from "@/lib/notifications";
 import type {
   Product,
@@ -15,7 +18,7 @@ import type {
 
 // ── Product List Hook ────────────────────────────────────
 
-export function useProducts(initialFilters?: Partial<ProductFilters>) {
+export function useProducts(initialFilters?: Partial<ProductFilters>, initialPageSize = 10) {
   const [products, setProducts] = useState<Product[]>([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -33,7 +36,7 @@ export function useProducts(initialFilters?: Partial<ProductFilters>) {
   });
   const [pagination, setPagination] = useState<PaginationState>({
     page: 1,
-    pageSize: 10,
+    pageSize: initialPageSize,
     total: 0,
   });
 
@@ -146,6 +149,98 @@ export function useProduct(id: string) {
   return { product, loading, error };
 }
 
+// ── Search Hook ──────────────────────────────────────────
+
+export function useProductSearch() {
+  const [results, setResults] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const search = useCallback(async (query: string) => {
+    if (!query || query.trim().length === 0) {
+      setResults([]);
+      return [];
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const products = await productService.searchProducts(query);
+      setResults(products);
+      return products;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to search products";
+      setError(msg);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  const clear = useCallback(() => {
+    setResults([]);
+    setError(null);
+  }, []);
+
+  return { results, loading, error, search, clear };
+}
+
+// ── Compare Hook ─────────────────────────────────────────
+
+export function useProductCompare() {
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const loadCompare = useCallback(async (ids: string[]) => {
+    if (!ids || ids.length === 0) {
+      setProducts([]);
+      return [];
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const result = await productService.compareProducts(ids);
+      setProducts(result);
+      return result;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to load compare products";
+      setError(msg);
+      return [];
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { products, loading, error, loadCompare };
+}
+
+// ── Barcode Hook ─────────────────────────────────────────
+
+export function useProductBarcode() {
+  const [product, setProduct] = useState<Product | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const getByBarcode = useCallback(async (code: string) => {
+    setLoading(true);
+    setError(null);
+    try {
+      const p = await productService.getProductByBarcode(code);
+      setProduct(p || null);
+      if (!p) setError("Product not found by barcode");
+      return p;
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : "Failed to fetch product by barcode";
+      setError(msg);
+      return null;
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  return { product, loading, error, getByBarcode };
+}
+
 // ── Product Form Hook ────────────────────────────────────
 
 export function useProductForm() {
@@ -220,8 +315,23 @@ export function useCategories() {
     setLoading(true);
     setError(null);
     try {
-      const data = await categoryService.getCategories();
-      setCategories(data);
+      const response = await categoriesService.getCategories(true); // Fetch all categories including inactive
+      // Map ApiCategory to Category for the UI
+      const mappedCategories = response.categories.map(c => ({
+        id: c._id || c.id,
+        name: c.name,
+        slug: c.slug || c.name.toLowerCase().replace(/\s+/g, '-'),
+        description: c.description,
+        image: c.image,
+        parentId: typeof c.parent === 'string' ? c.parent : (c.parent?._id || null),
+        isActive: c.active !== undefined ? c.active : (c.isActive ?? false),
+        sortOrder: c.order || (c as any).sortOrder || 0,
+        productCount: (c as any).productCount || 0,
+        createdAt: c.createdAt || new Date().toISOString(),
+        updatedAt: c.updatedAt || new Date().toISOString(),
+      })) as Category[];
+      setCategories(mappedCategories);
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load categories");
     } finally {
@@ -235,9 +345,35 @@ export function useCategories() {
 
   const createCategory = useCallback(async (data: Partial<Category>) => {
     try {
-      const category = await categoryService.createCategory(data);
-      setCategories((prev) => [...prev, category]);
-      return category;
+      const apiData = {
+        name: data.name,
+        description: data.description,
+        slug: data.slug,
+        image: data.image,
+        parent: data.parentId || undefined,
+        isActive: data.isActive,
+        active: data.isActive,
+        order: data.sortOrder,
+      };
+      const response = await categoriesService.createCategory(apiData);
+      
+      const newCat: Category = {
+        id: response.category._id || response.category.id,
+        name: response.category.name,
+        slug: response.category.slug || response.category.name.toLowerCase().replace(/\s+/g, '-'),
+        description: response.category.description,
+        image: response.category.image,
+        parentId: typeof response.category.parent === 'string' ? response.category.parent : (response.category.parent?._id || null),
+        isActive: response.category.active !== undefined ? response.category.active : (response.category.isActive ?? false),
+        sortOrder: response.category.order || (response.category as any).sortOrder || 0,
+        productCount: (response.category as any).productCount || 0,
+        createdAt: response.category.createdAt || new Date().toISOString(),
+        updatedAt: response.category.updatedAt || new Date().toISOString(),
+      } as Category;
+      
+      setCategories((prev) => [...prev, newCat]);
+      return newCat;
+
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to create category");
       return null;
@@ -246,11 +382,34 @@ export function useCategories() {
 
   const updateCategory = useCallback(async (id: string, data: Partial<Category>) => {
     try {
-      const updated = await categoryService.updateCategory(id, data);
-      if (updated) {
-        setCategories((prev) => prev.map((c) => (c.id === id ? updated : c)));
-      }
-      return updated || null;
+      const apiData = {
+        name: data.name,
+        description: data.description,
+        slug: data.slug,
+        image: data.image,
+        parent: data.parentId || undefined,
+        isActive: data.isActive,
+        active: data.isActive,
+        order: data.sortOrder,
+      };
+      const response = await categoriesService.updateCategory(id, apiData);
+      
+      const updatedCat: Category = {
+        id: response.category._id || response.category.id,
+        name: response.category.name,
+        slug: response.category.slug || response.category.name.toLowerCase().replace(/\s+/g, '-'),
+        description: response.category.description,
+        image: response.category.image,
+        parentId: typeof response.category.parent === 'string' ? response.category.parent : (response.category.parent?._id || null),
+        isActive: response.category.active !== undefined ? response.category.active : (response.category.isActive ?? false),
+        sortOrder: response.category.order || (response.category as any).sortOrder || 0,
+        productCount: (response.category as any).productCount || 0,
+        createdAt: response.category.createdAt || new Date().toISOString(),
+        updatedAt: response.category.updatedAt || new Date().toISOString(),
+      } as Category;
+      
+      setCategories((prev) => prev.map((c) => (c.id === id ? updatedCat : c)));
+      return updatedCat;
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to update category");
       return null;
@@ -259,7 +418,7 @@ export function useCategories() {
 
   const deleteCategory = useCallback(async (id: string) => {
     try {
-      await categoryService.deleteCategory(id);
+      await categoriesService.deleteCategory(id);
       setCategories((prev) => prev.filter((c) => c.id !== id));
       return true;
     } catch (err) {
@@ -288,18 +447,7 @@ export function useCategories() {
 // ── Pricing Hook ──────────────────────────────────────────
 
 export function usePricing() {
-  const [pricingData, setPricingData] = useState<
-    Array<{
-      id: string;
-      name: string;
-      sku: string;
-      price: number;
-      mrp: number;
-      cost: number;
-      margin: number;
-      tax: number;
-    }>
-  >([]);
+  const [pricingData, setPricingData] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -323,7 +471,7 @@ export function usePricing() {
   const updatePricing = useCallback(
     async (
       id: string,
-      data: { price?: number; mrp?: number; costPrice?: number; taxRate?: number }
+      data: { name?: string; price?: number; mrp?: number; costPrice?: number; taxRate?: number }
     ) => {
       setError(null);
       try {
@@ -367,10 +515,32 @@ export function useProductMedia() {
       url: string;
       alt: string;
       isPrimary: boolean;
+      sortOrder: number;
       uploadedAt: string;
+      product?: {
+        id: string;
+        sku: string;
+        barcode: string;
+        title: string;
+        description: string;
+        brand: string;
+        price: number;
+        mrp: number;
+        costPrice: number;
+        taxRate: number;
+        unit: string;
+        weight: string;
+        status: string;
+        tags: string;
+        warehouse: string;
+        supplier: string;
+        createdAt: string;
+        updatedAt: string;
+      };
     }>
   >([]);
   const [loading, setLoading] = useState(true);
+  const [uploading, setUploading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const fetchMedia = useCallback(async (search?: string) => {
@@ -390,6 +560,28 @@ export function useProductMedia() {
     fetchMedia();
   }, [fetchMedia]);
 
+  // POST /api/v1/admin/products/{id}/media — Upload files for a specific product
+  const uploadMedia = useCallback(async (
+    productId: string,
+    files: File[],
+    meta?: { isPrimary?: boolean; alt?: string; sortOrder?: number }
+  ): Promise<boolean> => {
+    if (!productId || files.length === 0) return false;
+    setUploading(true);
+    setError(null);
+    try {
+      await productService.uploadMedia(productId, files, meta);
+      // Refresh the media list after a successful upload
+      await productService.getProductMedia().then(setMediaItems);
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to upload media");
+      return false;
+    } finally {
+      setUploading(false);
+    }
+  }, []);
+
   const deleteMedia = useCallback(async (id: string) => {
     try {
       await productService.deleteMedia(id);
@@ -401,6 +593,7 @@ export function useProductMedia() {
     }
   }, []);
 
+  // PATCH /api/v1/admin/products/media/{mediaId}/primary — Set a media item as primary
   const setPrimaryMedia = useCallback(async (id: string) => {
     try {
       await productService.setPrimaryMedia(id);
@@ -414,7 +607,7 @@ export function useProductMedia() {
     }
   }, []);
 
-  return { mediaItems, loading, error, fetchMedia, deleteMedia, setPrimaryMedia };
+  return { mediaItems, loading, uploading, error, fetchMedia, uploadMedia, deleteMedia, setPrimaryMedia };
 }
 
 // ── SEO Hook ─────────────────────────────────────────────
@@ -465,6 +658,7 @@ export function useProductSEO() {
         ogImage?: string;
       }
     ) => {
+      setError(null);
       try {
         await productService.updateProductSEO(productId, seo);
         setSeoItems((prev) =>
@@ -522,7 +716,18 @@ export function useBulkUpload() {
     }
   }, [fetchHistory]);
 
-  return { records, loading, uploading, error, fetchHistory, uploadFile };
+  const downloadTemplateFile = useCallback(async () => {
+    setError(null);
+    try {
+      await productService.downloadTemplate();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to download template");
+      return false;
+    }
+  }, []);
+
+  return { records, loading, uploading, error, fetchHistory, uploadFile, downloadTemplateFile };
 }
 
 // ── Audit Logs Hook ─────────────────────────────────────

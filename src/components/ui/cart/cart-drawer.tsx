@@ -2,6 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
+import { SafeProductImage } from "@/components/ui/safe-image";
 import {
   ChevronRight,
   Clock3,
@@ -13,13 +14,13 @@ import {
   Truck,
 } from "lucide-react";
 
-import { useCartStore } from "@/store/cart-store";
+import { useUserCart } from "@/hooks/use-user-cart";
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
 
 export default function CartDrawer() {
-  const { cart, increaseQuantity, decreaseQuantity, removeFromCart } =
-    useCartStore();
+  const { cartItems: cart, increaseQuantity, decreaseQuantity, removeFromCart, total: itemTotal } =
+    useUserCart();
   const [isHydrated, setIsHydrated] = useState(false);
 
   useEffect(() => {
@@ -34,10 +35,6 @@ export default function CartDrawer() {
     );
   }
 
-  const itemTotal = cart.reduce(
-    (acc, item) => acc + item.price * item.quantity,
-    0
-  );
   const totalItems = cart.reduce((acc, item) => acc + item.quantity, 0);
   const deliveryFee = itemTotal > 499 || itemTotal === 0 ? 0 : 25;
   const handlingFee = itemTotal > 0 ? 5 : 0;
@@ -98,20 +95,19 @@ export default function CartDrawer() {
               </div>
             </div>
 
-            {cart.map((item) => (
+            {cart.map((item, index) => (
               <article
-                key={item.id}
+                key={`${item.id}-${index}`}
                 className="flex gap-3 rounded-xl border border-[#e8e8e8] bg-white p-3"
               >
                 <div className="relative h-16 w-16 flex-shrink-0 overflow-hidden rounded-lg bg-[#f2f2f2]">
-                  <Image
+                  <SafeProductImage
                     src={item.image}
                     alt={item.name}
                     fill
                     sizes="64px"
                     className="object-cover"
                     loading="lazy"
-                    quality={70}
                   />
                 </div>
 

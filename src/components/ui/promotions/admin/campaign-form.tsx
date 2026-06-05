@@ -54,6 +54,12 @@ export function CampaignForm({ onSubmit, onCancel, initial }: CampaignFormProps)
     setSubmitting(true);
     setError(null);
     try {
+      let formattedStartDate = startDate;
+      if (formattedStartDate && !formattedStartDate.includes("T")) formattedStartDate += "T00:00:00";
+      
+      let formattedEndDate = endDate;
+      if (formattedEndDate && !formattedEndDate.includes("T")) formattedEndDate += "T23:59:59";
+
       await onSubmit({
         name,
         description,
@@ -61,8 +67,8 @@ export function CampaignForm({ onSubmit, onCancel, initial }: CampaignFormProps)
         audienceTarget,
         audience: audienceOptions.find((a) => a.value === audienceTarget)?.label || "All Users",
         budget: budget ? `₹${parseInt(budget).toLocaleString()}` : "₹0",
-        startDate,
-        endDate,
+        startDate: formattedStartDate,
+        endDate: formattedEndDate,
         status: initial?.status || "draft",
       });
     } catch {
@@ -249,6 +255,12 @@ export function CouponGenerator({ onGenerate, onCancel }: CouponGeneratorProps) 
     try {
       const discountLabel = discountType === "percentage" ? `${discountValue}% Off`
         : discountType === "bogo" ? "Buy 1 Get 1" : `₹${discountValue} Off`;
+      let formattedStartDate = startDate;
+      if (formattedStartDate && !formattedStartDate.includes("T")) formattedStartDate += "T00:00:00";
+      
+      let formattedEndDate = endDate;
+      if (formattedEndDate && !formattedEndDate.includes("T")) formattedEndDate += "T23:59:59";
+
       await onGenerate({
         code: code.toUpperCase(),
         type: type as Coupon["type"],
@@ -259,8 +271,8 @@ export function CouponGenerator({ onGenerate, onCancel }: CouponGeneratorProps) 
         maxDiscount: maxDiscount > 0 ? maxDiscount : undefined,
         totalIssued,
         perUserLimit,
-        startDate,
-        endDate,
+        startDate: formattedStartDate,
+        endDate: formattedEndDate,
       });
     } catch {
       setError("Failed to generate coupon");

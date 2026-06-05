@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Star,
   ThumbsUp,
@@ -51,6 +51,7 @@ const mockReviewsWithMedia: Review[] = [
     likes: 12,
     verified: true,
     hasImage: true,
+    imageUrl: "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=800&q=80",
   },
   {
     id: 2,
@@ -89,6 +90,7 @@ const mockReviewsWithMedia: Review[] = [
     likes: 10,
     verified: true,
     hasImage: true,
+    imageUrl: "https://images.unsplash.com/photo-1542838132-92c53300491e?w=800&q=80",
   },
 ];
 
@@ -133,13 +135,62 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
   const [newQuestion, setNewQuestion] = useState("");
   const [uploadedFiles, setUploadedFiles] = useState<{ id: string; name: string; preview?: string }[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const { hasVoted, addVote, removeVote } = useReviewVotesStore();
+  
+  // Dynamic states
+  const [reviews, setReviews] = useState<Review[]>(mockReviewsWithMedia);
+  const [qaList, setQaList] = useState<QAItem[]>(mockQA);
+  const [isWritingReview, setIsWritingReview] = useState(false);
+  const [newReviewRating, setNewReviewRating] = useState(5);
+  const [newReviewComment, setNewReviewComment] = useState("");
+  const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
 
-  const displayedReviews = showAllReviews ? mockReviewsWithMedia : mockReviewsWithMedia.slice(0, 3);
-  const displayedQA = showAllQA ? mockQA : mockQA.slice(0, 2);
+  // Fix zustand reactivity and hydration mismatch by grabbing votes array
+  const votes = useReviewVotesStore((state) => state.votes) || [];
+  const addVote = useReviewVotesStore((state) => state.addVote);
+  const removeVote = useReviewVotesStore((state) => state.removeVote);
+  const [isClient, setIsClient] = useState(false);
+  
+  useEffect(() => {
+    setIsClient(true);
+  }, []);
+
+  function hasVoted(key: string) {
+    return isClient ? votes.some((v) => v.key === key) : false;
+  }
+
+  const displayedReviews = showAllReviews ? reviews : reviews.slice(0, 3);
+  const displayedQA = showAllQA ? qaList : qaList.slice(0, 2);
+
+  const handleAskQuestion = () => {
+    if (!newQuestion.trim()) return;
+    const newQ: QAItem = {
+      id: Date.now(),
+      question: newQuestion,
+      answer: "Pending response...",
+      askedBy: "You",
+      answeredBy: "Pending",
+      date: "Just now",
+      likes: 0,
+    };
+    setQaList([newQ, ...qaList]);
+    setNewQuestion("");
+    toast.success("Question submitted successfully!");
+  };
 
   return (
     <section className="rounded-3xl border border-[#e8e8e8] bg-white p-5 sm:p-6 shadow-sm">
+      {/* Media Modal */}
+      {selectedMedia && (
+        <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/80 p-4" onClick={() => setSelectedMedia(null)}>
+          <button className="absolute top-4 right-4 text-white hover:text-[#ff4f8b] bg-black/50 rounded-full p-2" onClick={() => setSelectedMedia(null)}>
+            <X className="w-6 h-6" />
+          </button>
+          <div className="max-w-4xl max-h-[90vh] overflow-hidden rounded-xl relative" onClick={e => e.stopPropagation()}>
+            <img src={selectedMedia} alt="Preview" className="max-w-full max-h-[90vh] object-contain rounded-xl" />
+          </div>
+        </div>
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-5">
         <div>
@@ -165,7 +216,7 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
           }`}
         >
           <MessageSquare className="w-4 h-4" />
-          Reviews ({mockReviewsWithMedia.length})
+          Reviews ({reviews.length})
         </button>
         <button
           onClick={() => setActiveTab("qa")}
@@ -174,7 +225,7 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
           }`}
         >
           <HelpCircle className="w-4 h-4" />
-          Q&A ({mockQA.length})
+          Q&A ({qaList.length})
         </button>
       </div>
 
@@ -211,29 +262,36 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
             </button>
             {/* Uploaded files preview */}
             {uploadedFiles.map((f) => (
-              <div key={f.id} className="flex-shrink-0 w-20 h-20 rounded-xl bg-[#f2f2f2] flex items-center justify-center border border-[#e8e8e8] relative group">
+              <div key={f.id} className="flex-shrink-0 w-20 h-20 rounded-xl bg-[#f2f2f2] flex items-center justify-center border border-[#e8e8e8] relative group cursor-pointer overflow-hidden" onClick={() => f.preview && setSelectedMedia(f.preview)}>
                 {f.preview ? (
                   <img src={f.preview} alt={f.name} className="w-full h-full object-cover rounded-xl" />
                 ) : (
                   <Video className="w-6 h-6 text-[#666]" />
                 )}
                 <button
-                  onClick={() => setUploadedFiles((prev) => prev.filter((x) => x.id !== f.id))}
-                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#dc2626] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    setUploadedFiles((prev) => prev.filter((x) => x.id !== f.id));
+                  }}
+                  className="absolute -top-1.5 -right-1.5 w-5 h-5 rounded-full bg-[#dc2626] text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity z-10"
                 >
                   <X className="w-3 h-3" />
                 </button>
               </div>
             ))}
-            {mockReviewsWithMedia.filter((r) => r.hasImage).map((r) => (
-              <div key={r.id} className="flex-shrink-0 w-20 h-20 rounded-xl bg-[#f2f2f2] flex items-center justify-center border border-[#e8e8e8] cursor-pointer hover:border-[#ff4f8b] transition-colors relative">
-                <ImageIcon className="w-6 h-6 text-[#999]" />
-                <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-[#0c831f] flex items-center justify-center">
+            {reviews.filter((r) => r.hasImage).map((r) => (
+              <div key={r.id} onClick={() => setSelectedMedia(r.imageUrl || "https://images.unsplash.com/photo-1621939514649-280e2ee25f60?w=800&q=80")} className="flex-shrink-0 w-20 h-20 rounded-xl bg-[#f2f2f2] flex items-center justify-center border border-[#e8e8e8] cursor-pointer hover:border-[#ff4f8b] transition-colors relative overflow-hidden">
+                {r.imageUrl ? (
+                  <img src={r.imageUrl} alt="Review" className="w-full h-full object-cover" />
+                ) : (
+                  <ImageIcon className="w-6 h-6 text-[#999]" />
+                )}
+                <span className="absolute bottom-1 right-1 w-3 h-3 rounded-full bg-[#0c831f] flex items-center justify-center z-10">
                   <Camera className="w-2 h-2 text-white" />
                 </span>
               </div>
             ))}
-            {mockReviewsWithMedia.filter((r) => r.hasVideo).map((r) => (
+            {reviews.filter((r) => r.hasVideo).map((r) => (
               <div key={`video-${r.id}`} className="flex-shrink-0 w-20 h-20 rounded-xl bg-[#1a1a1a] flex items-center justify-center border border-[#e8e8e8] cursor-pointer hover:border-[#ff4f8b] transition-colors relative">
                 <Video className="w-6 h-6 text-white" />
                 <div className="absolute inset-0 flex items-center justify-center">
@@ -313,24 +371,79 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
 
           {/* Show more / Write review */}
           <div className="mt-4 space-y-3">
-            {mockReviewsWithMedia.length > 3 && (
+            {reviews.length > 3 && (
               <button
                 onClick={() => setShowAllReviews(!showAllReviews)}
                 className="w-full flex items-center justify-center gap-1 py-2 text-xs font-semibold text-[#ff4f8b] hover:bg-[#fff0f6] rounded-xl transition-colors"
               >
-                {showAllReviews ? "Show less" : `Show all ${mockReviewsWithMedia.length} reviews`}
+                {showAllReviews ? "Show less" : `Show all ${reviews.length} reviews`}
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllReviews ? "rotate-180" : ""}`} />
               </button>
             )}
-            <button
-              onClick={() => {
-                toast.success("Review submitted! Thank you for your feedback.");
-              }}
-              className="w-full h-11 rounded-xl border-2 border-dashed border-[#e8e8e8] flex items-center justify-center gap-2 text-sm font-semibold text-[#666] hover:border-[#ff4f8b] hover:text-[#ff4f8b] hover:bg-[#fff0f6] transition-all"
-            >
-              <MessageSquare className="w-4 h-4" />
-              Write a Review
-            </button>
+            
+            {isWritingReview ? (
+              <div className="border border-[#e8e8e8] rounded-xl p-4 mt-4 bg-[#f9f9f9]">
+                <h3 className="font-bold text-[#1a1a1a] mb-3">Write your review</h3>
+                <div className="flex gap-1 mb-3">
+                  {[1, 2, 3, 4, 5].map(star => (
+                    <Star
+                      key={star}
+                      className={`w-6 h-6 cursor-pointer transition-colors ${star <= newReviewRating ? 'fill-yellow-400 text-yellow-400' : 'text-[#e8e8e8] hover:text-yellow-200'}`}
+                      onClick={() => setNewReviewRating(star)}
+                    />
+                  ))}
+                </div>
+                <textarea
+                  className="w-full border border-[#e8e8e8] rounded-xl p-3 text-sm mb-3 outline-none focus:border-[#ff4f8b] transition-colors resize-none"
+                  placeholder="What did you think about this product?"
+                  rows={3}
+                  value={newReviewComment}
+                  onChange={(e) => setNewReviewComment(e.target.value)}
+                />
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setIsWritingReview(false)}
+                    className="px-4 py-2 border border-[#e8e8e8] text-sm font-bold text-[#666] rounded-xl hover:bg-[#e8e8e8] transition-colors"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    disabled={!newReviewComment.trim()}
+                    onClick={() => {
+                      if(!newReviewComment.trim()) return;
+                      const newR: Review = {
+                        id: Date.now(),
+                        name: "You",
+                        date: "Just now",
+                        rating: newReviewRating,
+                        comment: newReviewComment,
+                        likes: 0,
+                        verified: true,
+                        hasImage: uploadedFiles.length > 0,
+                        imageUrl: uploadedFiles[0]?.preview,
+                      };
+                      setReviews([newR, ...reviews]);
+                      setIsWritingReview(false);
+                      setNewReviewComment("");
+                      setNewReviewRating(5);
+                      setUploadedFiles([]);
+                      toast.success("Review submitted! Thank you for your feedback.");
+                    }}
+                    className="px-4 py-2 bg-[#ff4f8b] text-white text-sm font-bold rounded-xl hover:bg-[#e63872] transition-colors disabled:opacity-50"
+                  >
+                    Submit Review
+                  </button>
+                </div>
+              </div>
+            ) : (
+              <button
+                onClick={() => setIsWritingReview(true)}
+                className="w-full h-11 rounded-xl border-2 border-dashed border-[#e8e8e8] flex items-center justify-center gap-2 text-sm font-semibold text-[#666] hover:border-[#ff4f8b] hover:text-[#ff4f8b] hover:bg-[#fff0f6] transition-all"
+              >
+                <MessageSquare className="w-4 h-4" />
+                Write a Review
+              </button>
+            )}
           </div>
         </div>
       )}
@@ -385,12 +498,12 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
 
           {/* Ask a question */}
           <div className="mt-4 space-y-3">
-            {mockQA.length > 2 && (
+            {qaList.length > 2 && (
               <button
                 onClick={() => setShowAllQA(!showAllQA)}
                 className="w-full flex items-center justify-center gap-1 py-2 text-xs font-semibold text-[#ff4f8b] hover:bg-[#fff0f6] rounded-xl transition-colors"
               >
-                {showAllQA ? "Show less" : `Show all ${mockQA.length} questions`}
+                {showAllQA ? "Show less" : `Show all ${qaList.length} questions`}
                 <ChevronDown className={`w-3.5 h-3.5 transition-transform ${showAllQA ? "rotate-180" : ""}`} />
               </button>
             )}
@@ -403,6 +516,7 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
                 className="flex-1 h-11 rounded-xl border border-[#e8e8e8] px-4 text-sm text-[#1a1a1a] outline-none focus:border-[#ff4f8b] transition-colors placeholder:text-[#999]"
               />
               <button
+                onClick={handleAskQuestion}
                 disabled={!newQuestion.trim()}
                 className="h-11 px-4 rounded-xl bg-[#ff4f8b] text-white text-sm font-bold flex items-center gap-1.5 hover:bg-[#e63872] transition-colors disabled:opacity-50"
               >

@@ -140,11 +140,11 @@ export default function PartnerProfilePage() {
                     )}
                     <div className="flex items-center gap-2 text-sm text-[#666]">
                       <MapPin className="h-4 w-4 text-[#d97706]" />
-                      {profile.city} · {profile.zone}
+                      {profile.city} ₹ {profile.zone}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-[#666]">
                       <Truck className="h-4 w-4 text-[#0c831f]" />
-                      {profile.vehicleType.replace("_", " ")} · {profile.vehicleReg || "N/A"}
+                      {profile.vehicleType.replace("_", " ")} ₹ {profile.vehicleReg || "N/A"}
                     </div>
                     <div className="flex items-center gap-2 text-sm text-[#666]">
                       <Calendar className="h-4 w-4 text-[#2563eb]" />
@@ -152,7 +152,7 @@ export default function PartnerProfilePage() {
                     </div>
                     <div className="flex items-center gap-2 text-sm text-[#666]">
                       <Star className="h-4 w-4 text-[#d97706] fill-current" />
-                      {profile.rating.toFixed(1)} rating · {profile.totalDeliveries.toLocaleString()} deliveries
+                      {profile.rating.toFixed(1)} rating ₹ {profile.totalDeliveries.toLocaleString()} deliveries
                     </div>
                   </div>
 
@@ -169,8 +169,8 @@ export default function PartnerProfilePage() {
                 {[
                   { label: "Current Orders", value: profile.currentOrders, color: "text-[#2563eb]", bg: "bg-[#eff6ff]" },
                   { label: "Total Deliveries", value: profile.totalDeliveries.toLocaleString(), color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
-                  { label: "Total Earnings", value: `₹${(profile.totalEarnings / 1000).toFixed(1)}K`, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
-                  { label: "This Month", value: `₹${(profile.thisMonthEarnings / 1000).toFixed(1)}K`, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
+                  { label: "Total Earnings", value: `?${(profile.totalEarnings / 1000).toFixed(1)}K`, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
+                  { label: "This Month", value: `?${(profile.thisMonthEarnings / 1000).toFixed(1)}K`, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
                 ].map((stat) => (
                   <div key={stat.label} className={`rounded-xl ${stat.bg} p-3 text-center`}>
                     <p className={`text-lg font-black ${stat.color}`}>{stat.value}</p>
@@ -230,7 +230,7 @@ export default function PartnerProfilePage() {
                           </span>
                         </td>
                         <td className="py-2.5 text-xs text-[#666]">
-                          {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString("en-IN") : "—"}
+                          {doc.uploadedAt ? new Date(doc.uploadedAt).toLocaleDateString("en-IN") : "₹"}
                         </td>
                       </tr>
                     ))}
@@ -253,7 +253,7 @@ export default function PartnerProfilePage() {
                   >
                     <span className="text-sm font-bold text-[#1a1a1a]">{shift.day}</span>
                     <span className="text-xs font-bold text-[#666]">
-                      {shift.start} — {shift.end}
+                      {shift.start} ₹ {shift.end}
                     </span>
                   </div>
                 ))}
@@ -285,3 +285,4 @@ export default function PartnerProfilePage() {
     </DashboardLayout>
   );
 }
+

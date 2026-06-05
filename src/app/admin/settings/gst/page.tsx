@@ -16,10 +16,10 @@ const taxRates = [
 ];
 
 const gstReturns = [
-  { period: "Apr 2026", status: "filed", dueDate: "2026-05-11", filedOn: "2026-05-10", amount: "₹1,24,560" },
-  { period: "Mar 2026", status: "filed", dueDate: "2026-04-11", filedOn: "2026-04-09", amount: "₹1,12,340" },
-  { period: "Feb 2026", status: "filed", dueDate: "2026-03-11", filedOn: "2026-03-08", amount: "₹1,08,920" },
-  { period: "May 2026", status: "pending", dueDate: "2026-06-11", filedOn: "—", amount: "₹1,32,450" },
+  { period: "Apr 2026", status: "filed", dueDate: "2026-05-11", filedOn: "2026-05-10", amount: "?1,24,560" },
+  { period: "Mar 2026", status: "filed", dueDate: "2026-04-11", filedOn: "2026-04-09", amount: "?1,12,340" },
+  { period: "Feb 2026", status: "filed", dueDate: "2026-03-11", filedOn: "2026-03-08", amount: "?1,08,920" },
+  { period: "May 2026", status: "pending", dueDate: "2026-06-11", filedOn: "₹", amount: "?1,32,450" },
 ];
 
 export default function GSTSettingsPage() {
@@ -143,3 +143,4 @@ export default function GSTSettingsPage() {
     </DashboardLayout>
   );
 }
+

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useCallback } from "react";
 import { useSystemConfigs } from "@/hooks/use-settings";
@@ -61,3 +61,4 @@ export default function SystemConfigurationsPage() {
     </DashboardLayout>
   );
 }
+

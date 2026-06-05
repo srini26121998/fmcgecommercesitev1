@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
@@ -9,7 +9,9 @@ import {
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
 import { useOrderStore } from "@/store/order-store";
+import { useWishlistStore } from "@/store/wishlist-store";
 import { toast } from "sonner";
+import { authService } from "@/services/auth.service";
 
 const menuGroups = [
   {
@@ -44,13 +46,24 @@ export default function AccountPage() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
   const orders = useOrderStore((state) => state.orders);
+  const wishlistCount = useWishlistStore((state) => state.wishlist.length);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const totalOrders = orders.length;
   const deliveredOrders = orders.filter((o) => o.status === "Delivered").length;
 
-  const handleLogout = () => {
+  const handleLogout = async () => {
     setIsLoggingOut(true);
+    
+    try {
+      if (user?.token) {
+        await authService.logout({ refreshToken: user.token });
+      }
+    } catch (error) {
+      console.error("Logout API call failed:", error);
+      // We still proceed to logout locally even if API fails
+    }
+
     logout();
     toast.success("You've been logged out successfully!", {
       description: "See you again soon!",
@@ -73,7 +86,7 @@ export default function AccountPage() {
               <User className="w-8 h-8 text-white" />
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-bold">Hello, {user?.name || "User"}! 👋</h1>
+              <h1 className="text-xl font-bold">Hello, {user?.name || "User"}! ðŸ‘‹</h1>
               <p className="text-white/80 text-sm">{user?.email || "Member since Jan 2024"}</p>
               <div className="flex items-center gap-1.5 mt-1.5">
                 <Star className="w-3.5 h-3.5 fill-yellow-300 text-yellow-300" />
@@ -114,7 +127,7 @@ export default function AccountPage() {
             <div className="w-10 h-10 rounded-full bg-[#fce4ec] flex items-center justify-center mx-auto mb-2">
               <Heart className="w-5 h-5 text-[#e91e63]" />
             </div>
-            <div className="text-xl font-bold text-[#1a1a1a]">5</div>
+            <div className="text-xl font-bold text-[#1a1a1a]">{wishlistCount}</div>
             <div className="text-[10px] text-[#666] font-medium uppercase tracking-wide">Wishlist</div>
           </div>
         </div>
@@ -158,18 +171,22 @@ export default function AccountPage() {
             Recent Activity
           </h2>
           <div className="bg-white rounded-2xl shadow-sm border border-[#e8e8e8] p-4">
-            <div className="flex items-center gap-4">
-              <div className="w-10 h-10 rounded-full bg-[#e8f5e9] flex items-center justify-center flex-shrink-0">
-                <Clock className="w-5 h-5 text-[#0c831f]" />
+            {orders.length > 0 ? (
+              <div className="flex items-center gap-4">
+                <div className="w-10 h-10 rounded-full bg-[#e8f5e9] flex items-center justify-center flex-shrink-0">
+                  <Clock className="w-5 h-5 text-[#0c831f]" />
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-sm text-[#1a1a1a]">Order {orders[0].id} {orders[0].status.toLowerCase()}</p>
+                  <p className="text-xs text-[#666]">Your order of {orders[0].items.length} items was {orders[0].status.toLowerCase()}</p>
+                </div>
+                <Link href="/account/orders" className="text-xs font-semibold text-[#ff4f8b] whitespace-nowrap hover:underline">
+                  View
+                </Link>
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-[#1a1a1a]">Order #12345 delivered</p>
-                <p className="text-xs text-[#666]">Your order of 5 items was delivered today</p>
-              </div>
-              <Link href="/account/orders" className="text-xs font-semibold text-[#ff4f8b] whitespace-nowrap hover:underline">
-                View
-              </Link>
-            </div>
+            ) : (
+              <p className="text-sm text-[#666] text-center py-2">No recent activity yet.</p>
+            )}
           </div>
         </div>
 

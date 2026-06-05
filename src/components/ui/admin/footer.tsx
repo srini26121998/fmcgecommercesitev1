@@ -56,12 +56,7 @@ function buildFooterGroups(): FooterGroup[] {
   }));
 }
 
-const systemStats = [
-  { label: "Orders Today", value: "847", icon: ShoppingCart, color: "text-[#ff4f8b]", bg: "bg-[#fff0f6]" },
-  { label: "Revenue", value: "₹1.2L", icon: TrendingUp, color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
-  { label: "Active Users", value: "1.4k", icon: Users, color: "text-[#1565c0]", bg: "bg-[#e3f2fd]" },
-  { label: "Avg. Response", value: "1.2s", icon: Activity, color: "text-[#e65100]", bg: "bg-[#fff3e0]" },
-];
+
 
 export default function AdminFooter() {
   const footerGroups = buildFooterGroups();
@@ -81,27 +76,7 @@ export default function AdminFooter() {
         Back to top
       </button>
 
-      {/* ── Quick Stats Row ── */}
-      <div className="bg-[#fafafa] border-b border-[#e8e8e8]">
-        <div className="mx-auto w-full max-w-[1200px] px-4 py-4">
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-            {systemStats.map((stat) => (
-              <div
-                key={stat.label}
-                className="bg-white rounded-xl border border-[#e8e8e8] p-3 flex items-center gap-3 hover:shadow-sm transition-shadow"
-              >
-                <div className={`w-10 h-10 rounded-lg ${stat.bg} flex items-center justify-center flex-shrink-0`}>
-                  <stat.icon className={`w-5 h-5 ${stat.color}`} />
-                </div>
-                <div>
-                  <p className="text-xs text-[#999] font-medium">{stat.label}</p>
-                  <p className="text-base font-black text-[#1a1a1a]">{stat.value}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </div>
+
 
       {/* ── Dashboard Quick Link ── */}
       <div className="mx-auto w-full max-w-[1200px] px-4 pt-6">

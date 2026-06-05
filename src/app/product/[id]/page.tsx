@@ -1,5 +1,4 @@
-import { products } from "@/data/products";
-import { categorySections } from "@/data/categories";
+import { productService } from "@/services/products.service";
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { env } from "@/lib/env";
@@ -22,12 +21,14 @@ interface ProductPageProps {
 
 export async function generateMetadata({ params }: ProductPageProps): Promise<Metadata> {
   const { id } = await params;
-  const product = products.find((item) => item.id === Number(id));
+  const product = await productService.getProductById(id);
   if (!product) return { title: "Product Not Found | FMCG Commerce" };
   
   const discount = Math.round(
-    ((product.oldPrice - product.price) / product.oldPrice) * 100
+    ((product.mrp - product.price) / (product.mrp || 1)) * 100
   );
+  
+  const productImage = product.media?.[0]?.url || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&h=400&q=80";
   
   return {
     title: `${product.name} — ₹${product.price} | FMCG Commerce`,
@@ -42,13 +43,13 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
       title: `${product.name} — ₹${product.price} | FMCG Commerce`,
       description: `Buy ${product.name} at ₹${product.price} (${discount}% off). 10-minute delivery. Free delivery above ₹199.`,
       siteName: "FMCG Commerce",
-      images: [{ url: product.image, width: 800, height: 800, alt: product.name }],
+      images: [{ url: productImage, width: 800, height: 800, alt: product.name }],
     },
     twitter: {
       card: "summary_large_image",
       title: `${product.name} — Just ₹${product.price} | FMCG Commerce`,
       description: `${product.name} with ${discount}% off. 10-min delivery. Fresh guaranteed.`,
-      images: [product.image],
+      images: [productImage],
       creator: "@fmcgcommerce",
     },
   };
@@ -56,18 +57,22 @@ export async function generateMetadata({ params }: ProductPageProps): Promise<Me
 
 export default async function ProductPage({ params }: ProductPageProps) {
   const { id } = await params;
-  const product = products.find((item) => item.id === Number(id));
+  const product = await productService.getProductById(id);
 
   if (!product) {
     notFound();
   }
 
   const discount = Math.round(
-    ((product.oldPrice - product.price) / product.oldPrice) * 100
+    ((product.mrp - product.price) / (product.mrp || 1)) * 100
   );
+  
+  const productImage = product.media?.[0]?.url || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&h=400&q=80";
+  const productRating = 4.5; // Default for API products as they don't have ratings yet
 
-  const relatedProducts = products
-    .filter((item) => item.category === product.category && item.id !== product.id)
+  const relatedResult = await productService.getProducts({ category: product.category }, { page: 1, pageSize: 19 });
+  const relatedProducts = relatedResult.products
+    .filter((item) => item.id !== product.id)
     .slice(0, 18);
 
   // split related products into 3 fixed rows (6 items per row) so each row scrolls independently
@@ -80,9 +85,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
     return rows;
   })();
 
-  const categorySlug =
-    categorySections.find((section) => section.filter(product.category))?.slug ||
-    product.category.toLowerCase();
+  const categorySlug = product.category.toLowerCase().replace(/\s+/g, '-');
 
   const featureHighlights = [
     {
@@ -115,16 +118,16 @@ export default async function ProductPage({ params }: ProductPageProps) {
   return (
     <main className="min-h-screen bg-[#f2f2f2] pb-20 md:pb-0">
       <Navbar />
-      <RecentlyViewedTracker product={product} />
+      <RecentlyViewedTracker product={{ ...product, image: productImage, oldPrice: product.mrp, rating: productRating, stock: product.stock > 0 ? "in_stock" : "out_of_stock" } as any} />
 
-      <div className="pt-16">
+      <div className="pt-[72px] sm:pt-20">
 
         {/* Breadcrumb */}
         <div className="bg-white border-b border-[#e8e8e8] px-3 sm:px-4 md:px-6 py-2.5">
           <div className="max-w-[1400px] mx-auto flex items-center gap-1.5 text-xs text-[#999]">
-            <span>Home</span>
+            <Link href="/" className="hover:text-[#ff4f8b] transition-colors">Home</Link>
             <ChevronRight className="w-3 h-3" />
-            <span>{product.category}</span>
+            <Link href={`/category/${categorySlug}`} className="hover:text-[#ff4f8b] transition-colors">{product.category}</Link>
             <ChevronRight className="w-3 h-3" />
             <span className="text-[#1a1a1a] font-semibold truncate">{product.name}</span>
           </div>
@@ -143,7 +146,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 )}
                  <div className="relative w-full max-w-xs sm:max-w-sm h-80">
                      <SafeProductImage
-                     src={product.image}
+                     src={productImage}
                      alt={product.name}
                      fill
                      className="w-full object-contain"
@@ -162,7 +165,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                   </span>
                   <div className="flex items-center gap-1 bg-[#0c831f] text-white text-xs font-bold px-2 py-1 rounded-lg">
                     <Star className="w-3 h-3 fill-white" />
-                    {product.rating}
+                    {productRating}
                   </div>
                 </div>
 
@@ -184,7 +187,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                     ₹{product.price}
                   </p>
                   <p className="text-base text-[#999] line-through">
-                    ₹{product.oldPrice}
+                    ₹{product.mrp}
                   </p>
                   {discount > 0 && (
                     <span className="text-sm font-bold text-[#ff4f8b]">
@@ -194,7 +197,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 </div>
 
                 <p className="text-sm text-[#666] leading-relaxed mb-6">
-                  Premium quality {product.category.toLowerCase()} product. Fresh and carefully sourced for the best experience.
+                  {product.name} is a premium quality {product.category.toLowerCase()} item carefully sourced to ensure maximum freshness and value. Delivered straight to your door in 10 minutes, making it perfect for your everyday grocery needs.
                 </p>
 
                 {/* Trust badges */}
@@ -214,14 +217,14 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 {/* Add to cart + wishlist */}
                 <div className="flex items-center gap-3">
                   <div className="flex-1">
-                    <ProductDetailActions product={{ id: product.id, name: product.name, price: product.price, image: product.image, stock: product.stock }} />
+                    <ProductDetailActions product={{ id: product.id, name: product.name, price: product.price, image: productImage, stock: product.stock > 0 ? "in_stock" : "out_of_stock" } as any} />
                   </div>
-                  <ProductDetailWishlist product={product} />
+                  <ProductDetailWishlist product={{ ...product, image: productImage, oldPrice: product.mrp, rating: productRating } as any} />
                 </div>
 
                 {/* Price alert */}
                 <div className="mt-3">
-                  <PriceAlertButton product={product} />
+                  <PriceAlertButton product={{ ...product, image: productImage, oldPrice: product.mrp, rating: productRating } as any} />
                 </div>
 
               </div>
@@ -247,7 +250,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
             </div>
 
             <div className="mt-6">
-              <ReviewsQA productRating={product.rating} />
+              <ReviewsQA productRating={productRating} />
             </div>
 
             <div className="mt-6">
@@ -279,7 +282,13 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 {relatedRows.map((row, rowIndex) => (
                   <div key={rowIndex}>
                     {row.length > 0 ? (
-                      <CarouselRow items={row} />
+                      <CarouselRow items={row.map(p => ({
+                        ...p,
+                        oldPrice: p.mrp,
+                        rating: 4.5,
+                        image: p.media?.[0]?.url || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&h=400&q=80",
+                        stock: p.stock > 0 ? "in_stock" : "out_of_stock"
+                      } as any))} />
                     ) : (
                       <div className="rounded-3xl border border-dashed border-[#e8e8e8] bg-[#f9f9f9] p-8 text-center text-sm font-semibold text-[#666]">
                         No related products available yet. Explore other categories for more great finds.
@@ -292,7 +301,7 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
         </div>
       </div>
-       <StickyAddToCart product={{ id: product.id, name: product.name, price: product.price, image: product.image, stock: product.stock }} />
+       <StickyAddToCart product={{ id: product.id, name: product.name, price: product.price, image: productImage, stock: product.stock > 0 ? "in_stock" : "out_of_stock" } as any} />
     </main>
   );
 }

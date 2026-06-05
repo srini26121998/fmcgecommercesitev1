@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useCallback } from "react";
 import { useThemeSettings } from "@/hooks/use-settings";
@@ -7,6 +7,7 @@ import { ThemeSelector } from "@/components/settings/theme-selector";
 import { ReusablePageHeader } from "@/components/common";
 import { Palette, Monitor, Sun, Moon, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
+import { AnimatedLoader } from "@/components/ui/animated-loader";
 
 const fontOptions = [
   { value: "inter", label: "Inter" },
@@ -48,7 +49,7 @@ export default function ThemeSettingsPage() {
     return (
       <DashboardLayout>
         <div className="flex items-center justify-center p-12">
-          <Loader2 className="h-8 w-8 animate-spin text-[#0c831f]" />
+          <AnimatedLoader />
         </div>
       </DashboardLayout>
     );
@@ -363,3 +364,4 @@ export default function ThemeSettingsPage() {
     </DashboardLayout>
   );
 }
+

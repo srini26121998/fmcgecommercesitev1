@@ -170,9 +170,18 @@ interface ChartsSectionProps {
   hourlyActivity: ChartPoint[];
   revenueTotal: number;
   hourlyPeak: number;
+  ordersChartSubtitle?: string;
+  ordersChartPeakLabel?: string;
 }
 
-export function ChartsSection({ revenueChart, hourlyActivity, revenueTotal, hourlyPeak }: ChartsSectionProps) {
+export function ChartsSection({
+  revenueChart,
+  hourlyActivity,
+  revenueTotal,
+  hourlyPeak,
+  ordersChartSubtitle = "Hourly Activity (Today)",
+  ordersChartPeakLabel = "Peak",
+}: ChartsSectionProps) {
   return (
     <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-2">
       <ChartCard>
@@ -187,7 +196,17 @@ export function ChartsSection({ revenueChart, hourlyActivity, revenueTotal, hour
       </ChartCard>
 
       <ChartCard>
-        <SectionHeader title="Orders" subtitle="Hourly Activity (Today)" color="text-[#2563eb]" icon={<ShoppingCart className="h-4 w-4" />} action={<span className="text-xs font-bold text-[#2563eb]">Peak: {hourlyPeak} orders</span>} />
+        <SectionHeader
+          title="Orders"
+          subtitle={ordersChartSubtitle}
+          color="text-[#2563eb]"
+          icon={<ShoppingCart className="h-4 w-4" />}
+          action={
+            <span className="text-xs font-bold text-[#2563eb]">
+              {ordersChartPeakLabel}: {hourlyPeak} orders
+            </span>
+          }
+        />
         <BarChart
           data={hourlyActivity}
           color="text-[#2563eb]"
@@ -386,13 +405,13 @@ export function DeliverySystemHealth({ onTime, delayed, total, avgTime, uptime, 
         <div className="grid grid-cols-2 gap-3">
           <div className="rounded-xl bg-[#e8f5e9] p-4 text-center">
             <CheckCircle className="mx-auto h-6 w-6 text-[#0c831f]" />
-            <p className="mt-1 text-xl font-black text-[#0c831f]">{((onTime / total) * 100).toFixed(1)}%</p>
+            <p className="mt-1 text-xl font-black text-[#0c831f]">{total > 0 ? ((onTime / total) * 100).toFixed(1) : "0.0"}%</p>
             <p className="text-[10px] font-bold text-[#0c831f]">On Time</p>
             <p className="text-[10px] text-[#0c831f]/70">{onTime.toLocaleString()} deliveries</p>
           </div>
           <div className="rounded-xl bg-[#fef2f2] p-4 text-center">
             <XCircle className="mx-auto h-6 w-6 text-[#dc2626]" />
-            <p className="mt-1 text-xl font-black text-[#dc2626]">{((delayed / total) * 100).toFixed(1)}%</p>
+            <p className="mt-1 text-xl font-black text-[#dc2626]">{total > 0 ? ((delayed / total) * 100).toFixed(1) : "0.0"}%</p>
             <p className="text-[10px] font-bold text-[#dc2626]">Delayed</p>
             <p className="text-[10px] text-[#dc2626]/70">{delayed.toLocaleString()} deliveries</p>
           </div>
@@ -457,7 +476,7 @@ interface SidePanelsProps {
 
 export function SidePanels({ liveOrders, stockAlerts, vendorPayments, activityFeed, vendorPaymentTotal }: SidePanelsProps) {
   return (
-    <div className="grid grid-cols-1 gap-4 sm:gap-6 xl:grid-cols-4">
+    <div className="grid grid-cols-1 gap-4 sm:gap-6 md:grid-cols-2 xl:grid-cols-4">
       {/* Live Orders */}
       <div className="rounded-2xl border border-[#e8e8e8] bg-white shadow-sm">
         <div className="flex items-center justify-between border-b border-[#e8e8e8] px-5 py-4">
@@ -573,17 +592,28 @@ interface CustomerMetricsProps {
   newWeekly: number;
   returnRate: number;
   avgOrderValue?: string;
+  lifetimeValue?: string;
+  churnRate?: string;
   loyaltyMembers?: string;
 }
 
-export function CustomerMetrics({ total, active, newWeekly, returnRate, avgOrderValue = "₹847", loyaltyMembers = "8,450" }: CustomerMetricsProps) {
+export function CustomerMetrics({
+  total,
+  active,
+  newWeekly,
+  returnRate,
+  avgOrderValue = "₹0",
+  lifetimeValue = "₹0",
+  churnRate = "0%",
+  loyaltyMembers = "8,450",
+}: CustomerMetricsProps) {
   const metrics = [
     { label: "Total Customers", value: total.toLocaleString(), icon: Users, color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
     { label: "Active (30d)", value: active.toLocaleString(), icon: TrendingUp, color: "text-[#2563eb]", bg: "bg-[#eff6ff]" },
     { label: "New (7d)", value: newWeekly.toLocaleString(), icon: UserPlus, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
     { label: "Avg Order Value", value: avgOrderValue, icon: ShoppingBag, color: "text-[#ff4f8b]", bg: "bg-[#fff0f6]" },
-    { label: "Return Rate", value: `${returnRate}%`, icon: Percent, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
-    { label: "Loyalty Members", value: loyaltyMembers, icon: Star, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
+    { label: "Lifetime Value", value: lifetimeValue, icon: Star, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
+    { label: "Churn Rate", value: churnRate, icon: Percent, color: "text-[#dc2626]", bg: "bg-[#fef2f2]" },
   ];
 
   return (

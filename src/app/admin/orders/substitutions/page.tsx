@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useMemo } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -100,9 +100,9 @@ export default function SubstitutionsPage() {
             { key: "orderId", header: "Order", width: "100px", render: (s) => <span className="font-bold text-[#0c831f]">{(s as Substitution).orderId}</span> },
             { key: "original", header: "Original Item", sortable: true, render: (s) => <span className="font-bold text-[#1a1a1a]">{(s as Substitution).original}</span> },
             { key: "substitute", header: "Substituted With", render: (s) => <span className="text-[#0c831f] font-semibold">{(s as Substitution).substitute}</span> },
-            { key: "reason", header: "Reason", width: "120px", hideOnMobile: true, render: (s) => (s as Substitution).reason || "—" },
+            { key: "reason", header: "Reason", width: "120px", hideOnMobile: true, render: (s) => (s as Substitution).reason || "₹" },
             { key: "status", header: "Status", width: "110px", render: (s) => <StatusBadge status={(s as Substitution).status} /> },
-            { key: "amount", header: "Amount", width: "90px", align: "right", render: (s) => <span className="font-bold">₹{(s as Substitution).amount}</span> },
+            { key: "amount", header: "Amount", width: "90px", align: "right", render: (s) => <span className="font-bold">?{(s as Substitution).amount}</span> },
           ]}
           actions={[
             { label: "Accept", icon: <CheckCircle className="h-3.5 w-3.5" />, onClick: (s: Substitution) => handleDecide(s, "accepted"), variant: "success", show: (s: Substitution) => s.status === "pending" },
@@ -157,22 +157,22 @@ export default function SubstitutionsPage() {
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Amount</p>
-                <p className="font-semibold text-[#1a1a1a]">₹{viewSubstitution.amount}</p>
+                <p className="font-semibold text-[#1a1a1a]">?{viewSubstitution.amount}</p>
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Reason</p>
-                <p className="font-semibold text-[#666]">{viewSubstitution.reason || "—"}</p>
+                <p className="font-semibold text-[#666]">{viewSubstitution.reason || "₹"}</p>
               </div>
             </div>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Decided By</p>
-                <p className="font-semibold text-[#666]">{viewSubstitution.decidedBy || "—"}</p>
+                <p className="font-semibold text-[#666]">{viewSubstitution.decidedBy || "₹"}</p>
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Decided At</p>
-                <p className="font-semibold text-[#666]">{viewSubstitution.decidedAt || "—"}</p>
+                <p className="font-semibold text-[#666]">{viewSubstitution.decidedAt || "₹"}</p>
               </div>
             </div>
           </div>
@@ -181,3 +181,4 @@ export default function SubstitutionsPage() {
     </DashboardLayout>
   );
 }
+

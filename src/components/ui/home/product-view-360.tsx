@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useCallback, useEffect } from "react";
+import { createPortal } from "react-dom";
 import { X, RotateCw, Maximize2, Minimize2 } from "lucide-react";
 import { SafeProductImage } from "@/components/ui/safe-image";
 import { motion, AnimatePresence } from "framer-motion";
@@ -27,6 +28,11 @@ export default function ProductView360({ isOpen, onClose, product }: ProductView
   const [isFullscreen, setIsFullscreen] = useState(false);
   const autoRotateRef = useRef<ReturnType<typeof setInterval> | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const startAutoRotate = useCallback(() => {
     stopAutoRotate();
@@ -88,9 +94,9 @@ export default function ProductView360({ isOpen, onClose, product }: ProductView
 
   const tiltAngle = ((frame / FRAMES) * ROTATION_DEGREES) % 360;
 
-  if (!product) return null;
+  if (!product || !mounted) return null;
 
-  return (
+  const modalContent = (
     <AnimatePresence>
       {isOpen && (
         <motion.div
@@ -260,4 +266,6 @@ export default function ProductView360({ isOpen, onClose, product }: ProductView
       )}
     </AnimatePresence>
   );
+
+  return createPortal(modalContent, document.body);
 }

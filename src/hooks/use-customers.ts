@@ -125,7 +125,57 @@ export function useCustomerActions() {
     }
   }, []);
 
-  return { updateStatus, addNote, updating, error };
+  const deleteNote = useCallback(async (noteId: string) => {
+    try {
+      await customerService.deleteCustomerNote(noteId);
+      return true;
+    } catch {
+      setError("Failed to delete note");
+      return false;
+    }
+  }, []);
+
+  return { updateStatus, addNote, deleteNote, updating, error };
+}
+
+export function useCustomerNotes(id: string) {
+  const [notes, setNotes] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  const fetchNotes = useCallback(async () => {
+    setLoading(true);
+    try {
+      const data = await customerService.getCustomerNotes(id);
+      setNotes(data);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load notes");
+    } finally {
+      setLoading(false);
+    }
+  }, [id]);
+
+  useEffect(() => {
+    fetchNotes();
+  }, [fetchNotes]);
+
+  return { notes, loading, error, fetchNotes };
+}
+
+export function useCustomerStats() {
+  const [stats, setStats] = useState<any>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    setLoading(true);
+    customerService.getCustomerStats()
+      .then(setStats)
+      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load stats"))
+      .finally(() => setLoading(false));
+  }, []);
+
+  return { stats, loading, error };
 }
 
 // ── Segments Hook ────────────────────────────────────────
@@ -135,40 +185,94 @@ export function useSegments() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    customerService.getSegments()
-      .then(setSegments)
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load segments"))
-      .finally(() => setLoading(false));
+  const fetchSegments = useCallback(async () => {
+    setLoading(true);
+    setError(null);
+    try {
+      const data = await customerService.getSegments();
+      setSegments(data || []);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load segments");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  const totalCustomers = useMemo(() => segments.reduce((s, seg) => s + seg.customerCount, 0), [segments]);
+  useEffect(() => {
+    fetchSegments();
+  }, [fetchSegments]);
 
-  return { segments, loading, error, totalCustomers };
+  const createSegment = useCallback(async (data: { name: string; criteria: string; description: string }) => {
+    try {
+      const newSeg = await customerService.createSegment(data);
+      await fetchSegments();
+      return newSeg;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create segment");
+      throw err;
+    }
+  }, [fetchSegments]);
+
+  const updateSegment = useCallback(async (id: string | number, data: { name: string; criteria: string; description: string }) => {
+    try {
+      const updated = await customerService.updateSegment(id, data);
+      await fetchSegments();
+      return updated;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update segment");
+      throw err;
+    }
+  }, [fetchSegments]);
+
+  const totalCustomers = useMemo(() => {
+    return segments.reduce((s, seg) => s + (seg.customerCount || 0), 0);
+  }, [segments]);
+
+  return {
+    segments,
+    loading,
+    error,
+    totalCustomers,
+    fetchSegments,
+    createSegment,
+    updateSegment,
+  };
 }
 
 // ── Analytics Hook ───────────────────────────────────────
 
 export function useCustomerAnalytics() {
+  const [purchaseBehavior, setPurchaseBehavior] = useState<any>(null);
   const [metrics, setMetrics] = useState<AnalyticsMetric[]>([]);
   const [cohortData, setCohortData] = useState<CohortData[]>([]);
   const [acquisitionChannels, setAcquisitionChannels] = useState<{ channel: string; count: number; percentage: number; revenue: number }[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
+  const fetchAnalytics = useCallback(async () => {
     setLoading(true);
-    Promise.all([
-      customerService.getAnalyticsMetrics(),
-      customerService.getCohortData(),
-      customerService.getAcquisitionChannels(),
-    ])
-      .then(([m, c, a]) => { setMetrics(m); setCohortData(c); setAcquisitionChannels(a); })
-      .catch((err) => setError(err instanceof Error ? err.message : "Failed to load analytics"))
-      .finally(() => setLoading(false));
+    setError(null);
+    try {
+      const pb = await customerService.getPurchaseBehavior().catch((err) => {
+        console.warn("getPurchaseBehavior failed, using fallback:", err);
+        return null;
+      });
+      setPurchaseBehavior(pb);
+      setMetrics([]);
+      setCohortData([]);
+      setAcquisitionChannels([]);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to load analytics");
+    } finally {
+      setLoading(false);
+    }
   }, []);
 
-  return { metrics, cohortData, acquisitionChannels, loading, error };
+  useEffect(() => {
+    fetchAnalytics();
+  }, [fetchAnalytics]);
+
+  return { purchaseBehavior, metrics, cohortData, acquisitionChannels, loading, error, refresh: fetchAnalytics };
 }
 
 // ── Support Tickets Hook ─────────────────────────────────
@@ -193,9 +297,9 @@ export function useSupportTickets(initialFilters?: TicketFilters) {
         { search, status: statusFilter, priority: priorityFilter },
         { page: pagination.page, pageSize: pagination.pageSize },
       );
-      setTickets(result.tickets);
-      setPagination(result.pagination);
-      setSummary(result.summary);
+      setTickets(result.tickets || []);
+      setPagination(result.pagination || { page: pagination.page, pageSize: pagination.pageSize, total: result.tickets?.length || 0 });
+      setSummary(result.summary || { total: 0, open: 0, inProgress: 0, resolved: 0, urgent: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load tickets");
     } finally {
@@ -217,11 +321,33 @@ export function useSupportTickets(initialFilters?: TicketFilters) {
     return !!updated;
   }, []);
 
+  const createTicket = useCallback(async (data: any) => {
+    try {
+      await customerService.createTicket(data);
+      await fetchTickets();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to create ticket");
+      return false;
+    }
+  }, [fetchTickets]);
+
+  const updateTicket = useCallback(async (id: string, data: any) => {
+    try {
+      await customerService.updateTicket(id, data);
+      await fetchTickets();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to update ticket");
+      return false;
+    }
+  }, [fetchTickets]);
+
   return {
     tickets, loading, error, search, setSearch,
     statusFilter, setStatusFilter, priorityFilter, setPriorityFilter,
     pagination, summary, setPage, setPageSize, fetchTickets,
-    updateTicketStatus,
+    updateTicketStatus, createTicket, updateTicket,
   };
 }
 
@@ -238,23 +364,18 @@ export function useFraudAlerts(initialFilters?: FraudFilters) {
   const [summary, setSummary] = useState<FraudListResponse["summary"]>({
     total: 0, blocked: 0, flagged: 0, monitoring: 0, critical: 0, high: 0,
   });
-  const [analytics, setAnalytics] = useState<{ alertsByLevel: Record<string, number>; trendLast7Days: number; topReasons: { reason: string; count: number }[] } | null>(null);
 
   const fetchAlerts = useCallback(async () => {
     setLoading(true);
     setError(null);
     try {
-      const [result, analyticsData] = await Promise.all([
-        customerService.getFraudAlerts(
-          { search, status: statusFilter, riskLevel: riskLevelFilter },
-          { page: pagination.page, pageSize: pagination.pageSize },
-        ),
-        customerService.getFraudAnalytics(),
-      ]);
-      setAlerts(result.alerts);
-      setPagination(result.pagination);
-      setSummary(result.summary);
-      setAnalytics(analyticsData);
+      const result = await customerService.getFraudAlerts(
+        { search, status: statusFilter, riskLevel: riskLevelFilter },
+        { page: pagination.page, pageSize: pagination.pageSize },
+      );
+      setAlerts(result.alerts || []);
+      setPagination(result.pagination || { page: pagination.page, pageSize: pagination.pageSize, total: result.alerts?.length || 0 });
+      setSummary(result.summary || { total: 0, blocked: 0, flagged: 0, monitoring: 0, critical: 0, high: 0 });
     } catch (err) {
       setError(err instanceof Error ? err.message : "Failed to load fraud alerts");
     } finally {
@@ -276,10 +397,21 @@ export function useFraudAlerts(initialFilters?: FraudFilters) {
     return !!updated;
   }, []);
 
+  const resetFraudScore = useCallback(async (customerId: string) => {
+    try {
+      await customerService.resetFraudScore(customerId);
+      await fetchAlerts();
+      return true;
+    } catch (err) {
+      setError(err instanceof Error ? err.message : "Failed to reset fraud score");
+      return false;
+    }
+  }, [fetchAlerts]);
+
   return {
     alerts, loading, error, search, setSearch,
     statusFilter, setStatusFilter, riskLevelFilter, setRiskLevelFilter,
-    pagination, summary, analytics,
-    setPage, setPageSize, fetchAlerts, updateAlertStatus,
+    pagination, summary,
+    setPage, setPageSize, fetchAlerts, updateAlertStatus, resetFraudScore,
   };
 }

@@ -5,6 +5,7 @@ import { ShoppingBag, RotateCcw, Plus, Check, X, ChevronRight, Clock } from "luc
 import { SafeImage } from "@/components/ui/safe-image";
 import { useCartStore } from "@/store/cart-store";
 import { toast } from "sonner";
+import { orderService } from "@/services/orders.service";
 
 interface ReorderItem {
   id: number;
@@ -42,34 +43,60 @@ export default function ReorderFromHistory({ isOpen, onClose, orderId, orderDate
     });
   };
 
-  function handleReorder() {
+  async function handleReorder() {
     setIsAdding(true);
     const toAdd = items.filter((i) => selectedItems.has(i.id));
-    let addedCount = 0;
 
-    for (const item of toAdd) {
-      const existing = cart.find((c) => c.id === item.id);
-      if (existing) {
-        for (let i = 0; i < item.quantity; i++) {
-          increaseQuantity(item.id);
+    try {
+      const res = await orderService.reorder(orderId);
+
+      let addedCount = 0;
+      for (const item of toAdd) {
+        const existing = cart.find((c) => c.id === item.id);
+        if (existing) {
+          for (let i = 0; i < item.quantity; i++) {
+            increaseQuantity(item.id);
+          }
+        } else {
+          addToCart({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            image: item.image,
+            quantity: item.quantity,
+          });
         }
-      } else {
-        addToCart({
-          id: item.id,
-          name: item.name,
-          price: item.price,
-          image: item.image,
-          quantity: item.quantity,
-        });
+        addedCount++;
       }
-      addedCount++;
-    }
 
-    setTimeout(() => {
-      setIsAdding(false);
+      toast.success(res.message || `${addedCount} item${addedCount > 1 ? "s" : ""} added to cart! 🛒`);
+      onClose();
+    } catch (err: any) {
+      console.warn("Reorder API failed:", err);
+      // Fallback to local
+      let addedCount = 0;
+      for (const item of toAdd) {
+        const existing = cart.find((c) => c.id === item.id);
+        if (existing) {
+          for (let i = 0; i < item.quantity; i++) {
+            increaseQuantity(item.id);
+          }
+        } else {
+          addToCart({
+            id: item.id,
+            name: item.name,
+            price: item.price,
+            image: item.image,
+            quantity: item.quantity,
+          });
+        }
+        addedCount++;
+      }
       toast.success(`${addedCount} item${addedCount > 1 ? "s" : ""} added to cart! 🛒`);
       onClose();
-    }, 500);
+    } finally {
+      setIsAdding(false);
+    }
   }
 
   function selectAll() {

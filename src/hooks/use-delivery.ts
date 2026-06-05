@@ -70,6 +70,14 @@ export function useDeliveryPartners(initialParams?: Partial<DeliveryQueryParams>
     setPagination((prev) => ({ ...prev, page: 1, pageSize }));
   }, []);
 
+  const addPartner = useCallback(async (data: any) => {
+    const res = await deliveryService.createPartner(data);
+    if (res.success) {
+      await fetchPartners();
+    }
+    return res;
+  }, [fetchPartners]);
+
   const onlineCount = useMemo(() => partners.filter((p) => p.status === "online").length, [partners]);
   const busyCount = useMemo(() => partners.filter((p) => p.status === "busy").length, [partners]);
   const zones = useMemo(() => [...new Set(partners.map((p) => p.zone).filter(Boolean))] as string[], [partners]);
@@ -81,6 +89,7 @@ export function useDeliveryPartners(initialParams?: Partial<DeliveryQueryParams>
     zoneFilter, setZoneFilter,
     pagination, setPage, setPageSize,
     onlineCount, busyCount, zones,
+    addPartner,
     refresh: fetchPartners,
   };
 }

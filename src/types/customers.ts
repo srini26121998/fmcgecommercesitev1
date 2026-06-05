@@ -77,22 +77,27 @@ export type CustomerActivity = z.infer<typeof CustomerActivitySchema>;
 // ── Segmentation ─────────────────────────────────────────
 
 export const SegmentSchema = z.object({
-  id: z.string(),
+  id: z.union([z.string(), z.number()]),
   name: z.string().min(1),
   description: z.string().default(""),
   color: z.string().default("#0c831f"),
   icon: z.string().default("Users"),
-  customerCount: z.number().int().nonnegative(),
-  avgOrderValue: z.number().nonnegative(),
-  totalRevenue: z.number().nonnegative(),
+  customerCount: z.number().int().nonnegative().optional().default(0),
+  avgOrderValue: z.number().nonnegative().optional().default(0),
+  totalRevenue: z.number().nonnegative().optional().default(0),
   avgLifetimeValue: z.string().default("₹0"),
-  retentionRate: z.number().min(0).max(100).default(0),
-  criteria: z.object({
-    minOrders: z.number().int().nonnegative().optional(),
-    minSpent: z.number().nonnegative().optional(),
-    maxInactiveDays: z.number().int().nonnegative().optional(),
-    acquisitionChannel: z.string().optional(),
-  }).optional(),
+  retentionRate: z.number().min(0).max(100).optional().default(0),
+  criteria: z.union([
+    z.string(),
+    z.object({
+      minOrders: z.number().int().nonnegative().optional(),
+      minSpent: z.number().nonnegative().optional(),
+      maxInactiveDays: z.number().int().nonnegative().optional(),
+      acquisitionChannel: z.string().optional(),
+    })
+  ]).optional(),
+  createdAt: z.string().optional(),
+  updatedAt: z.string().optional(),
 });
 export type Segment = z.infer<typeof SegmentSchema>;
 

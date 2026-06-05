@@ -37,18 +37,10 @@ export const KNOWN_WORKING_IMAGES = [
  */
 export function isValidImageUrl(url: string | undefined | null): boolean {
   if (!url) return false;
-  
-  // Check if URL is from trusted sources
-  const trustedDomains = [
-    'images.unsplash.com',
-    'cdn.example.com',
-    'img.example.com',
-    'assets.example.com',
-  ];
-  
+  if (url.startsWith("/") || url.startsWith("data:")) return true;
   try {
     const urlObj = new URL(url);
-    return trustedDomains.some(domain => urlObj.hostname.includes(domain)) || url.startsWith('/');
+    return urlObj.protocol === "http:" || urlObj.protocol === "https:";
   } catch {
     return false;
   }
@@ -59,8 +51,7 @@ export function isValidImageUrl(url: string | undefined | null): boolean {
  * Ensures consistency across the app
  */
 export function getWorkingFallbackImage(): string {
-  const randomIndex = Math.floor(Math.random() * KNOWN_WORKING_IMAGES.length);
-  return KNOWN_WORKING_IMAGES[randomIndex];
+  return DEFAULT_PRODUCT_IMAGE;
 }
 
 /**

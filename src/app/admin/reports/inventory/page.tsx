@@ -81,14 +81,14 @@ export default function InventoryReportsPage() {
           />
           <ReusableCard
             title="Total Stock Value"
-            value={summary ? `₹${(summary.totalStockValue / 100000).toFixed(1)}L` : "—"}
+            value={summary ? `?${(summary.totalStockValue / 100000).toFixed(1)}L` : "₹"}
             icon={<DollarSign className="h-5 w-5" />}
             color="text-[#0c831f]"
             bgColor="bg-[#e8f5e9]"
           />
           <ReusableCard
             title="Low / Critical Stock"
-            value={summary ? `${summary.lowStockCount} SKUs` : "—"}
+            value={summary ? `${summary.lowStockCount} SKUs` : "₹"}
             icon={<AlertTriangle className="h-5 w-5" />}
             color="text-[#d97706]"
             bgColor="bg-[#fffbeb]"
@@ -96,7 +96,7 @@ export default function InventoryReportsPage() {
           />
           <ReusableCard
             title="Avg Turnover Rate"
-            value={summary ? `${summary.avgTurnoverRate}x` : "—"}
+            value={summary ? `${summary.avgTurnoverRate}x` : "₹"}
             icon={<TrendingUp className="h-5 w-5" />}
             color="text-[#9333ea]"
             bgColor="bg-[#f3e8ff]"
@@ -158,7 +158,7 @@ export default function InventoryReportsPage() {
                   </div>
                   <div>
                     <span className="font-bold text-[#1a1a1a]">{r.productName}</span>
-                    <span className="block text-[10px] text-[#999]">{r.sku} · {r.category}</span>
+                    <span className="block text-[10px] text-[#999]">{r.sku} ₹ {r.category}</span>
                   </div>
                 </div>
               ),
@@ -204,7 +204,7 @@ export default function InventoryReportsPage() {
               align: "right",
               width: "100px",
               hideOnMobile: true,
-              render: (r) => <span className="font-bold">₹{(r.stockValue / 1000).toFixed(1)}K</span>,
+              render: (r) => <span className="font-bold">?{(r.stockValue / 1000).toFixed(1)}K</span>,
             },
             {
               key: "stockStatus",
@@ -307,7 +307,7 @@ export default function InventoryReportsPage() {
                 </div>
                 <div className="rounded-lg bg-[#f9fafb] p-3">
                   <p className="text-[10px] font-bold text-[#666]">Stock Value</p>
-                  <p className="mt-1 text-xl font-black text-[#0c831f]">₹{(selectedEntry.stockValue / 1000).toFixed(1)}K</p>
+                  <p className="mt-1 text-xl font-black text-[#0c831f]">?{(selectedEntry.stockValue / 1000).toFixed(1)}K</p>
                 </div>
               </div>
             </div>
@@ -324,3 +324,4 @@ export default function InventoryReportsPage() {
     </DashboardLayout>
   );
 }
+

@@ -59,11 +59,16 @@ export type TimelineEvent = z.infer<typeof TimelineEventSchema>;
 
 export const OrderSchema = z.object({
   id: z.string().min(1, "Order ID is required"),
+  backendId: z.union([z.string(), z.number()]).optional(),
   customer: z.string().min(1, "Customer name is required"),
   customerId: z.string().optional(),
   email: z.string().email().optional().or(z.literal("")),
   phone: z.string().optional(),
   items: z.array(OrderItemSchema).min(1, "At least one item is required"),
+  subtotal: z.number().nonnegative().optional(),
+  discountAmount: z.number().nonnegative().optional(),
+  taxAmount: z.number().nonnegative().optional(),
+  deliveryFee: z.number().nonnegative().optional(),
   total: z.number().nonnegative(),
   status: OrderStatusSchema,
   paymentMethod: z.string().optional(),
@@ -72,6 +77,7 @@ export const OrderSchema = z.object({
   deliveryAddress: z.string().optional(),
   zone: z.string().optional(),
   notes: z.string().optional(),
+  cancellationReason: z.string().optional().nullable(),
   substitutions: z.array(z.lazy(() => SubstitutionSchema)).optional(),
   timeline: z.array(TimelineEventSchema),
   createdAt: z.string(),
@@ -152,12 +158,14 @@ export interface AssignPartnerFormData {
   orderId: string;
   partnerId: string;
   notes?: string;
+  backendId?: string | number;
 }
 
 export interface StatusUpdateFormData {
   orderId: string;
+  backendId?: string | number;
   newStatus: OrderStatus;
-  note?: string;
+  notes?: string;
 }
 
 export interface BulkActionFormData {
@@ -194,9 +202,11 @@ export interface OrdersListResponse {
     returned: number;
     revenue: number;
   };
+  isMock?: boolean;
 }
 
 export interface PartnersListResponse {
   partners: DeliveryPartner[];
   total: number;
+  isMock?: boolean;
 }

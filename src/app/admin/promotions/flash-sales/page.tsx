@@ -42,10 +42,17 @@ export default function FlashSalesPage() {
       return;
     }
     const discountLabel = createForm.discountType === "percentage" ? `${createForm.discountValue}% Off` : `₹${createForm.discountValue} Off`;
-    const res = await createFlashSale({
-      ...createForm,
-      discount: discountLabel,
-    });
+    const payload = { ...createForm, discount: discountLabel };
+    if (payload.startDate) {
+      payload.startDate = payload.startDate.replace(" ", "T");
+      if (payload.startDate.length === 16) payload.startDate += ":00";
+    }
+    if (payload.endDate) {
+      payload.endDate = payload.endDate.replace(" ", "T");
+      if (payload.endDate.length === 16) payload.endDate += ":00";
+    }
+
+    const res = await createFlashSale(payload);
     if (res) {
       toast.success(`Flash sale "${res.name}" created!`);
       setShowCreateModal(false);
@@ -68,10 +75,17 @@ export default function FlashSalesPage() {
   const handleEditSave = async () => {
     if (!editFlashSale || !editForm.name) return;
     const discountLabel = editForm.discountType === "percentage" ? `${editForm.discountValue}% Off` : `₹${editForm.discountValue} Off`;
-    const res = await updateFlashSale(editFlashSale.id, {
-      ...editForm,
-      discount: discountLabel,
-    });
+    const payload = { ...editForm, discount: discountLabel };
+    if (payload.startDate) {
+      payload.startDate = payload.startDate.replace(" ", "T");
+      if (payload.startDate.length === 16) payload.startDate += ":00";
+    }
+    if (payload.endDate) {
+      payload.endDate = payload.endDate.replace(" ", "T");
+      if (payload.endDate.length === 16) payload.endDate += ":00";
+    }
+
+    const res = await updateFlashSale(editFlashSale.id, payload);
     if (res) {
       toast.success(`Flash sale "${editForm.name}" updated successfully`);
       setEditFlashSale(null);
@@ -260,7 +274,7 @@ export default function FlashSalesPage() {
 
       {/* Slide-in panel */}
       <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
+        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[480px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${
           editFlashSale ? "translate-x-0" : "translate-x-full"
         }`}
       >
@@ -349,3 +363,4 @@ export default function FlashSalesPage() {
     </DashboardLayout>
   );
 }
+

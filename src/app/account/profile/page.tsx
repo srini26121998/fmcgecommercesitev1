@@ -1,13 +1,16 @@
-"use client";
+﻿"use client";
 
 import Link from "next/link";
 import { ChevronLeft, User, Mail, Phone, MapPin, Calendar, Edit2, Shield, Key, Star, CheckCircle, Users as UsersIcon } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
+import { useUserProfile } from "@/hooks/use-user-profile";
 import { useLanguageStore, SUPPORTED_LANGUAGES } from "@/store/language-store";
 import { useAddressStore } from "@/store/address-store";
+import { toast } from "sonner";
 
 export default function ProfilePage() {
-  const { user, linkedSocials } = useAuthStore();
+  const { linkedSocials } = useAuthStore();
+  const { user, isLoading } = useUserProfile(true);
   const { language } = useLanguageStore();
   const { getDefaultAddress } = useAddressStore();
 
@@ -33,7 +36,7 @@ export default function ProfilePage() {
           <div className="flex-1">
             <h1 className="text-lg font-bold text-[#1a1a1a]">Your Profile</h1>
           </div>
-          <Link href="/account/settings" className="px-4 py-2 bg-[#ff4f8b] text-white text-sm font-semibold rounded-full hover:bg-[#e63872] transition-colors flex items-center gap-1.5">
+          <Link href="/account/profile/edit" className="px-4 py-2 bg-[#ff4f8b] text-white text-sm font-semibold rounded-full hover:bg-[#e63872] transition-colors flex items-center gap-1.5">
             <Edit2 className="w-3.5 h-3.5" />
             Edit
           </Link>
@@ -67,7 +70,7 @@ export default function ProfilePage() {
                   </span>
                 )}
               </div>
-              <p className="text-sm text-[#666]">Customer since 2024</p>
+              <p className="text-sm text-[#666]">Customer since {new Date().getFullYear()}</p>
               <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3 mt-3">
                 <div className="flex items-center gap-1.5 text-xs text-[#666]">
                   <span className="w-2 h-2 rounded-full bg-[#0c831f]" />
@@ -102,7 +105,7 @@ export default function ProfilePage() {
                 <p className="text-xs text-[#666] font-medium">Email Address</p>
                 <p className="font-semibold text-[#1a1a1a] text-sm">{user?.email || "user@example.com"}</p>
               </div>
-              <button className="text-xs font-semibold text-[#ff4f8b] hover:underline flex-shrink-0">Change</button>
+              <Link href="/account/profile/edit" className="text-xs font-semibold text-[#ff4f8b] hover:underline flex-shrink-0">Change</Link>
             </div>
             <div className="flex items-center gap-4 px-5 py-4">
               <div className="w-10 h-10 rounded-xl bg-[#e8f5e9] flex items-center justify-center flex-shrink-0">
@@ -112,7 +115,7 @@ export default function ProfilePage() {
                 <p className="text-xs text-[#666] font-medium">Phone Number</p>
                 <p className="font-semibold text-[#1a1a1a] text-sm">{displayPhone}</p>
               </div>
-              <button className="text-xs font-semibold text-[#ff4f8b] hover:underline flex-shrink-0">Change</button>
+              <Link href="/account/profile/edit" className="text-xs font-semibold text-[#ff4f8b] hover:underline flex-shrink-0">Change</Link>
             </div>
             <div className="flex items-center gap-4 px-5 py-4">
               <div className="w-10 h-10 rounded-xl bg-[#f3e5f5] flex items-center justify-center flex-shrink-0">
@@ -143,7 +146,7 @@ export default function ProfilePage() {
               </div>
               <div className="flex-1 min-w-0">
                 <p className="font-semibold text-[#1a1a1a] text-sm">Change Password</p>
-                <p className="text-xs text-[#666]">Last changed 3 months ago</p>
+                <p className="text-xs text-[#666]">Last changed recently</p>
               </div>
               <ChevronLeft className="w-4 h-4 text-[#ccc] rotate-180 flex-shrink-0" />
             </Link>

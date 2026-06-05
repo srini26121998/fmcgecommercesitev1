@@ -3,7 +3,7 @@
 import { useState, useMemo, useRef, useEffect } from "react";
 import { Search, Mic, Clock, TrendingUp, X, ArrowRight, Camera, Sparkles } from "lucide-react";
 import { useSearchHistoryStore } from "@/store/search-history-store";
-import { products } from "@/data/products";
+import { useProducts } from "@/hooks/use-products";
 import { SafeProductImage } from "@/components/ui/safe-image";
 
 interface SearchSuggestionsEnhancedProps {
@@ -61,19 +61,20 @@ export default function SearchSuggestionsEnhanced({
   isListening,
 }: SearchSuggestionsEnhancedProps) {
   const { queries, removeQuery, clearHistory } = useSearchHistoryStore();
+  const { products } = useProducts();
   const [activeIndex, setActiveIndex] = useState(-1);
   const listRef = useRef<HTMLDivElement>(null);
 
-  const allProductNames = useMemo(() => products.map((p) => p.name), []);
-  const allCategories = useMemo(() => [...new Set(products.map((p) => p.category))], []);
+  const allProductNames = useMemo(() => products.map((p: any) => p.name), [products]);
+  const allCategories = useMemo(() => [...new Set(products.map((p: any) => p.category))], [products]);
 
   const searchSuggestions = useMemo(() => {
     if (!query.trim()) return [];
     const q = query.toLowerCase();
     return products
-      .filter((p) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
+      .filter((p: any) => p.name.toLowerCase().includes(q) || p.category.toLowerCase().includes(q))
       .slice(0, 8)
-      .map((p) => ({
+      .map((p: any) => ({
         type: "product" as const,
         id: p.id,
         label: p.name,
@@ -82,7 +83,7 @@ export default function SearchSuggestionsEnhanced({
         image: p.image,
         emoji: CATEGORY_EMOJIS[p.category] || "📦",
       }));
-  }, [query]);
+  }, [query, products]);
 
   const typoSuggestion = useMemo(() => {
     if (!query.trim() || searchSuggestions.length > 0) return null;
@@ -118,7 +119,11 @@ export default function SearchSuggestionsEnhanced({
         e.preventDefault();
         setActiveIndex((i) => Math.max(i - 1, -1));
       } else if (e.key === "Enter" && activeIndex >= 0) {
-        const all = [...combinedItems, ...searchSuggestions.map((s) => ({ type: "product" as const, label: s.label })), ...filteredHistory.map((h) => ({ type: "history" as const, label: h }))];
+        const all = [
+          ...combinedItems,
+          ...searchSuggestions.map((s: any) => ({ type: "product" as const, label: s.label })),
+          ...filteredHistory.map((h: any) => ({ type: "history" as const, label: h }))
+        ];
         if (all[activeIndex]) onSelect(all[activeIndex].label);
       }
     }
@@ -171,7 +176,7 @@ export default function SearchSuggestionsEnhanced({
             Product Suggestions
           </p>
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-0">
-            {searchSuggestions.map((s, i) => {
+            {searchSuggestions.map((s: any, i: number) => {
               const idx = combinedItems.length + i;
               return (
                 <button

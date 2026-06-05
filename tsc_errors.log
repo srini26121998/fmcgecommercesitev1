@@ -1,0 +1,108 @@
+﻿src/app/offers/page.tsx(93,36): error TS7006: Parameter 'product' implicitly has an 'any' type.
+src/app/offers/snacks-beverages/page.tsx(51,13): error TS2322: Type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }[]' is not assignable to type 'Product[]'.
+  Type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }' is missing the following properties from type 'Product': oldPrice, rating, image
+src/app/recommendations/page.tsx(44,14): error TS2304: Cannot find name 'products'.
+src/components/ui/admin/inventory-table.tsx(16,25): error TS2339: Property 'productId' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(18,17): error TS2339: Property 'productId' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(137,29): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(142,61): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(143,55): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(149,54): error TS2339: Property 'name' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(150,51): error TS2339: Property 'productId' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(152,72): error TS2339: Property 'productId' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(161,62): error TS2339: Property 'productId' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(164,61): error TS2339: Property 'sku' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(165,49): error TS2339: Property 'warehouse' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(166,74): error TS2339: Property 'stock' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(167,76): error TS2339: Property 'reserved' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(168,76): error TS2339: Property 'damaged' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(169,49): error TS2339: Property 'expiryDate' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(172,26): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/inventory-table.tsx(174,27): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(39,18): error TS2339: Property 'type' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(58,56): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(88,49): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(89,45): error TS2339: Property 'type' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(90,54): error TS2339: Property 'usageCount' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(90,73): error TS2339: Property 'usageLimit' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(93,30): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(97,70): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(99,32): error TS2339: Property 'name' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(103,30): error TS2339: Property 'description' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(109,30): error TS2339: Property 'type' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(114,30): error TS2339: Property 'discount' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(118,63): error TS2339: Property 'usageCount' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(118,84): error TS2339: Property 'usageLimit' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(132,62): error TS2339: Property 'revenue' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(135,30): error TS2339: Property 'startDate' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(135,50): error TS2339: Property 'endDate' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(142,33): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(144,37): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(146,37): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(156,72): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(161,72): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(166,72): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(171,30): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(174,64): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(175,43): error TS2345: Argument of type '(prev: never[]) => any[]' is not assignable to parameter of type 'SetStateAction<never[]>'.
+  Type '(prev: never[]) => any[]' is not assignable to type '(prevState: never[]) => never[]'.
+    Type 'any[]' is not assignable to type 'never[]'.
+      Type 'any' is not assignable to type 'never'.
+src/components/ui/admin/promotion-table.tsx(175,67): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(175,80): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(175,87): error TS2698: Spread types may only be created from object types.
+src/components/ui/admin/promotion-table.tsx(183,30): error TS2339: Property 'status' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(186,43): error TS2345: Argument of type '(prev: never[]) => any[]' is not assignable to parameter of type 'SetStateAction<never[]>'.
+  Type '(prev: never[]) => any[]' is not assignable to type '(prevState: never[]) => never[]'.
+    Type 'any[]' is not assignable to type 'never[]'.
+      Type 'any' is not assignable to type 'never'.
+src/components/ui/admin/promotion-table.tsx(186,67): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(186,80): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(186,87): error TS2698: Spread types may only be created from object types.
+src/components/ui/admin/promotion-table.tsx(196,68): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/admin/promotion-table.tsx(196,81): error TS2339: Property 'id' does not exist on type 'never'.
+src/components/ui/checkout/substitution-suggestions.tsx(36,52): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/components/ui/checkout/substitution-suggestions.tsx(39,45): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/components/ui/checkout/substitution-suggestions.tsx(48,13): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/components/ui/checkout/substitution-suggestions.tsx(49,15): error TS2339: Property 'rating' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/checkout/substitution-suggestions.tsx(49,34): error TS2339: Property 'rating' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/checkout/substitution-suggestions.tsx(56,11): error TS2322: Type 'string' is not assignable to type 'number'.
+src/components/ui/checkout/substitution-suggestions.tsx(58,11): error TS2322: Type 'string' is not assignable to type 'number'.
+src/components/ui/checkout/substitution-suggestions.tsx(128,50): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/components/ui/home/flash-sale-section.tsx(20,52): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/components/ui/home/flash-sale-section.tsx(73,51): error TS2339: Property 'oldPrice' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/flash-sale-section.tsx(73,87): error TS2339: Property 'oldPrice' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/flash-sale-section.tsx(94,38): error TS2339: Property 'image' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/flash-sale-section.tsx(114,37): error TS2339: Property 'oldPrice' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/flash-sale-section.tsx(133,46): error TS2339: Property 'image' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/nearby-trends.tsx(37,22): error TS2367: This comparison appears to be unintentional because the types 'number' and 'string' have no overlap.
+src/components/ui/home/nearby-trends.tsx(38,25): error TS2339: Property 'rating' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/nearby-trends.tsx(38,36): error TS2339: Property 'rating' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/nearby-trends.tsx(73,51): error TS2339: Property 'oldPrice' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/nearby-trends.tsx(73,87): error TS2339: Property 'oldPrice' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/nearby-trends.tsx(85,38): error TS2339: Property 'image' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/nearby-trends.tsx(98,36): error TS2339: Property 'rating' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/nearby-trends.tsx(112,89): error TS2339: Property 'oldPrice' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/nearby-trends.tsx(121,116): error TS2339: Property 'image' does not exist on type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/recently-viewed.tsx(23,41): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/components/ui/home/recently-viewed.tsx(65,38): error TS2345: Argument of type 'number' is not assignable to parameter of type 'string'.
+src/components/ui/home/recently-viewed.tsx(77,39): error TS2339: Property 'image' does not exist on type '{ viewedAt: number; id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; ... 16 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/recently-viewed.tsx(122,120): error TS2339: Property 'image' does not exist on type '{ viewedAt: number; id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; ... 16 more ...; seo?: { ...; } | undefined; }'.
+src/components/ui/home/reorder-reminders.tsx(29,43): error TS2367: This comparison appears to be unintentional because the types 'string' and 'number' have no overlap.
+src/components/ui/home/reorder-reminders.tsx(38,13): error TS2322: Type 'number' is not assignable to type 'StockStatus'.
+src/components/ui/products/product-grid.tsx(85,30): error TS2739: Type '{ id: string; name: string; sku: string; barcode: string; category: string; brand: string; price: number; costPrice: number; mrp: number; taxRate: number; unit: string; weight: string; stock: number; lowStockThreshold: number; ... 14 more ...; seo?: { ...; } | undefined; }' is missing the following properties from type 'Product': oldPrice, rating, image
+src/components/ui/search/search-suggestions-enhanced.tsx(67,41): error TS2304: Cannot find name 'products'.
+src/components/ui/search/search-suggestions-enhanced.tsx(67,55): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/components/ui/search/search-suggestions-enhanced.tsx(68,51): error TS2304: Cannot find name 'products'.
+src/components/ui/search/search-suggestions-enhanced.tsx(68,65): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/components/ui/search/search-suggestions-enhanced.tsx(73,12): error TS2304: Cannot find name 'products'.
+src/components/ui/search/search-suggestions-enhanced.tsx(74,16): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/components/ui/search/search-suggestions-enhanced.tsx(76,13): error TS7006: Parameter 'p' implicitly has an 'any' type.
+src/components/ui/search/search-suggestions-enhanced.tsx(121,66): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/ui/search/search-suggestions-enhanced.tsx(174,37): error TS7006: Parameter 's' implicitly has an 'any' type.
+src/components/ui/search/search-suggestions-enhanced.tsx(174,40): error TS7006: Parameter 'i' implicitly has an 'any' type.
+src/data/admin/dashboard.ts(141,3): error TS2739: Type '{}' is missing the following properties from type '{ onTime: number; delayed: number; total: number; avgTime: string; }': onTime, delayed, total, avgTime
+src/data/admin/dashboard.ts(142,3): error TS2739: Type '{}' is missing the following properties from type '{ uptime: string; apiLatency: string; errorRate: string; activeUsers: number; }': uptime, apiLatency, errorRate, activeUsers
+src/data/admin/dashboard.ts(143,3): error TS2739: Type '{}' is missing the following properties from type '{ total: number; returned: number; rate: number; refundAmount: number; }': total, returned, rate, refundAmount
+src/data/admin/dashboard.ts(144,3): error TS2739: Type '{}' is missing the following properties from type '{ active: number; redeemed: number; revenue: number; conversion: string; }': active, redeemed, revenue, conversion
+src/data/products.ts(66,7): error TS2322: Type '"Groceries"' is not assignable to type 'never'.

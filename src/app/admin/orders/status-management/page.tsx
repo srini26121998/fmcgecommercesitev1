@@ -1,18 +1,30 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useEffect, Suspense } from "react";
+import { useSearchParams } from "next/navigation";
 import DashboardLayout from "../../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
 import ReusableSearchBar from "@/components/ui/admin/reusable-search";
 import ReusableCard from "@/components/ui/admin/reusable-card";
 import StatusBadge from "@/components/ui/admin/reusable-status-badge";
 import ReusableModal from "@/components/ui/admin/reusable-modal";
-import { ArrowUpDown, CheckCircle, XCircle, Clock, RefreshCw } from "lucide-react";
+import { ArrowUpDown, CheckCircle, XCircle, Clock, RefreshCw, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useOrders, useOrderActions } from "@/hooks/use-orders";
 import type { Order } from "@/types/orders";
 
 const statusFlow = ["pending", "confirmed", "preparing", "out_for_delivery", "delivered"];
+
+function SearchParamHandler({ setSearch }: { setSearch: (search: string) => void }) {
+  const searchParams = useSearchParams();
+  useEffect(() => {
+    const initialSearch = searchParams.get("search");
+    if (initialSearch) {
+      setSearch(initialSearch);
+    }
+  }, [searchParams, setSearch]);
+  return null;
+}
 
 export default function StatusManagementPage() {
   const {
@@ -22,15 +34,27 @@ export default function StatusManagementPage() {
   } = useOrders();
   const { updateStatus, updating } = useOrderActions();
   const [showStatusModal, setShowStatusModal] = useState<Order | null>(null);
+  const [selectedStatus, setSelectedStatus] = useState<string>("");
+  const [statusNotes, setStatusNotes] = useState<string>("");
 
-  const handleStatusUpdate = async (newStatus: string) => {
-    if (!showStatusModal) return;
+  // Reset selections when modal opens/closes
+  useEffect(() => {
+    if (showStatusModal) {
+      setSelectedStatus(showStatusModal.status);
+      setStatusNotes("");
+    }
+  }, [showStatusModal]);
+
+  const handleStatusUpdate = async () => {
+    if (!showStatusModal || !selectedStatus) return;
     const success = await updateStatus({
       orderId: showStatusModal.id,
-      newStatus: newStatus as Order["status"],
+      backendId: showStatusModal.backendId,
+      newStatus: selectedStatus as Order["status"],
+      notes: statusNotes || undefined,
     });
     if (success) {
-      toast.success(`Order ${showStatusModal.id} updated to ${newStatus.replace(/_/g, " ")}`);
+      toast.success(`Order ${showStatusModal.id} updated to ${selectedStatus.replace(/_/g, " ")}`);
       setShowStatusModal(null);
       fetchOrders();
     } else {
@@ -38,8 +62,13 @@ export default function StatusManagementPage() {
     }
   };
 
+  const isUpdating = showStatusModal ? updating[showStatusModal.id] : false;
+
   return (
     <DashboardLayout>
+      <Suspense fallback={null}>
+        <SearchParamHandler setSearch={setSearch} />
+      </Suspense>
       <div className="space-y-4 p-2 sm:p-4">
         <section className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
@@ -79,7 +108,7 @@ export default function StatusManagementPage() {
               <span className="font-bold text-[#1a1a1a] block truncate max-w-[140px]">{(o as Order).customer}</span>
             )},
             { key: "items", header: "Items", width: "60px", align: "center", render: (o) => String((o as Order).items.reduce((s, i) => s + i.quantity, 0)) },
-            { key: "total", header: "Total", width: "90px", align: "right", render: (o) => <span className="font-bold">₹{(o as Order).total}</span> },
+            { key: "total", header: "Total", width: "90px", align: "right", render: (o) => <span className="font-bold">{(o as Order).total.toLocaleString("en-IN")}</span> },
             { key: "status", header: "Status", width: "140px", render: (o) => <StatusBadge status={(o as Order).status} /> },
             { key: "paymentStatus", header: "Payment", width: "100px", render: (o) => <StatusBadge status={(o as Order).paymentStatus} /> },
           ]}
@@ -89,7 +118,7 @@ export default function StatusManagementPage() {
         />
       </div>
 
-      <ReusableModal open={!!showStatusModal} onClose={() => setShowStatusModal(null)} title={`Update Status — ${showStatusModal?.id}`} subtitle={`Customer: ${showStatusModal?.customer}`} size="md">
+      <ReusableModal open={!!showStatusModal} onClose={() => setShowStatusModal(null)} title={`Update Status - ${showStatusModal?.id}`} subtitle={`Customer: ${showStatusModal?.customer}`} size="md">
         {showStatusModal && (
           <div className="space-y-4">
             <p className="text-xs font-bold text-[#666]">
@@ -101,10 +130,10 @@ export default function StatusManagementPage() {
                 {statusFlow.map((s) => (
                   <button
                     key={s}
-                    disabled={updating[showStatusModal.id]}
-                    onClick={() => handleStatusUpdate(s)}
+                    disabled={isUpdating}
+                    onClick={() => setSelectedStatus(s)}
                     className={`rounded-xl border p-3 text-left text-sm font-bold transition-all hover:border-[#0c831f] disabled:opacity-50 ${
-                      showStatusModal.status === s ? "border-[#0c831f] bg-[#e8f5e9]" : "border-[#e8e8e8]"
+                      selectedStatus === s ? "border-[#0c831f] bg-[#e8f5e9]" : "border-[#e8e8e8]"
                     }`}
                   >
                     {s.replace(/_/g, " ").replace(/\b\w/g, (c: string) => c.toUpperCase())}
@@ -112,8 +141,30 @@ export default function StatusManagementPage() {
                 ))}
               </div>
             </div>
+
+            {/* Notes Input */}
+            <div className="space-y-2">
+              <label className="text-xs font-bold text-[#666]">Notes <span className="font-normal text-[#999]">(optional)</span></label>
+              <textarea
+                value={statusNotes}
+                onChange={(e) => setStatusNotes(e.target.value)}
+                placeholder="Add notes for this status update..."
+                disabled={isUpdating}
+                rows={3}
+                className="w-full rounded-xl border border-[#e8e8e8] bg-[#fafafa] px-4 py-3 text-sm text-[#1a1a1a] placeholder-[#999] outline-none transition-all focus:border-[#0c831f] focus:bg-white focus:ring-2 focus:ring-[#0c831f]/10 disabled:opacity-50"
+              />
+            </div>
+
             <div className="flex justify-end gap-3 pt-4 border-t border-[#e8e8e8]">
-              <button onClick={() => setShowStatusModal(null)} className="rounded-xl border border-[#e8e8e8] bg-white px-5 py-2.5 text-sm font-bold text-[#666] hover:bg-[#f6f7f6]">Cancel</button>
+              <button onClick={() => setShowStatusModal(null)} disabled={isUpdating} className="rounded-xl border border-[#e8e8e8] bg-white px-5 py-2.5 text-sm font-bold text-[#666] hover:bg-[#f6f7f6] disabled:opacity-50">Cancel</button>
+              <button
+                onClick={handleStatusUpdate}
+                disabled={isUpdating || selectedStatus === showStatusModal.status}
+                className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-6 py-2.5 text-sm font-bold text-white shadow-sm transition-all hover:bg-[#0a6e1a] disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {isUpdating && <Loader2 className="h-4 w-4 animate-spin" />}
+                {isUpdating ? "Updating..." : "Update Status"}
+              </button>
             </div>
           </div>
         )}

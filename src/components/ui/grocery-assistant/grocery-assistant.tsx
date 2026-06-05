@@ -139,8 +139,13 @@ export default function GroceryAssistant() {
       const lookX = Math.max(-maxLook, Math.min(maxLook, (dx / (distance || 1)) * maxLook));
       const lookY = Math.max(-maxLook, Math.min(maxLook, (dy / (distance || 1)) * maxLook));
 
-      setLookDirection({ x: lookX, y: lookY });
-      setHeadTilt(dx > 0 ? Math.min(6, dx / 60) : Math.max(-6, dx / 60));
+      setLookDirection((prev) => {
+        if (Math.abs(prev.x - lookX) < 0.1 && Math.abs(prev.y - lookY) < 0.1) return prev;
+        return { x: lookX, y: lookY };
+      });
+      
+      const newTilt = dx > 0 ? Math.min(6, dx / 60) : Math.max(-6, dx / 60);
+      setHeadTilt((prev) => (Math.abs(prev - newTilt) < 0.1 ? prev : newTilt));
     };
 
     updateEyeTracking();
@@ -220,8 +225,8 @@ export default function GroceryAssistant() {
 
   const getEyeStyle = () => {
     if (isBlinking) return { scaleY: 0.1 };
-    if (mood === "happy" || mood === "excited" || mood === "celebrate" || mood === "dance") return { scaleY: 0.85, borderRadius: "0 0 50% 50%" };
-    if (mood === "sad") return { scaleY: 0.9, borderRadius: "50% 50% 0 0" };
+    if (mood === "happy" || mood === "excited" || mood === "celebrate" || mood === "dance") return { scaleY: 0.85 };
+    if (mood === "sad") return { scaleY: 0.9 };
     if (mood === "surprised" || mood === "thankyou") return { scale: 1.3 };
     return { scaleY: 1 };
   };
@@ -477,6 +482,7 @@ export default function GroceryAssistant() {
                   <g>
                     <motion.path
                       d="M 19 48 Q 12 55 14 68"
+                      initial={{ d: "M 19 48 Q 12 55 14 68" }}
                       fill="none"
                       stroke="#00b4d8"
                       strokeWidth="10"
@@ -484,7 +490,7 @@ export default function GroceryAssistant() {
                       animate={{
                         d: isHovered || mood === "wave"
                           ? ["M 19 48 Q 6 42 8 58", "M 19 48 Q 4 40 6 56", "M 19 48 Q 6 42 8 58"]
-                          : ["M 19 48 Q 12 55 14 68"],
+                          : "M 19 48 Q 12 55 14 68",
                       }}
                       transition={{
                         duration: mood === "wave" ? 0.5 : 1.2,
@@ -493,11 +499,14 @@ export default function GroceryAssistant() {
                       }}
                     />
                     <motion.circle
+                      cx={14}
+                      cy={68}
                       r="4"
                       fill="#FFE0BD"
+                      initial={{ cx: 14, cy: 68 }}
                       animate={{
-                        cx: isHovered || mood === "wave" ? [8, 6, 8] : [14],
-                        cy: isHovered || mood === "wave" ? [58, 56, 58] : [68],
+                        cx: isHovered || mood === "wave" ? [8, 6, 8] : 14,
+                        cy: isHovered || mood === "wave" ? [58, 56, 58] : 68,
                       }}
                       transition={{
                         duration: mood === "wave" ? 0.5 : 1.2,
@@ -551,6 +560,7 @@ export default function GroceryAssistant() {
                       <path d="M 18 16 Q 24 12 30 14 Q 36 15 42 13 Q 48 10 54 15" fill="none" stroke="#c4884d" strokeWidth="1.8" strokeLinecap="round" opacity="0.7" />
 
                       <motion.path d="M 16 20 Q 15 24 17 28 Q 18 24 18 20 Z" fill="#d4a373"
+                        initial={{ d: "M 16 20 Q 15 24 17 28 Q 18 24 18 20 Z" }}
                         animate={{
                           d: hairSway > 0.5
                             ? "M 15 20 Q 14 24 16 30 Q 16 24 17 20 Z"
@@ -559,6 +569,7 @@ export default function GroceryAssistant() {
                         transition={{ duration: 0.3 }}
                       />
                       <motion.path d="M 56 20 Q 57 24 55 28 Q 54 24 54 20 Z" fill="#d4a373"
+                        initial={{ d: "M 56 20 Q 57 24 55 28 Q 54 24 54 20 Z" }}
                         animate={{
                           d: hairSway > 0.5
                             ? "M 57 20 Q 58 24 56 30 Q 56 24 55 20 Z"

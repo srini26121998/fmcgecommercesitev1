@@ -68,8 +68,8 @@ export default function ShareCartModal({ isOpen, onClose }: ShareCartModalProps)
         <div className="p-5 space-y-5">
           {/* Cart Summary */}
           <div className="rounded-xl bg-[#f2f2f2] p-3 max-h-32 overflow-y-auto space-y-1.5">
-            {cart.slice(0, 5).map((item) => (
-              <div key={item.id} className="flex justify-between text-xs">
+            {cart.slice(0, 5).map((item, index) => (
+              <div key={`${item.id}-${index}`} className="flex justify-between text-xs">
                 <span className="text-[#666] truncate mr-2">{item.name} x{item.quantity}</span>
                 <span className="font-semibold text-[#1a1a1a]">₹{item.price * item.quantity}</span>
               </div>

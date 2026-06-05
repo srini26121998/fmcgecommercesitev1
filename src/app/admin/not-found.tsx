@@ -1,4 +1,4 @@
-﻿import Link from "next/link";
+import Link from "next/link";
 import { Home, ArrowLeft, Search } from "lucide-react";
 
 export default function AdminNotFound() {
@@ -36,3 +36,4 @@ export default function AdminNotFound() {
     </div>
   );
 }
+

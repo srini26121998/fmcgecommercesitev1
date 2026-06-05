@@ -29,7 +29,7 @@ export default function StockTransfersPage() {
     [warehouses],
   );
   const productList = useMemo(
-    () => items.map((i) => ({ name: i.productName, sku: i.sku })),
+    () => items.map((i) => ({ name: i.productName, sku: i.sku, id: i.id })),
     [items],
   );
 
@@ -171,3 +171,4 @@ export default function StockTransfersPage() {
     </DashboardLayout>
   );
 }
+

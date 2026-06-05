@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { Star, Gift, TrendingUp, Award, ChevronDown, Clock, ArrowUpRight, ArrowDownLeft, Plus, Minus } from "lucide-react";
-import { useLoyaltyStore, TIER_THRESHOLDS } from "@/store/loyalty-store";
+import { Star, Gift, TrendingUp, Award, ChevronDown, Clock, ArrowUpRight, ArrowDownLeft, Plus, Minus, Loader2, WifiOff } from "lucide-react";
+import { useUserLoyalty } from "@/hooks/use-user-loyalty";
 import { useReferralStore } from "@/store/referral-store";
+import { TIER_THRESHOLDS } from "@/store/loyalty-store";
 
 const tierIcons: Record<string, React.ElementType> = {
   Silver: Star,
@@ -20,17 +21,41 @@ const tierColors: Record<string, { bg: string; text: string; icon: string; bar: 
 };
 
 export function LoyaltyCard() {
-  const { tier, points, getNextTier, getProgressToNextTier, transactions } = useLoyaltyStore();
+  const {
+    tier,
+    points,
+    nextTier,
+    progressToNextTier,
+    pointsToNextTier,
+    transactions,
+    loading,
+    isApiAvailable,
+  } = useUserLoyalty();
+
   const [showHistory, setShowHistory] = useState(false);
-  const nextTier = getNextTier();
-  const progress = getProgressToNextTier();
-  const pointsToNextTier = nextTier ? Math.max(0, TIER_THRESHOLDS[nextTier] - points) : 0;
+  const progress = progressToNextTier;
   const colors = tierColors[tier] || tierColors.Silver;
   const Icon = tierIcons[tier] || Star;
   const totalSavings = 1250;
 
   return (
     <div className="bg-white rounded-2xl border border-[#e8e8e8] p-5 shadow-sm">
+      {/* Loading overlay */}
+      {loading && (
+        <div className="flex items-center justify-center gap-2 mb-3 py-1 px-3 rounded-lg bg-[#f0fdf4] border border-[#bbf7d0]">
+          <Loader2 className="w-3.5 h-3.5 text-[#0c831f] animate-spin" />
+          <span className="text-[10px] font-semibold text-[#0c831f]">Syncing loyalty data…</span>
+        </div>
+      )}
+
+      {/* API status indicator */}
+      {!loading && isApiAvailable && (
+        <div className="flex items-center gap-1.5 mb-3">
+          <span className="flex h-1.5 w-1.5 rounded-full bg-[#0c831f] animate-pulse" />
+          <span className="text-[9px] font-medium text-[#999]">Live</span>
+        </div>
+      )}
+
       <div className="flex items-start justify-between mb-4">
         <div>
           <p className="text-[10px] font-bold uppercase tracking-wide text-[#999]">Your Tier</p>
@@ -63,7 +88,7 @@ export function LoyaltyCard() {
           <p className="text-[10px] text-[#999]">Total Savings</p>
         </div>
         <div className="text-center">
-          <p className={`text-lg font-black ${colors.text}`}>{tier === "SuperSaver" ? "Max" : `${progress}%`}</p>
+          <p className={`text-lg font-black ${colors.text}`}>{tier === "SuperSaver" ? "Max" : `${Math.round(progress)}%`}</p>
           <p className="text-[10px] text-[#999]">Progress</p>
         </div>
       </div>

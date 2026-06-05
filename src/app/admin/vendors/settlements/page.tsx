@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -215,7 +215,7 @@ export default function VendorSettlementsPage() {
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-[#999]">Period</p>
-                  <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{selectedSettlement.periodStart} → {selectedSettlement.periodEnd}</p>
+                  <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{selectedSettlement.periodStart} - {selectedSettlement.periodEnd}</p>
                 </div>
                 <div>
                   <p className="text-[10px] font-bold text-[#999]">Due Date</p>
@@ -341,3 +341,4 @@ export default function VendorSettlementsPage() {
     </DashboardLayout>
   );
 }
+

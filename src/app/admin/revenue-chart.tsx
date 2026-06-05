@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import {
   LineChart,
@@ -62,3 +62,4 @@ export default function RevenueChart() {
     </div>
   );
 }
+

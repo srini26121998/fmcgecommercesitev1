@@ -1,4 +1,4 @@
-import Navbar from "@/components/ui/navbar";
+﻿import Navbar from "@/components/ui/navbar";
 import BottomNav from "@/components/ui/mobile/bottom-nav";
 import Link from "next/link";
 import { ChevronLeft, Truck, CheckCircle2, ShieldCheck, Clock } from "lucide-react";
@@ -14,9 +14,9 @@ export default function ShippingOffersPage() {
     <main className="bg-[#f2f2f2] min-h-screen pb-20 md:pb-0">
       <Navbar />
 
-      <div className="pt-16">
+      <div className="pt-[72px] sm:pt-20">
         {/* Page header */}
-        <div className="bg-white border-b border-[#e8e8e8] sticky top-16 z-10">
+        <div className="bg-white border-b border-[#e8e8e8] sticky top-[72px] sm:top-20 z-10">
           <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-4 flex items-center gap-4">
             <Link
               href="/"

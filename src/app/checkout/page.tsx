@@ -21,9 +21,10 @@ import {
 } from "lucide-react";
 
 import Navbar from "@/components/ui/navbar";
-import { useCartStore } from "@/store/cart-store";
+import { useUserCart } from "@/hooks/use-user-cart";
 import { useOrderStore, generateOrderId, buildTrackingSteps } from "@/store/order-store";
 import { useAddressStore, Address } from "@/store/address-store";
+import { useUserAddresses } from "@/hooks/use-user-addresses";
 import { toast } from "sonner";
 import BillRow from "@/components/ui/a11y/bill-row";
 import PullToRefresh from "@/components/ui/mobile/pull-to-refresh";
@@ -33,23 +34,20 @@ import ScheduledDelivery from "@/components/ui/checkout/scheduled-delivery";
 import StorePickup from "@/components/ui/checkout/store-pickup";
 import SubstitutionSuggestions from "@/components/ui/checkout/substitution-suggestions";
 import { useCallback, useEffect } from "react";
+import { CustomSelect } from "@/components/ui/custom-select";
+import { orderService } from "@/services/orders.service";
 
 type DeliveryMode = "express" | "scheduled" | "pickup" | "subscription";
 
-const VALID_COUPONS: Record<string, { discount: number; type: "percent" | "fixed"; minAmount: number }> = {
-  SAVE20: { discount: 20, type: "percent", minAmount: 0 },
-  FIRST50: { discount: 50, type: "fixed", minAmount: 299 },
-  WELCOME10: { discount: 10, type: "percent", minAmount: 0 },
-  FMCG100: { discount: 100, type: "fixed", minAmount: 499 },
-  SUPER15: { discount: 15, type: "percent", minAmount: 199 },
-};
+import { useValidateCoupon } from "@/hooks/use-user-promotions";
+import { Loader2 } from "lucide-react";
 
 export default function CheckoutPage() {
   const router = useRouter();
-  const cart = useCartStore((state) => state.cart);
-  const clearCart = useCartStore((state) => state.clearCart);
+  const { cartItems: cart, clearCart } = useUserCart();
   const addOrder = useOrderStore((state) => state.addOrder);
   const { addresses, getDefaultAddress } = useAddressStore();
+  const { addAddress } = useUserAddresses(true); // Auto-fetch addresses on load
   
   const [selectedAddressId, setSelectedAddressId] = useState<string | "new">("");
   const [selectedPayment, setSelectedPayment] = useState<string | null>(null);
@@ -61,6 +59,7 @@ export default function CheckoutPage() {
   const [deliveryAddress, setDeliveryAddress] = useState("");
   const [deliveryCity, setDeliveryCity] = useState("");
   const [deliveryPincode, setDeliveryPincode] = useState("");
+  const [addressType, setAddressType] = useState<"Home" | "Work" | "Other">("Home");
   const [errors, setErrors] = useState<Record<string, string>>({});
 
   // ... (deliveryMode, subscriptionFrequency, etc. same as before)
@@ -74,8 +73,15 @@ export default function CheckoutPage() {
   const [selectedEmi, setSelectedEmi] = useState<number>(3);
   const [selectedBnpl, setSelectedBnpl] = useState<string>("lazypay");
 
+  const { validateCoupon, isValidating, result: couponResult, clearCoupon } = useValidateCoupon();
+  const [couponInput, setCouponInput] = useState("");
+
   // Load default address on mount
   useEffect(() => {
+    if (cart.length === 0) {
+      router.replace("/cart");
+      return;
+    }
     const defaultAddr = getDefaultAddress();
     if (defaultAddr) {
       setSelectedAddressId(defaultAddr.id);
@@ -87,7 +93,7 @@ export default function CheckoutPage() {
     } else {
       setSelectedAddressId("new");
     }
-  }, [getDefaultAddress]);
+  }, [getDefaultAddress, cart.length, router]);
 
   const handleAddressSelect = (addr: Address | "new") => {
     if (addr === "new") {
@@ -125,6 +131,36 @@ export default function CheckoutPage() {
     return Object.keys(newErrors).length === 0;
   };
 
+  const handleSaveAddress = () => {
+    if (!validateForm()) {
+      toast.error("Please fill all required fields correctly");
+      return;
+    }
+
+    if (deliveryMode === "pickup") {
+      toast.error("Pickup cannot be saved as an address");
+      return;
+    }
+
+    const newAddressId = `addr_${Date.now()}`;
+    addAddress({
+      type: addressType,
+      name: deliveryName,
+      phone: deliveryPhone,
+      address: deliveryAddress,
+      city: deliveryCity,
+      pincode: deliveryPincode,
+      isDefault: addresses.length === 0,
+    }).then((res) => {
+      if (res.success) {
+        toast.success("Address saved successfully!");
+        setSelectedAddressId("");
+      } else {
+        toast.error(res.message || "Failed to save address");
+      }
+    });
+  };
+
   const itemTotal = useMemo(
     () => cart.reduce((acc, item) => acc + item.price * item.quantity, 0),
     [cart]
@@ -141,18 +177,20 @@ export default function CheckoutPage() {
   const handlingFee = useMemo(() => (itemTotal > 0 ? 5 : 0), [itemTotal]);
 
   const couponDiscount = useMemo(() => {
-    if (!appliedCoupon) return 0;
-    const coupon = VALID_COUPONS[appliedCoupon];
-    if (!coupon || itemTotal < coupon.minAmount) return 0;
-    return coupon.type === "percent"
-      ? Math.round(itemTotal * (coupon.discount / 100))
-      : Math.min(coupon.discount, itemTotal);
-  }, [appliedCoupon, itemTotal]);
+    if (!appliedCoupon || !couponResult?.data) return 0;
+    
+    // The backend provides the exact calculated discount based on cart total
+    if (couponResult.data.discountType === "percentage") {
+        return Math.round(itemTotal * (couponResult.data.discountValue / 100));
+    }
+    return Math.min(couponResult.data.discountValue, itemTotal);
+  }, [appliedCoupon, couponResult, itemTotal]);
 
   const subscriptionDiscount = useMemo(() => {
     if (deliveryMode !== "subscription") return 0;
-    return Math.round(itemTotal * 0.1); // 10% off for subscription
-  }, [deliveryMode, itemTotal]);
+    const rates: Record<string, number> = { weekly: 0.1, biweekly: 0.12, monthly: 0.15 };
+    return Math.round(itemTotal * (rates[subscriptionFrequency] || 0.1));
+  }, [deliveryMode, itemTotal, subscriptionFrequency]);
 
   const totalDiscount = couponDiscount + subscriptionDiscount;
   const total = useMemo(
@@ -160,7 +198,7 @@ export default function CheckoutPage() {
     [itemTotal, deliveryFee, handlingFee, totalDiscount]
   );
 
-  const handlePlaceOrder = () => {
+  const handlePlaceOrder = async () => {
     if (!validateForm()) {
       toast.error("Please fill all required fields correctly");
       return;
@@ -169,34 +207,63 @@ export default function CheckoutPage() {
       toast.error("Please select a payment method");
       return;
     }
-    
+
     setIsPlacingOrder(true);
 
-    const orderId = generateOrderId();
-    const estimatedTime = deliveryMode === "express"
-      ? selectedSlot === "10 minutes" ? "10 mins" : "2 hrs"
-      : deliveryMode === "pickup" ? "30 mins" : "1 day";
+    // ── Build a local fallback order immediately ──────────
+    const localOrderId = generateOrderId();
+    const estimatedTime =
+      deliveryMode === "express"
+        ? selectedSlot === "10 minutes" ? "10 mins" : "2 hrs"
+        : deliveryMode === "pickup" ? "30 mins" : "1 day";
     const now = new Date();
-    const deliveryDate = now.toLocaleDateString("en-IN", { month: "short", day: "numeric", year: "numeric" });
-
-    let status: "Delivered" | "Processing" | "Cancelled" | "Out for Delivery" = "Processing";
+    const deliveryDate = now.toLocaleDateString("en-IN", {
+      month: "short", day: "numeric", year: "numeric",
+    });
+    const paymentMethodLabel = `${selectedPayment!}${paymentMode === "emi" ? ` (EMI ${selectedEmi}m)` : ""}${paymentMode === "bnpl" ? ` (${selectedBnpl})` : ""}`;
+    let localStatus: "Delivered" | "Processing" | "Cancelled" | "Out for Delivery" = "Processing";
     if (deliveryMode === "express") {
-      status = selectedSlot === "10 minutes" ? "Out for Delivery" : "Processing";
+      localStatus = selectedSlot === "10 minutes" ? "Out for Delivery" : "Processing";
+    }
+    const STORE_LABELS: Record<string, string> = {
+      andheri: "Andheri West Store", bandra: "Bandra Kurla Store",
+      powai: "Powai Hiranandani Store",  worli: "Worli Seaface Store",
+    };
+    const deliverySlotLabel =
+      deliveryMode === "express" ? selectedSlot :
+      deliveryMode === "scheduled" ? `${scheduledDate || "Today"} ${scheduledTime}` :
+      deliveryMode === "pickup" ? `Pickup at ${STORE_LABELS[pickupStore] || pickupStore}` :
+      `${subscriptionFrequency} subscription`;
+
+    // ── Build API payload ────────────────────────────────
+    let addressIdNum = 0;
+    if (selectedAddressId && selectedAddressId !== "new") {
+      const match = selectedAddressId.match(/\d+/);
+      if (match) addressIdNum = parseInt(match[0], 10);
+      else if (!isNaN(Number(selectedAddressId))) addressIdNum = Number(selectedAddressId);
     }
 
-    addOrder({
-      id: orderId,
-      date: now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+    const apiPayload = {
+      // Required backend fields for integration
+      addressId: addressIdNum,
+      paymentMethod: paymentMethodLabel,
+      couponCode: appliedCoupon || "",
+      loyaltyPointsBurn: 0,
+      notes: "Order placed via Storefront",
+
+      // Fallback local UI properties for the mock backend fallback
       items: cart.map((item) => ({
-        id: item.id,
+        productId: String(item.id),
         name: item.name,
+        quantity: item.quantity,
         price: item.price,
         image: item.image,
-        quantity: item.quantity,
       })),
       total,
-      status,
-      paymentMethod: `${selectedPayment!}${paymentMode === "emi" ? ` (EMI ${selectedEmi}m)` : ""}${paymentMode === "bnpl" ? ` (${selectedBnpl})` : ""}`,
+      subtotal: itemTotal,
+      deliveryFee,
+      handlingFee,
+      discount: totalDiscount,
       deliveryAddress: {
         name: deliveryName,
         phone: deliveryPhone,
@@ -204,27 +271,76 @@ export default function CheckoutPage() {
         city: deliveryCity,
         pincode: deliveryPincode,
       },
-      deliverySlot: deliveryMode === "express" ? selectedSlot :
-        deliveryMode === "scheduled" ? `${scheduledDate || "Today"} ${scheduledTime}` :
-        deliveryMode === "pickup" ? `Pickup at ${{ andheri: "Andheri West Store", bandra: "Bandra Kurla Store", powai: "Powai Hiranandani Store", worli: "Worli Seaface Store" }[pickupStore] || pickupStore}` :
-        `${subscriptionFrequency} subscription`,
+      deliverySlot: deliverySlotLabel,
+      deliveryMode,
+      scheduledDate: deliveryMode === "scheduled" ? scheduledDate : undefined,
+      scheduledTime: deliveryMode === "scheduled" ? scheduledTime : undefined,
+      pickupStore: deliveryMode === "pickup" ? pickupStore : undefined,
+      subscriptionFrequency: deliveryMode === "subscription" ? subscriptionFrequency : undefined,
+    };
+
+    // ── Try real API ──
+    let finalOrderId = localOrderId;
+    try {
+      const res = await orderService.placeOrder(apiPayload);
+      if (res.success) {
+        finalOrderId =
+          res.orderId ||
+          res.order?.orderId ||
+          res.order?._id ||
+          res.data?.orderId ||
+          (res.data as any)?._id ||
+          localOrderId;
+      } else {
+        throw new Error(res.message || "Failed to place order.");
+      }
+    } catch (apiErr: any) {
+      console.error("[Checkout] Place order API failed:", apiErr);
+      const errorMessage = apiErr.response?.data?.message || apiErr.message || "Failed to place order. Please try again.";
+      toast.error(errorMessage);
+      setIsPlacingOrder(false);
+      return; // Do not fallback to local store on failure
+    }
+
+
+    // ── Always persist to local store (works offline too) ─
+    addOrder({
+      id: finalOrderId,
+      date: now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+      items: cart.map((item) => ({
+        id: Number(item.id),
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        quantity: item.quantity,
+      })),
+      total,
+      status: localStatus,
+      paymentMethod: paymentMethodLabel,
+      deliveryAddress: {
+        name: deliveryName,
+        phone: deliveryPhone,
+        address: deliveryAddress,
+        city: deliveryCity,
+        pincode: deliveryPincode,
+      },
+      deliverySlot: deliverySlotLabel,
       deliveryDate,
       estimatedTime,
-      deliveryPartner: deliveryMode === "express"
-        ? "Rahul (FMCG Partner)"
-        : deliveryMode === "pickup" ? "Store Pickup" : "FMCG Logistics",
-      trackingSteps: buildTrackingSteps(status, estimatedTime),
+      deliveryPartner:
+        deliveryMode === "express"
+          ? "Rahul (FMCG Partner)"
+          : deliveryMode === "pickup" ? "Store Pickup" : "FMCG Logistics",
+      trackingSteps: buildTrackingSteps(localStatus, estimatedTime),
     });
 
-    setTimeout(() => {
-      clearCart();
-      setIsPlacingOrder(false);
-      toast.success("Order placed successfully! 🎉", {
-        description: `Order ${orderId} • ₹${total}`,
-        duration: 4000,
-      });
-      router.push(`/account/orders`);
-    }, 1500);
+    clearCart();
+    setIsPlacingOrder(false);
+    toast.success("Order placed successfully! ðŸŽ‰", {
+      description: `Order ${finalOrderId} • ₹${total.toLocaleString("en-IN")}`,
+      duration: 4000,
+    });
+    router.push(`/account/orders/${encodeURIComponent(finalOrderId)}`);
   };
 
   // ... (handleRefresh)
@@ -238,7 +354,7 @@ export default function CheckoutPage() {
     <main className="min-h-screen bg-[#f2f2f2] pb-20 md:pb-0">
       <Navbar />
 
-      <div className="pt-16">
+      <div className="pt-[72px] sm:pt-20">
         <div className="border-b border-[#e8e8e8] bg-white px-3 py-2.5 sm:px-4 md:px-6">
           <div className="mx-auto flex max-w-[1400px] items-center gap-1.5 text-xs text-[#999]">
             <Link href="/cart" className="hover-text-pink">
@@ -253,7 +369,7 @@ export default function CheckoutPage() {
           <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
             <div className="space-y-3 lg:col-span-2">
               {/* Delivery Mode Selector */}
-              <section className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
+              <section className="rounded-xl border border-[#e8e8e8] bg-white relative z-20">
                 <SectionHeader icon={Truck} title="Delivery Mode" />
                 <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 p-4">
                   {[
@@ -277,7 +393,42 @@ export default function CheckoutPage() {
                     </button>
                   ))}
                 </div>
-                {/* ... (Subscription, Scheduled, Pickup blocks same as before) */}
+                {/* Express delivery slot picker */}
+                {deliveryMode === "express" && (
+                  <div className="px-4 pb-4 animate-slide-down">
+                    <p className="text-xs font-bold text-[#1a1a1a] mb-2">Select Delivery Slot</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { id: "10 minutes", label: "10 Minutes", sub: "Ultra-fast express", badge: "FASTEST", emoji: "⚡" },
+                        { id: "2 hours",   label: "2 Hours",    sub: "Standard express",  badge: "FREE",    emoji: "ðŸš€" },
+                      ].map((slot) => (
+                        <button
+                          key={slot.id}
+                          onClick={() => setSelectedSlot(slot.id)}
+                          className={`relative flex flex-col items-center gap-1.5 p-3 rounded-xl border-2 text-xs font-bold transition-all ${
+                            selectedSlot === slot.id
+                              ? "border-[#ff4f8b] bg-[#fff0f6] text-[#ff4f8b]"
+                              : "border-[#e8e8e8] text-[#666] hover:border-[#ff4f8b]/30 hover:bg-[#fff8fb]"
+                          }`}
+                        >
+                          <span
+                            className={`absolute -top-2 -right-1 text-[9px] font-black px-1.5 py-0.5 rounded-full ${
+                              slot.badge === "FASTEST"
+                                ? "bg-[#ff4f8b] text-white"
+                                : "bg-[#e8f5e9] text-[#0c831f]"
+                            }`}
+                          >
+                            {slot.badge}
+                          </span>
+                          <span className="text-xl">{slot.emoji}</span>
+                          <span>{slot.label}</span>
+                          <span className="text-[9px] font-normal text-[#999]">{slot.sub}</span>
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
                 {/* Subscription details */}
                 {deliveryMode === "subscription" && (
                   <div className="px-4 pb-4 animate-slide-down">
@@ -287,15 +438,16 @@ export default function CheckoutPage() {
                         <span className="text-sm font-bold text-[#0c831f]">Subscription Benefits</span>
                       </div>
                       <p className="text-xs text-[#666]">Save 10% on every order • Free delivery • Flexible skip/cancel</p>
-                      <select
+                      <CustomSelect
                         value={subscriptionFrequency}
-                        onChange={(e) => setSubscriptionFrequency(e.target.value)}
-                        className="w-full h-10 rounded-lg border border-[#0c831f]/30 px-3 text-sm outline-none focus:border-[#0c831f] bg-white"
-                      >
-                        <option value="weekly">Every Week — 10% off</option>
-                        <option value="biweekly">Every 2 Weeks — 12% off</option>
-                        <option value="monthly">Every Month — 15% off</option>
-                      </select>
+                        onChange={setSubscriptionFrequency}
+                        theme="green"
+                        options={[
+                          { value: "weekly", label: "Every Week — 10% off" },
+                          { value: "biweekly", label: "Every 2 Weeks — 12% off" },
+                          { value: "monthly", label: "Every Month — 15% off" }
+                        ]}
+                      />
                     </div>
                   </div>
                 )}
@@ -324,7 +476,7 @@ export default function CheckoutPage() {
               </section>
 
               {/* Delivery Address */}
-              <section className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
+              <section className="rounded-xl border border-[#e8e8e8] bg-white relative z-10">
                 <SectionHeader icon={MapPin} title="Delivery Address" />
                 <div className="p-4 space-y-4">
                   {/* Saved Addresses */}
@@ -365,16 +517,16 @@ export default function CheckoutPage() {
 
                   {/* Address Form (only if "new" or no addresses) */}
                   {(selectedAddressId === "new" || addresses.length === 0) && (
-                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-2 border-t border-[#f0f0f0]">
+                    <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 pt-4 border-t border-[#f0f0f0]">
                       <div>
                         <input
                           aria-label="Full Name"
                           placeholder="Full Name"
                           value={deliveryName}
                           onChange={(e) => setDeliveryName(e.target.value)}
-                          className={`h-11 w-full rounded-lg border bg-[#f9f9f9] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus-border-pink ${errors.name ? "border-red-500" : "border-[#e8e8e8]"}`}
+                          className={`h-12 w-full rounded-xl border bg-[#f9f9f9] px-4 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 placeholder:text-[#999] ${errors.name ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-[#e8e8e8]"}`}
                         />
-                        {errors.name && <p className="mt-1 text-[10px] text-red-500 font-bold">{errors.name}</p>}
+                        {errors.name && <p className="mt-1.5 text-[10px] text-red-500 font-bold px-1">{errors.name}</p>}
                       </div>
                       <div>
                         <input
@@ -383,9 +535,9 @@ export default function CheckoutPage() {
                           placeholder="Phone Number"
                           value={deliveryPhone}
                           onChange={(e) => setDeliveryPhone(e.target.value)}
-                          className={`h-11 w-full rounded-lg border bg-[#f9f9f9] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus-border-pink ${errors.phone ? "border-red-500" : "border-[#e8e8e8]"}`}
+                          className={`h-12 w-full rounded-xl border bg-[#f9f9f9] px-4 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 placeholder:text-[#999] ${errors.phone ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-[#e8e8e8]"}`}
                         />
-                        {errors.phone && <p className="mt-1 text-[10px] text-red-500 font-bold">{errors.phone}</p>}
+                        {errors.phone && <p className="mt-1.5 text-[10px] text-red-500 font-bold px-1">{errors.phone}</p>}
                       </div>
                       {deliveryMode !== "pickup" && (
                         <>
@@ -395,9 +547,9 @@ export default function CheckoutPage() {
                               placeholder="Full Address"
                               value={deliveryAddress}
                               onChange={(e) => setDeliveryAddress(e.target.value)}
-                              className={`h-11 w-full rounded-lg border bg-[#f9f9f9] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus-border-pink ${errors.address ? "border-red-500" : "border-[#e8e8e8]"}`}
+                              className={`h-12 w-full rounded-xl border bg-[#f9f9f9] px-4 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 placeholder:text-[#999] ${errors.address ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-[#e8e8e8]"}`}
                             />
-                            {errors.address && <p className="mt-1 text-[10px] text-red-500 font-bold">{errors.address}</p>}
+                            {errors.address && <p className="mt-1.5 text-[10px] text-red-500 font-bold px-1">{errors.address}</p>}
                           </div>
                           <div>
                             <input
@@ -405,9 +557,9 @@ export default function CheckoutPage() {
                               placeholder="City"
                               value={deliveryCity}
                               onChange={(e) => setDeliveryCity(e.target.value)}
-                              className={`h-11 w-full rounded-lg border bg-[#f9f9f9] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus-border-pink ${errors.city ? "border-red-500" : "border-[#e8e8e8]"}`}
+                              className={`h-12 w-full rounded-xl border bg-[#f9f9f9] px-4 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 placeholder:text-[#999] ${errors.city ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-[#e8e8e8]"}`}
                             />
-                            {errors.city && <p className="mt-1 text-[10px] text-red-500 font-bold">{errors.city}</p>}
+                            {errors.city && <p className="mt-1.5 text-[10px] text-red-500 font-bold px-1">{errors.city}</p>}
                           </div>
                           <div>
                             <input
@@ -417,12 +569,38 @@ export default function CheckoutPage() {
                               placeholder="Pincode"
                               value={deliveryPincode}
                               onChange={(e) => setDeliveryPincode(e.target.value)}
-                              className={`h-11 w-full rounded-lg border bg-[#f9f9f9] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus-border-pink ${errors.pincode ? "border-red-500" : "border-[#e8e8e8]"}`}
+                              className={`h-12 w-full rounded-xl border bg-[#f9f9f9] px-4 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:bg-white focus:bg-white focus:border-[#ff4f8b] focus:ring-4 focus:ring-[#ff4f8b]/10 placeholder:text-[#999] ${errors.pincode ? "border-red-500 focus:border-red-500 focus:ring-red-500/10" : "border-[#e8e8e8]"}`}
                             />
-                            {errors.pincode && <p className="mt-1 text-[10px] text-red-500 font-bold">{errors.pincode}</p>}
+                            {errors.pincode && <p className="mt-1.5 text-[10px] text-red-500 font-bold px-1">{errors.pincode}</p>}
                           </div>
                         </>
                       )}
+
+                      <div className="sm:col-span-2 flex flex-wrap gap-2 pt-2">
+                        {["Home", "Work", "Other"].map((type) => (
+                          <button
+                            key={type}
+                            onClick={() => setAddressType(type as any)}
+                            className={`px-4 py-2 rounded-full text-xs font-bold transition-all border ${
+                              addressType === type
+                                ? "border-[#ff4f8b] bg-[#fff0f6] text-[#ff4f8b]"
+                                : "border-[#e8e8e8] text-[#666] hover:border-[#ff4f8b]"
+                            }`}
+                          >
+                            {type}
+                          </button>
+                        ))}
+                      </div>
+
+                      <div className="sm:col-span-2 pt-2">
+                        <button
+                          onClick={handleSaveAddress}
+                          className="w-full h-12 rounded-xl bg-black text-white font-bold text-sm transition-all hover:bg-black/80 flex items-center justify-center gap-2"
+                        >
+                          <CheckCircle className="w-4 h-4" />
+                          Save Delivery Address
+                        </button>
+                      </div>
                     </div>
                   )}
                 </div>
@@ -432,33 +610,59 @@ export default function CheckoutPage() {
             {/* Right Column — Order Summary & Payment */}
             <aside className="space-y-3 lg:sticky lg:top-20 lg:h-fit">
               {/* Coupon */}
-              <section className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
+              <section className="rounded-xl border border-[#e8e8e8] bg-white relative z-30">
                 <SectionHeader icon={Tag} title="Apply Coupon" />
                 <div className="p-4">
                   <div className="flex gap-2">
-                    <select
-                      value={appliedCoupon ?? ""}
-                      onChange={(e) => setAppliedCoupon(e.target.value || null)}
-                      className="flex-1 h-10 rounded-lg border border-[#e8e8e8] px-3 text-sm outline-none focus:border-[#ff4f8b] bg-white text-[#1a1a1a]"
-                    >
-                      <option value="">Select coupon</option>
-                      <option value="SAVE20">SAVE20 — 20% OFF</option>
-                      <option value="FIRST50">FIRST50 — ₹50 OFF (min ₹299)</option>
-                      <option value="WELCOME10">WELCOME10 — 10% OFF</option>
-                      <option value="FMCG100">FMCG100 — ₹100 OFF (min ₹499)</option>
-                      <option value="SUPER15">SUPER15 — 15% OFF (min ₹199)</option>
-                    </select>
+                    <input
+                      type="text"
+                      placeholder="Enter coupon code"
+                      value={couponInput}
+                      onChange={(e) => setCouponInput(e.target.value.toUpperCase())}
+                      className="flex-1 rounded-xl border border-[#e8e8e8] bg-[#f9f9f9] px-4 text-sm font-medium text-[#1a1a1a] outline-none transition-all focus:border-[#ff4f8b] focus:bg-white"
+                      disabled={isValidating || !!appliedCoupon}
+                    />
+                    {appliedCoupon ? (
+                      <button
+                        onClick={() => {
+                          setAppliedCoupon(null);
+                          setCouponInput("");
+                          clearCoupon();
+                          toast.success("Coupon removed");
+                        }}
+                        className="rounded-xl border border-[#e8e8e8] bg-white px-4 text-sm font-bold text-red-500 transition hover:bg-red-50"
+                      >
+                        Remove
+                      </button>
+                    ) : (
+                      <button
+                        onClick={async () => {
+                          if (!couponInput) return;
+                          const res = await validateCoupon({ code: couponInput, cartTotal: itemTotal });
+                          if (res.success) {
+                            setAppliedCoupon(couponInput);
+                            toast.success(`Coupon applied!`);
+                          } else {
+                            toast.error(res.message || "Invalid coupon");
+                          }
+                        }}
+                        disabled={!couponInput || isValidating}
+                        className="flex items-center justify-center min-w-[80px] rounded-xl bg-[#ff4f8b] px-4 text-sm font-bold text-white transition hover:bg-[#e63872] disabled:bg-[#fccfe0] disabled:cursor-not-allowed"
+                      >
+                        {isValidating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Apply"}
+                      </button>
+                    )}
                   </div>
-                  {appliedCoupon && (
-                    <p className="mt-2 text-[10px] font-bold text-[#0c831f]">
-                      Coupon applied! You save ₹{couponDiscount}
+                  {appliedCoupon && couponDiscount > 0 && (
+                    <p className="mt-2 text-xs font-bold text-[#0c831f]">
+                      Coupon applied successfully! You save ₹{couponDiscount}
                     </p>
                   )}
                 </div>
               </section>
 
               {/* Bill Details */}
-              <section className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
+              <section className="rounded-xl border border-[#e8e8e8] bg-white">
                 <SectionHeader icon={ReceiptText} title="Bill Details" />
                 <div className="p-4 space-y-3">
                   <BillRow label="Item total" value={<>₹{itemTotal}</>} />
@@ -481,14 +685,14 @@ export default function CheckoutPage() {
               </section>
 
               {/* Payment Method */}
-              <section className="overflow-hidden rounded-xl border border-[#e8e8e8] bg-white">
+              <section className="rounded-xl border border-[#e8e8e8] bg-white relative z-20">
                 <SectionHeader icon={CreditCard} title="Payment Method" />
                 <div className="p-4 space-y-2">
                   {[
-                    { id: "cod", label: "Cash on Delivery", sub: "Pay when you receive", icon: "💵" },
-                    { id: "card", label: "Credit / Debit Card", sub: "Visa, Mastercard, RuPay", icon: "💳" },
-                    { id: "upi", label: "UPI", sub: "Google Pay, PhonePe, Paytm", icon: "📱" },
-                    { id: "netbanking", label: "Net Banking", sub: "All major banks", icon: "🏦" },
+                    { id: "cod", label: "Cash on Delivery", sub: "Pay when you receive", icon: "ðŸ’µ" },
+                    { id: "card", label: "Credit / Debit Card", sub: "Visa, Mastercard, RuPay", icon: "ðŸ’³" },
+                    { id: "upi", label: "UPI", sub: "Google Pay, PhonePe, Paytm", icon: "ðŸ“±" },
+                    { id: "netbanking", label: "Net Banking", sub: "All major banks", icon: "ðŸ¦" },
                   ].map((method) => (
                     <button
                       key={method.id}

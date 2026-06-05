@@ -1,0 +1,340 @@
+  // ── ONBOARDING ────────────────────────────────────────
+
+  async getOnboardingApplications(
+    filters?: Partial<VendorFilters>,
+    page = 1,
+    pageSize = 10
+  ): Promise<{ data: VendorOnboarding[]; meta: VendorPageMeta }> {
+    try {
+      const query = buildQuery({
+        page: Math.max(0, page - 1),
+        size: pageSize,
+        search: filters?.search,
+        status: filters?.status,
+      });
+      const raw = await apiClient.get<any>(`${VENDORS_PREFIX}/onboarding${query}`);
+      const applications = raw?.data?.content ?? raw?.content ?? raw?.data ?? [];
+      const meta = extractMeta(raw, applications.length, page, pageSize);
+      return { data: applications, meta };
+    } catch (err) {
+      console.warn("[VendorsService] getOnboardingApplications API failed, using mock:", err);
+      await delay(250);
+      let filtered = [...mockVendorOnboarding];
+      if (filters?.search) {
+        filtered = applySearch(filtered, filters.search, [
+          "company", "owner", "email", "id",
+        ] as (keyof VendorOnboarding)[]);
+      }
+      if (filters?.status && filters.status !== "all") {
+        filtered = filtered.filter((v) => v.status === filters.status);
+      }
+      return applyPagination(filtered, page, pageSize);
+    }
+  },
+
+  async getOnboardingSummary(): Promise<OnboardingSummary> {
+    try {
+      const raw = await apiClient.get<any>(`${VENDORS_PREFIX}/onboarding/summary`);
+      return raw?.data || raw;
+    } catch (err) {
+      console.warn("[VendorsService] getOnboardingSummary API failed, using mock:", err);
+      await delay(150);
+      const apps = mockVendorOnboarding;
+      return {
+        total:            apps.length,
+        pendingReview:    apps.filter((a) => a.status === "pending_review").length,
+        pendingDocuments: apps.filter((a) => a.status === "pending_documents").length,
+        approved:         apps.filter((a) => a.status === "approved").length,
+        rejected:         apps.filter((a) => a.status === "rejected").length,
+      };
+    }
+  },
+
+  async approveVendor(id: string): Promise<void> {
+    try {
+      await apiClient.post(`${VENDORS_PREFIX}/${id}/approve`, {});
+    } catch (err) {
+      console.error(`[VendorsService] approveVendor(${id}) failed:`, err);
+      throw err;
+    }
+  },
+
+  async rejectVendor(id: string, reason: string): Promise<void> {
+    try {
+      await apiClient.post(`${VENDORS_PREFIX}/${id}/reject`, { reason });
+    } catch (err) {
+      console.error(`[VendorsService] rejectVendor(${id}) failed:`, err);
+      throw err;
+    }
+  },
+
+  // ── VENDOR PRODUCTS ───────────────────────────────────
+
+  async getVendorProducts(
+    filters?: Partial<VendorFilters> & { vendorId?: string },
+    page = 1,
+    pageSize = 10
+  ): Promise<{ data: VendorProduct[]; meta: VendorPageMeta }> {
+    try {
+      const query = buildQuery({
+        page: Math.max(0, page - 1),
+        size: pageSize,
+        vendorId: filters?.vendorId,
+        search: filters?.search,
+        status: filters?.status,
+        sortBy: filters?.sortBy,
+        sortOrder: filters?.sortOrder,
+      });
+      const raw = await apiClient.get<any>(`${VENDORS_PREFIX}/products${query}`);
+      const products = raw?.data?.content ?? raw?.content ?? raw?.data ?? [];
+      const meta = extractMeta(raw, products.length, page, pageSize);
+      return { data: products, meta };
+    } catch (err) {
+      console.warn("[VendorsService] getVendorProducts API failed, using mock:", err);
+      await delay(250);
+      let filtered = [...mockVendorProducts];
+      if (filters?.vendorId) {
+        filtered = filtered.filter((p) => p.vendorId === filters.vendorId);
+      }
+      if (filters?.search) {
+        filtered = applySearch(filtered, filters.search, [
+          "productName", "sku", "vendorName", "category",
+        ] as (keyof VendorProduct)[]);
+      }
+      if (filters?.status && filters.status !== "all") {
+        filtered = filtered.filter((p) => p.status === filters.status);
+      }
+      if (filters?.sortBy) {
+        const key = filters.sortBy as keyof VendorProduct;
+        const dir = filters.sortOrder === "asc" ? 1 : -1;
+        filtered.sort(
+          (a, b) => String(a[key] ?? "").localeCompare(String(b[key] ?? "")) * dir
+        );
+      }
+      return applyPagination(filtered, page, pageSize);
+    }
+  },
+
+  async getProductSummary(): Promise<{
+    totalProducts: number;
+    activeProducts: number;
+    outOfStockCount: number;
+    inactiveCount: number;
+    avgMargin: number;
+    totalStockValue: number;
+  }> {
+    try {
+      const raw = await apiClient.get<any>(`${VENDORS_PREFIX}/products/summary`);
+      return raw?.data || raw;
+    } catch (err) {
+      console.warn("[VendorsService] getProductSummary API failed, using mock:", err);
+      await delay(150);
+      const products = mockVendorProducts;
+      return {
+        totalProducts:   products.length,
+        activeProducts:  products.filter((p) => p.status === "active").length,
+        outOfStockCount: products.filter((p) => p.status === "out_of_stock").length,
+        inactiveCount:   products.filter(
+          (p) => p.status === "inactive" || p.status === "discontinued"
+        ).length,
+        avgMargin:
+          products.length
+            ? Math.round(
+                (products.reduce((s, p) => s + p.margin, 0) / products.length) * 10
+              ) / 10
+            : 0,
+        totalStockValue: products.reduce((s, p) => s + p.stock * p.costPrice, 0),
+      };
+    }
+  },
+
+  // ── ALL-VENDORS SETTLEMENTS (admin dashboard) ─────────
+
+  async getSettlements(
+    filters?: Partial<VendorFilters>,
+    page = 1,
+    pageSize = 10
+  ): Promise<{ data: VendorSettlement[]; meta: VendorPageMeta }> {
+    try {
+      const query = buildQuery({
+        page: Math.max(0, page - 1),
+        size:      pageSize,
+        search:    filters?.search,
+        status:    filters?.status,
+        sortBy:    filters?.sortBy,
+        sortOrder: filters?.sortOrder,
+      });
+      const raw = await apiClient.get<any>(`/api/v1/admin/settlements${query}`);
+      const settlements: any[] =
+        raw?.data?.settlements ?? raw?.settlements ?? raw?.data ?? [];
+      const mapped = settlements.map(mapVendorSettlementFromApi);
+      const meta = extractMeta(raw, mapped.length, page, pageSize);
+      return { data: mapped, meta };
+    } catch (err) {
+      console.warn("[VendorsService] getSettlements API failed, using mock:", err);
+      await delay(250);
+
+      let filtered = [...mockVendorSettlements];
+      if (filters?.search) {
+        filtered = applySearch(filtered, filters.search, [
+          "vendorName", "id", "vendorId",
+        ] as (keyof VendorSettlement)[]);
+      }
+      if (filters?.status && filters.status !== "all") {
+        filtered = filtered.filter((s) => s.status === filters.status);
+      }
+      if (filters?.sortBy) {
+        const key = filters.sortBy as keyof VendorSettlement;
+        const dir = filters.sortOrder === "asc" ? 1 : -1;
+        filtered.sort(
+          (a, b) => String(a[key] ?? "").localeCompare(String(b[key] ?? "")) * dir
+        );
+      }
+      const paginated = applyPagination(filtered, page, pageSize);
+      return {
+        data: paginated.data.map(mapVendorSettlementFromApi),
+        meta: paginated.meta,
+      };
+    }
+  },
+
+  async getSettlementSummary(): Promise<SettlementSummary> {
+    try {
+      const { data: settlements } = await vendorsService.getSettlements({}, 1, 1000);
+      return {
+        totalSettlements: settlements.length,
+        pendingCount:     settlements.filter((s) => s.status === "pending").length,
+        processingCount:  settlements.filter((s) => s.status === "processing").length,
+        completedCount:   settlements.filter((s) => s.status === "completed").length,
+        totalGrossSales:  settlements.reduce((s, st) => s + st.grossSales, 0),
+        totalCommission:  settlements.reduce((s, st) => s + st.commission, 0),
+        totalNetPayable:  settlements.reduce((s, st) => s + st.netPayable, 0),
+        pendingAmount:    settlements
+          .filter((s) => s.status === "pending")
+          .reduce((s, st) => s + st.netPayable, 0),
+      };
+    } catch {
+      const settlements = mockVendorSettlements;
+      return {
+        totalSettlements: settlements.length,
+        pendingCount:     settlements.filter((s) => s.status === "pending").length,
+        processingCount:  settlements.filter((s) => s.status === "processing").length,
+        completedCount:   settlements.filter((s) => s.status === "completed").length,
+        totalGrossSales:  settlements.reduce((s, st) => s + st.grossSales, 0),
+        totalCommission:  settlements.reduce((s, st) => s + st.commission, 0),
+        totalNetPayable:  settlements.reduce((s, st) => s + st.netPayable, 0),
+        pendingAmount:    settlements
+          .filter((s) => s.status === "pending")
+          .reduce((s, st) => s + st.netPayable, 0),
+      };
+    }
+  },
+
+  async processSettlement(id: string): Promise<void> {
+    try {
+      await apiClient.post(`/api/v1/admin/settlements/${id}/process`, {});
+    } catch (err) {
+      console.warn(`[VendorsService] processSettlement(${id}) failed, mock fallback:`, err);
+      await delay(500);
+      const match = mockVendorSettlements.find((s) => s.id === id);
+      if (match) {
+        match.status = "completed";
+        match.paidDate = new Date().toISOString().split("T")[0];
+        match.paymentRef = `TXN${Math.floor(1000000000 + Math.random() * 9000000000)}`;
+      }
+    }
+  },
+
+  // ── ANALYTICS ─────────────────────────────────────────
+
+  async getVendorAnalytics(
+    filters?: Partial<VendorFilters>,
+    page = 1,
+    pageSize = 10
+  ): Promise<{ data: VendorAnalyticsEntry[]; meta: VendorPageMeta }> {
+    try {
+      const query = buildQuery({
+        page: Math.max(0, page - 1),
+        size: pageSize,
+        search: filters?.search,
+        sortBy: filters?.sortBy,
+        sortOrder: filters?.sortOrder,
+      });
+      const raw = await apiClient.get<any>(`${VENDORS_PREFIX}/analytics${query}`);
+      const analytics = raw?.data?.content ?? raw?.content ?? raw?.data ?? [];
+      const meta = extractMeta(raw, analytics.length, page, pageSize);
+      return { data: analytics, meta };
+    } catch (err) {
+      console.warn("[VendorsService] getVendorAnalytics API failed, using mock:", err);
+      await delay(250);
+      let filtered = [...mockVendorAnalytics];
+      if (filters?.search) {
+        filtered = applySearch(filtered, filters.search, [
+          "vendorName", "category",
+        ] as (keyof VendorAnalyticsEntry)[]);
+      }
+      if (filters?.sortBy) {
+        const key = filters.sortBy as keyof VendorAnalyticsEntry;
+        const dir = filters.sortOrder === "asc" ? 1 : -1;
+        filtered.sort(
+          (a, b) => String(a[key] ?? "").localeCompare(String(b[key] ?? "")) * dir
+        );
+      }
+      return applyPagination(filtered, page, pageSize);
+    }
+  },
+
+  async getAnalyticsSummary(): Promise<VendorAnalyticsSummary> {
+    try {
+      const raw = await apiClient.get<any>(`${VENDORS_PREFIX}/analytics/summary`);
+      return raw?.data || raw;
+    } catch (err) {
+      console.warn("[VendorsService] getAnalyticsSummary API failed, using mock:", err);
+      await delay(150);
+      const analytics = mockVendorAnalytics;
+      const top = analytics.reduce(
+        (best, curr) => (curr.totalSales > best.totalSales ? curr : best),
+        analytics[0]
+      );
+      return {
+        totalVendors:      analytics.length,
+        activeVendors:     analytics.filter((a) => a.growth >= 0).length,
+        totalSales:        analytics.reduce((s, a) => s + a.totalSales, 0),
+        totalOrders:       analytics.reduce((s, a) => s + a.totalOrders, 0),
+        avgRating:
+          analytics.length
+            ? Math.round(
+                (analytics.reduce((s, a) => s + a.rating, 0) / analytics.length) * 10
+              ) / 10
+            : 0,
+        avgOnTimeDelivery:
+          analytics.length
+            ? Math.round(
+                (analytics.reduce((s, a) => s + a.onTimeDelivery, 0) / analytics.length) * 10
+              ) / 10
+            : 0,
+        topVendor:       top?.vendorName ?? "",
+        totalCommission: 0,
+      };
+    }
+  },
+
+  // ── EXPORT ────────────────────────────────────────────
+
+  async exportVendors(
+    format: "csv" | "xlsx" | "pdf"
+  ): Promise<{ success: boolean; downloadUrl: string }> {
+    try {
+      const raw = await apiClient.get<any>(
+        `${VENDORS_PREFIX}/export?format=${format}`
+      );
+      return {
+        success: true,
+        downloadUrl: raw?.downloadUrl || raw?.data?.downloadUrl || `/api/vendors/export?format=${format}`,
+      };
+    } catch {
+      await delay(500);
+      return { success: true, downloadUrl: `/api/vendors/export?format=${format}` };
+    }
+  },
+};

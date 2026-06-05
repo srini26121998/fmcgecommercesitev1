@@ -1,7 +1,8 @@
 "use client";
 
-import { ShoppingCart, Minus, Plus, Bell } from "lucide-react";
-import { useCartStore } from "@/store/cart-store";
+import { Bell } from "lucide-react";
+import { useUserCart } from "@/hooks/use-user-cart";
+import AddToCartButton from "@/components/ui/products/add-to-cart-button";
 import { toast } from "sonner";
 import type { StockStatus } from "@/data/products";
 
@@ -17,8 +18,8 @@ interface StickyAddToCartProps {
 }
 
 export default function StickyAddToCart({ product }: StickyAddToCartProps) {
-  const { cart, addToCart, increaseQuantity, decreaseQuantity } = useCartStore();
-  const cartItem = cart.find((item) => item.id === product.id);
+  const { cartItems, addToCart, increaseQuantity, decreaseQuantity } = useUserCart();
+  const cartItem = cartItems.find((item) => Number(item.id) === Number(product.id));
   const quantity = cartItem?.quantity ?? 0;
   const isOutOfStock = product.stock === "out_of_stock";
 
@@ -54,45 +55,16 @@ export default function StickyAddToCart({ product }: StickyAddToCartProps) {
         </div>
 
         {/* Quantity / Add to Cart */}
-        {quantity === 0 ? (
-          <button
-            onClick={() => {
-              addToCart({
-                id: product.id,
-                name: product.name,
-                price: product.price,
-                image: product.image,
-                quantity: 1,
-                weight: product.weight,
-              });
-              toast.success("Added to cart 🛒");
-            }}
-            className="flex items-center gap-2 h-12 px-6 rounded-xl bg-[#ff4f8b] text-white text-sm font-black hover:bg-[#e63872] active:bg-[#e63872] transition-colors"
-          >
-            <ShoppingCart className="w-5 h-5" />
-            Add
-          </button>
-         ) : (
-          <div className="flex items-center rounded-xl bg-[#ff4f8b] overflow-hidden h-12 shadow-sm">
-            <button
-              onClick={() => decreaseQuantity(product.id)}
-              className="w-12 h-full flex items-center justify-center text-white hover:bg-[#e63872] active:bg-[#e63872] transition-colors"
-              aria-label="Decrease quantity"
-            >
-              <Minus className="w-5 h-5" />
-            </button>
-            <span className="w-12 text-center text-base font-black text-white">
-              {quantity}
-            </span>
-            <button
-              onClick={() => increaseQuantity(product.id)}
-              className="w-12 h-full flex items-center justify-center text-white hover:bg-[#e63872] active:bg-[#e63872] transition-colors"
-              aria-label="Increase quantity"
-            >
-              <Plus className="w-5 h-5" />
-            </button>
-          </div>
-        )}
+        <div className="flex-shrink-0">
+          <AddToCartButton
+            productId={product.id}
+            productName={product.name}
+            productPrice={product.price}
+            productImage={product.image}
+            themeColor="pink"
+            size="md"
+          />
+        </div>
       </div>
     </div>
   );

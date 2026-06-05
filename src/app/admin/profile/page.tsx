@@ -37,7 +37,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 
-// ── Profile Tab Config ────────────────────────────────────
+// -- Profile Tab Config ------------------------------------
 
 const profileTabs = [
   { id: "personal", label: "Personal Info", icon: User },
@@ -47,7 +47,7 @@ const profileTabs = [
   { id: "preferences", label: "Notifications", icon: Bell },
 ];
 
-// ── Helper: Device Icon ───────────────────────────────────
+// -- Helper: Device Icon -----------------------------------
 
 function DeviceIcon({ type }: { type: string }) {
   const icons: Record<string, typeof Monitor> = {
@@ -59,14 +59,14 @@ function DeviceIcon({ type }: { type: string }) {
   return <Icon className="h-4 w-4" />;
 }
 
-// ── Helper: Truncate Key ──────────────────────────────────
+// -- Helper: Truncate Key ----------------------------------
 
 function truncateKey(key: string): string {
   if (key.length <= 16) return key;
-  return `${key.slice(0, 12)}…${key.slice(-4)}`;
+  return `${key.slice(0, 12)}₹${key.slice(-4)}`;
 }
 
-// ── Main Page ─────────────────────────────────────────────
+// -- Main Page ---------------------------------------------
 
 export default function ProfilePage() {
   const {
@@ -92,7 +92,7 @@ export default function ProfilePage() {
 
   const [activeTab, setActiveTab] = useState("personal");
 
-  // ── Edit Profile Modal ──────────────────────────────────
+  // -- Edit Profile Modal ----------------------------------
   const [showEditModal, setShowEditModal] = useState(false);
   const [editForm, setEditForm] = useState({
     name: "",
@@ -126,7 +126,7 @@ export default function ProfilePage() {
     }
   };
 
-  // ── Password Change Modal ───────────────────────────────
+  // -- Password Change Modal -------------------------------
   const [showPasswordModal, setShowPasswordModal] = useState(false);
   const [passwordForm, setPasswordForm] = useState({
     current: "",
@@ -157,7 +157,7 @@ export default function ProfilePage() {
     }
   };
 
-  // ── MFA Toggle ──────────────────────────────────────────
+  // -- MFA Toggle ------------------------------------------
   const [showMFAModal, setShowMFAModal] = useState(false);
 
   const handleMFAToggle = async () => {
@@ -172,7 +172,7 @@ export default function ProfilePage() {
     }
   };
 
-  // ── API Key Rotate ──────────────────────────────────────
+  // -- API Key Rotate --------------------------------------
   const [rotatingKey, setRotatingKey] = useState(false);
 
   const handleRotateKey = async () => {
@@ -213,7 +213,7 @@ export default function ProfilePage() {
   return (
     <DashboardLayout>
       <div className="space-y-4 p-2 sm:p-4">
-        {/* ── Header / Profile Card ───────────────────────── */}
+        {/* -- Header / Profile Card ------------------------- */}
         <section className="rounded-2xl border border-[#e8e8e8] bg-white shadow-sm">
           <div className="relative h-24 rounded-t-2xl bg-gradient-to-r from-[#0c831f] to-[#0a6a18] sm:h-32" />
           <div className="relative px-5 pb-5 sm:px-6 sm:pb-6">
@@ -235,13 +235,13 @@ export default function ProfilePage() {
                     </span>
                     {profile.team && (
                       <>
-                        <span className="text-[#ccc]">·</span>
+                        <span className="text-[#ccc]">₹</span>
                         <span>{profile.team}</span>
                       </>
                     )}
                     {profile.location && (
                       <>
-                        <span className="text-[#ccc]">·</span>
+                        <span className="text-[#ccc]">₹</span>
                         <span className="flex items-center gap-1">
                           <MapPin className="h-3 w-3" />
                           {profile.location}
@@ -268,12 +268,12 @@ export default function ProfilePage() {
           </div>
         </section>
 
-        {/* ── Stats Cards ────────────────────────────────── */}
+        {/* -- Stats Cards ---------------------------------- */}
         {stats && (
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {[
               { label: "Orders Processed", value: stats.totalOrdersProcessed, icon: Activity },
-              { label: "Revenue Managed", value: `₹${(stats.totalRevenueManaged / 10000000).toFixed(1)}Cr`, icon: Activity },
+              { label: "Revenue Managed", value: `?${(stats.totalRevenueManaged / 10000000).toFixed(1)}Cr`, icon: Activity },
               { label: "Active Sessions", value: stats.activeSessions, icon: Monitor },
               { label: "Days on Platform", value: stats.daysSinceJoined, icon: Calendar },
               { label: "Login Streak", value: `${stats.loginStreak}d`, icon: Clock },
@@ -295,7 +295,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ── Tabs ───────────────────────────────────────── */}
+        {/* -- Tabs ----------------------------------------- */}
         <div className="flex flex-wrap gap-1 rounded-2xl border border-[#e8e8e8] bg-white p-1 shadow-sm">
           {profileTabs.map((tab) => {
             const Icon = tab.icon;
@@ -316,9 +316,9 @@ export default function ProfilePage() {
           })}
         </div>
 
-        {/* ── Tab Content ────────────────────────────────── */}
+        {/* -- Tab Content ---------------------------------- */}
 
-        {/* ──── PERSONAL INFO ────────────────────────── */}
+        {/* ---- PERSONAL INFO -------------------------- */}
         {activeTab === "personal" && (
           <div className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-5">
@@ -363,7 +363,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-2 rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 py-2.5">
                   <Phone className="h-4 w-4 text-[#999]" />
                   <span className="text-sm font-semibold text-[#1a1a1a]">
-                    {profile.phone || "—"}
+                    {profile.phone || "₹"}
                   </span>
                 </div>
               </div>
@@ -387,7 +387,7 @@ export default function ProfilePage() {
                 <div className="flex items-center gap-2 rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 py-2.5">
                   <MapPin className="h-4 w-4 text-[#999]" />
                   <span className="text-sm font-semibold text-[#1a1a1a]">
-                    {profile.location || "—"}
+                    {profile.location || "₹"}
                   </span>
                 </div>
               </div>
@@ -417,7 +417,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ──── SECURITY & AUTH ──────────────────────── */}
+        {/* ---- SECURITY & AUTH ------------------------ */}
         {activeTab === "security" && (
           <div className="space-y-4">
             {/* MFA */}
@@ -486,7 +486,7 @@ export default function ProfilePage() {
                       })
                     : "Never"}
                   {security?.passwordExpiresAt && (
-                    <> · Expires: {new Date(security.passwordExpiresAt).toLocaleDateString("en-IN")}</>
+                    <> ₹ Expires: {new Date(security.passwordExpiresAt).toLocaleDateString("en-IN")}</>
                   )}
                 </p>
               </div>
@@ -550,7 +550,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ──── ACTIVE SESSIONS ──────────────────────── */}
+        {/* ---- ACTIVE SESSIONS ------------------------ */}
         {activeTab === "sessions" && (
           <div className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-4 flex items-center justify-between">
@@ -606,10 +606,10 @@ export default function ProfilePage() {
                           )}
                         </div>
                         <p className="text-xs text-[#666]">
-                          {session.browser} · {session.os}
+                          {session.browser} ₹ {session.os}
                         </p>
                         <p className="text-xs text-[#999]">
-                          {session.location} · IP: {session.ip}
+                          {session.location} ₹ IP: {session.ip}
                         </p>
                         <p className="mt-1 text-[10px] text-[#999]">
                           Last active: {new Date(session.lastActiveAt).toLocaleString("en-IN")}
@@ -632,7 +632,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ──── ACTIVITY LOG ──────────────────────────── */}
+        {/* ---- ACTIVITY LOG ---------------------------- */}
         {activeTab === "activity" && (
           <div className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-4">
@@ -690,13 +690,13 @@ export default function ProfilePage() {
                           </span>
                           {entry.ip && (
                             <>
-                              <span>·</span>
+                              <span>₹</span>
                               <span>IP: {entry.ip}</span>
                             </>
                           )}
                           {entry.resource && (
                             <>
-                              <span>·</span>
+                              <span>₹</span>
                               <span>{entry.resource}</span>
                             </>
                           )}
@@ -727,7 +727,7 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* ──── NOTIFICATION PREFERENCES ─────────────── */}
+        {/* ---- NOTIFICATION PREFERENCES --------------- */}
         {activeTab === "preferences" && (
           <div className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm sm:p-6">
             <div className="mb-4">
@@ -888,7 +888,7 @@ export default function ProfilePage() {
         )}
       </div>
 
-      {/* ── Edit Profile Modal ─────────────────────────── */}
+      {/* -- Edit Profile Modal --------------------------- */}
       <ReusableModal
         open={showEditModal}
         onClose={() => setShowEditModal(false)}
@@ -951,7 +951,7 @@ export default function ProfilePage() {
         </div>
       </ReusableModal>
 
-      {/* ── Change Password Modal ─────────────────────── */}
+      {/* -- Change Password Modal ----------------------- */}
       <ReusableModal
         open={showPasswordModal}
         onClose={() => setShowPasswordModal(false)}
@@ -1022,3 +1022,4 @@ export default function ProfilePage() {
     </DashboardLayout>
   );
 }
+

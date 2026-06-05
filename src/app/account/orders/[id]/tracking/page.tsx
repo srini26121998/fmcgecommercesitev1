@@ -1,241 +1,361 @@
 "use client";
 
-import { useParams, useRouter } from "next/navigation";
-import { useState } from "react";
+import React, { use } from "react";
 import Link from "next/link";
-import { ChevronLeft, Package, Truck, CheckCircle, Clock, MapPin, Home, ShoppingBag, AlertCircle, MessageCircle, Camera } from "lucide-react";
-import { useOrderStore } from "@/store/order-store";
-import LiveTrackingMap from "@/components/ui/orders/live-tracking-map";
-import ChatWithRider from "@/components/ui/orders/chat-with-rider";
-import DeliveryProof from "@/components/ui/orders/delivery-proof";
+import { notFound } from "next/navigation";
+import {
+  ChevronLeft,
+  Truck,
+  CheckCircle,
+  ShoppingBag,
+  Package,
+  Home,
+  MapPin,
+  Phone,
+  Clock,
+  Star,
+} from "lucide-react";
+import { useUserOrderDetails } from "@/hooks/use-user-orders";
 
-const iconMap: Record<string, React.ElementType> = {
-  ShoppingBag, CheckCircle, Package, Truck, Home,
+const ICON_MAP: Record<string, React.ElementType> = {
+  ShoppingBag,
+  CheckCircle,
+  Package,
+  Truck,
+  Home,
 };
 
-export default function TrackingPage() {
-  const params = useParams();
-  const router = useRouter();
-  const orderId = params.id as string;
-  const getOrderById = useOrderStore((state) => state.getOrderById);
-  const order = getOrderById(orderId);
+const STATUS_GRADIENT: Record<string, string> = {
+  "Out for Delivery": "from-[#1565c0] to-[#1976d2]",
+  Processing:         "from-[#e65100] to-[#f57c00]",
+  Delivered:          "from-[#0c831f] to-[#2e7d32]",
+  Cancelled:          "from-[#c62828] to-[#d32f2f]",
+  pending:            "from-[#e65100] to-[#f57c00]",
+  confirmed:          "from-[#e65100] to-[#f57c00]",
+};
 
-  const [showChat, setShowChat] = useState(false);
-  const [showDeliveryProof, setShowDeliveryProof] = useState(false);
+const STATUS_TEXT: Record<string, string> = {
+  "Out for Delivery": "text-[#1565c0]",
+  Processing:         "text-[#e65100]",
+  Delivered:          "text-[#0c831f]",
+  Cancelled:          "text-[#c62828]",
+  pending:            "text-[#e65100]",
+  confirmed:          "text-[#e65100]",
+};
 
-  if (!order) {
+export default function OrderTrackingPage({
+  params,
+}: {
+  params: Promise<{ id: string }>;
+}) {
+  const { id } = use(params);
+  const decodedId = decodeURIComponent(id);
+  const { order, loading } = useUserOrderDetails(decodedId);
+
+  if (loading) {
     return (
-      <main className="min-h-screen bg-[#f2f2f2] pb-24 flex items-center justify-center">
-        <div className="text-center max-w-sm px-4">
-          <div className="w-20 h-20 rounded-full bg-[#fff0f6] flex items-center justify-center mx-auto mb-4">
-            <AlertCircle className="w-10 h-10 text-[#ff4f8b]" />
-          </div>
-          <h2 className="text-lg font-bold text-[#1a1a1a] mb-2">Order not found</h2>
-          <p className="text-sm text-[#666] mb-6">We couldn&apos;t find order {orderId}. It may have been placed in a different session.</p>
-          <button
-            onClick={() => router.push("/account/orders")}
-            className="inline-flex h-11 px-6 rounded-xl bg-[#ff4f8b] text-white text-sm font-semibold items-center gap-2 hover:bg-[#e63872] transition-colors"
-          >
-            <ShoppingBag className="w-4 h-4" />
-            View Your Orders
-          </button>
-        </div>
+      <main className="min-h-screen bg-[#f2f2f2] flex items-center justify-center">
+        <div className="animate-spin w-8 h-8 border-4 border-[#ff4f8b] border-t-transparent rounded-full" />
       </main>
     );
   }
 
-  const itemCount = order.items.reduce((sum, i) => sum + i.quantity, 0);
-  const addressStr = `${order.deliveryAddress.address}, ${order.deliveryAddress.city} - ${order.deliveryAddress.pincode}`;
+  if (!order) return notFound();
+
+  const safeItems = Array.isArray(order.items) ? order.items : [];
+
+  const gradient = STATUS_GRADIENT[order.status] ?? "from-[#ff4f8b] to-[#ff6b9d]";
+  const completedCount = order.trackingSteps?.filter((s) => s.completed).length ?? 0;
+  const totalSteps = order.trackingSteps?.length ?? 6;
+  const progressPct = Math.round((completedCount / totalSteps) * 100);
 
   return (
-    <main className="min-h-screen bg-[#f2f2f2] pb-24">
-      {/* ── Sticky Header ── */}
-      <div className="bg-white border-b border-[#e8e8e8] px-4 py-3 sticky top-0 z-10">
-        <div className="max-w-[900px] mx-auto flex items-center gap-3">
-          <Link href="/account/orders" className="p-2 hover:bg-[#f2f2f2] rounded-full transition-colors">
-            <ChevronLeft className="w-5 h-5 text-[#1a1a1a]" />
+    <main className="min-h-screen bg-[#f2f2f2] pb-28">
+
+      {/* ── Hero Header ── */}
+      <div className={`bg-gradient-to-br ${gradient} text-white pt-12 pb-16 px-4 relative overflow-hidden`}>
+        {/* decorative circles */}
+        <div className="absolute -top-8 -right-8 w-40 h-40 rounded-full bg-white/10" />
+        <div className="absolute -bottom-12 -left-12 w-56 h-56 rounded-full bg-white/5" />
+
+        <div className="max-w-[900px] mx-auto relative">
+          <Link
+            href={`/account/orders/${encodeURIComponent(order.id)}`}
+            className="inline-flex items-center gap-1.5 text-white/80 hover:text-white text-sm font-medium mb-5 transition-colors"
+          >
+            <ChevronLeft className="w-4 h-4" />
+            Order Details
           </Link>
-          <div className="flex-1">
-            <h1 className="text-lg font-bold text-[#1a1a1a]">Track Order</h1>
+
+          <div className="flex items-end justify-between">
+            <div>
+              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">Live Tracking</p>
+              <h1 className="text-2xl font-black flex items-center gap-2">
+                {order.id}
+                <span className={`px-2.5 py-1 rounded-full bg-white text-xs font-black uppercase tracking-wider shadow-sm ${STATUS_TEXT[order.status] ?? "text-[#ff4f8b]"}`}>
+                  {order.status}
+                </span>
+              </h1>
+              <p className="text-white/80 text-sm mt-1">{order.date}</p>
+            </div>
+            <div className="text-right">
+              <p className="text-white/70 text-xs font-semibold uppercase tracking-widest mb-1">ETA</p>
+              <p className="text-2xl font-black">{order.estimatedTime || "TBD"}</p>
+            </div>
           </div>
-          <span className="text-xs font-semibold text-[#666]">Order {order.id}</span>
+
+          {/* Progress bar */}
+          <div className="mt-5">
+            <div className="flex justify-between text-xs text-white/70 mb-1.5">
+              <span>Order Progress</span>
+              <span>{progressPct}% complete</span>
+            </div>
+            <div className="h-2 bg-white/20 rounded-full overflow-hidden">
+              <div
+                className="h-full bg-white rounded-full transition-all duration-700"
+                style={{ width: `${progressPct}%` }}
+              />
+            </div>
+          </div>
         </div>
       </div>
 
-      <div className="max-w-[900px] mx-auto px-4 py-6 space-y-4">
-        {/* ── Live Status Card ── */}
-        <div className={`rounded-2xl p-5 text-white shadow-lg ${order.status === "Cancelled" || order.status === "Delivered" ? "bg-gradient-to-r from-[#1a1a1a] to-[#444]" : "bg-gradient-to-r from-[#0c831f] to-[#10b981]"}`}>
-          <div className="flex items-center justify-between mb-1">
-            <span className="text-white/80 text-sm font-medium">Order {order.id}</span>
-            <span className="bg-white/20 rounded-full px-3 py-1 text-xs font-bold">{order.status}</span>
+      <div className="max-w-[600px] mx-auto px-4 -mt-8 relative z-10 space-y-6">
+
+        {/* ── Tracking Steps Card ── */}
+        <div className="bg-white rounded-2xl border border-[#e8e8e8] shadow-md overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#f0f0f0]">
+            <h2 className="text-sm font-black text-[#1a1a1a]">Order Status</h2>
           </div>
-          <h2 className="text-2xl font-bold mt-2">
-            {order.status === "Delivered" ? "Delivered successfully!" :
-             order.status === "Cancelled" ? "This order was cancelled" :
-             "Your order is on the way!"}
-          </h2>
-          {order.status !== "Cancelled" && order.status !== "Delivered" && (
-            <div className="flex items-center gap-2 mt-3">
-              <Clock className="w-5 h-5 text-white/80" />
-              <span className="text-lg font-semibold">Estimated delivery by {order.estimatedTime}</span>
-            </div>
-          )}
-          {order.deliveryPartner && order.status !== "Cancelled" && order.status !== "Delivered" && (
-            <div className="mt-4 flex items-center gap-2 bg-white/15 rounded-xl px-4 py-3">
-              <Truck className="w-5 h-5 flex-shrink-0" />
-              <div>
-                <p className="text-sm font-semibold">{order.deliveryPartner}</p>
-                <p className="text-xs text-white/70">Your delivery partner is on the way</p>
+          <div className="px-5 py-5">
+            <div className="relative">
+              {/* Vertical line */}
+              <div className="absolute left-[17px] top-4 bottom-4 w-0.5 bg-[#e8e8e8]" />
+              {/* Filled progress line */}
+              {completedCount > 1 && (
+                <div
+                  className="absolute left-[17px] top-4 w-0.5 bg-[#0c831f] transition-all duration-700"
+                  style={{
+                    height: `calc(${((completedCount - 1) / (totalSteps - 1)) * 100}% - 0px)`,
+                  }}
+                />
+              )}
+
+              <div className="space-y-8">
+                {order.trackingSteps?.map((step, index) => {
+                  const StepIcon = ICON_MAP[step.icon] ?? CheckCircle;
+                  const isCurrent =
+                    !step.completed &&
+                    index > 0 &&
+                    order.trackingSteps?.[index - 1]?.completed;
+
+                  return (
+                    <div key={step.id} className="flex items-start gap-4 relative">
+                      {/* Step dot */}
+                      <div
+                        className={`relative z-10 w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0 transition-all
+                          ${step.completed
+                            ? "bg-[#0c831f] shadow-md shadow-[#0c831f]/30"
+                            : isCurrent
+                            ? "bg-white border-2 border-[#e65100] shadow-md shadow-[#e65100]/20"
+                            : "bg-[#f2f2f2] border-2 border-[#e0e0e0]"
+                          }`}
+                      >
+                        <StepIcon
+                          className={`w-4 h-4 ${
+                            step.completed
+                              ? "text-white"
+                              : isCurrent
+                              ? "text-[#e65100]"
+                              : "text-[#ccc]"
+                          }`}
+                        />
+                        {isCurrent && (
+                          <span className="absolute inset-0 rounded-full animate-ping bg-[#e65100]/20" />
+                        )}
+                      </div>
+
+                      {/* Step content */}
+                      <div className="flex-1 min-w-0 pt-1.5 pb-2">
+                        <div className="flex items-baseline justify-between gap-2">
+                          <h3
+                            className={`text-sm font-black capitalize ${
+                              step.completed
+                                ? "text-[#1a1a1a]"
+                                : isCurrent
+                                ? "text-[#e65100]"
+                                : "text-[#bbb]"
+                            }`}
+                          >
+                            {step.status ? step.status.replace(/_/g, " ").toLowerCase() : "Update"}
+                          </h3>
+                          <span
+                            className={`text-[10px] font-bold flex-shrink-0 ${
+                              step.completed ? "text-[#0c831f]" : "text-[#bbb]"
+                            }`}
+                          >
+                            {step.time}
+                          </span>
+                        </div>
+                        {step.label && step.label !== step.status && (
+                          <div className={`text-xs mt-1.5 leading-relaxed ${
+                            step.completed ? "text-[#555] bg-[#f9f9f9] p-2 rounded-lg border border-[#f0f0f0]" : "text-[#999]"
+                          }`}>
+                            {step.label}
+                          </div>
+                        )}
+                        {step.completed && (
+                          <p className="text-[10px] uppercase tracking-wider font-bold text-[#0c831f] mt-2 flex items-center gap-1">
+                            <CheckCircle className="w-3 h-3" /> Done
+                          </p>
+                        )}
+                        {isCurrent && (
+                          <p className="text-xs text-[#e65100] mt-1.5 font-medium animate-pulse">
+                            In progress…
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  );
+                })}
               </div>
             </div>
-          )}
+          </div>
+        </div>
+
+        {/* ── Delivery Partner Card ── */}
+        <div className="bg-white rounded-2xl border border-[#e8e8e8] shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#f0f0f0]">
+            <h2 className="text-sm font-black text-[#1a1a1a]">Delivery Partner</h2>
+          </div>
+          <div className="px-5 py-4 flex items-center gap-4">
+            <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[#ff4f8b] to-[#ff6b9d] flex items-center justify-center flex-shrink-0 shadow-md shadow-[#ff4f8b]/20">
+              <Truck className="w-6 h-6 text-white" />
+            </div>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-[#1a1a1a]">{order.deliveryPartner}</p>
+              {order.deliveryPartner !== "Not Assigned" && (
+                <div className="flex items-center gap-1 mt-0.5">
+                  {[...Array(5)].map((_, i) => (
+                    <Star key={i} className={`w-3 h-3 ${i < 4 ? "fill-yellow-400 text-yellow-400" : "text-[#ddd]"}`} />
+                  ))}
+                  <span className="text-[10px] text-[#999] ml-1">4.8 · 500+ deliveries</span>
+                </div>
+              )}
+            </div>
+            {order.deliveryPartner !== "Not Assigned" && (
+              <a
+                href="tel:+919999999999"
+                className="w-10 h-10 rounded-full bg-[#e8f5e9] flex items-center justify-center hover:bg-[#d0ebd4] transition-colors"
+                aria-label="Call delivery partner"
+              >
+                <Phone className="w-4 h-4 text-[#0c831f]" />
+              </a>
+            )}
+          </div>
         </div>
 
         {/* ── Delivery Address ── */}
-        <div className="bg-white rounded-2xl border border-[#e8e8e8] p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <MapPin className="w-5 h-5 text-[#ff4f8b]" />
+        <div className="bg-white rounded-2xl border border-[#e8e8e8] shadow-sm overflow-hidden">
+          <div className="px-5 py-4 border-b border-[#f0f0f0]">
+            <h2 className="text-sm font-black text-[#1a1a1a]">Delivering To</h2>
+          </div>
+          <div className="px-5 py-4 flex items-start gap-3">
+            <div className="w-9 h-9 rounded-xl bg-[#fff0f6] flex items-center justify-center flex-shrink-0">
+              <MapPin className="w-4 h-4 text-[#ff4f8b]" />
+            </div>
             <div>
-              <p className="text-sm font-bold text-[#1a1a1a]">Delivery Address</p>
-              <p className="text-xs text-[#666] mt-0.5">{addressStr}</p>
+              <p className="text-sm font-bold text-[#1a1a1a]">{order.deliveryAddress.name}</p>
+              <p className="text-xs text-[#666] mt-0.5 leading-relaxed">
+                {order.deliveryAddress.address}, {order.deliveryAddress.city} — {order.deliveryAddress.pincode}
+              </p>
+              <p className="text-xs text-[#999] mt-1">{order.deliveryAddress.phone}</p>
             </div>
           </div>
         </div>
 
-        {/* ── Live Map ── */}
-        <LiveTrackingMap
-          riderName={order.deliveryPartner || "Delivery Partner"}
-          estimatedTime={order.estimatedTime || "10 mins"}
-          status={order.status === "Out for Delivery" ? "out_for_delivery" : order.status === "Processing" ? "preparing" : "nearby"}
-          deliveryAddress={addressStr}
-        />
-
-        {/* ── Chat with Rider / Delivery Proof ── */}
-        {(order.status === "Out for Delivery" || order.status === "Processing") && (
-          <div className="flex gap-2">
-            <button
-              onClick={() => setShowChat(true)}
-              className="flex-1 h-12 rounded-xl bg-[#ff4f8b] text-white text-sm font-bold flex items-center justify-center gap-2 hover:bg-[#e63872] transition-colors"
-            >
-              <MessageCircle className="w-4 h-4" />
-              Chat with {order.deliveryPartner?.split(" ")[0] || "Rider"}
-            </button>
-            <button
-              onClick={() => setShowDeliveryProof(true)}
-              className="flex-1 h-12 rounded-xl border-2 border-[#e8e8e8] text-sm font-bold text-[#666] flex items-center justify-center gap-2 hover:border-[#ff4f8b] hover:text-[#ff4f8b] transition-colors"
-            >
-              <Camera className="w-4 h-4" />
-              Delivery Proof
-            </button>
-          </div>
-        )}
-
         {/* ── Order Summary ── */}
-        <div className="bg-white rounded-2xl border border-[#e8e8e8] p-4 shadow-sm">
-          <div className="flex items-center gap-2 mb-3">
-            <ShoppingBag className="w-4 h-4 text-[#0c831f]" />
-            <h3 className="text-sm font-bold text-[#1a1a1a]">Order Summary</h3>
+        <div className="bg-white rounded-2xl border border-[#e8e8e8] shadow-sm overflow-hidden">
+          <div className="flex items-center gap-2 px-5 py-4 border-b border-[#f0f0f0]">
+            <ShoppingBag className="w-4 h-4 text-[#ff4f8b]" />
+            <h2 className="text-sm font-black text-[#1a1a1a]">
+              Order Summary
+              <span className="text-[#999] font-normal ml-1">
+                ({safeItems.reduce((s, i) => s + (i.quantity || 0), 0)} items)
+              </span>
+            </h2>
           </div>
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <p className="text-[10px] text-[#999] font-medium uppercase tracking-wide">Date</p>
-              <p className="text-sm font-semibold text-[#1a1a1a]">{order.date}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-[#999] font-medium uppercase tracking-wide">Items</p>
-              <p className="text-sm font-semibold text-[#1a1a1a]">{itemCount} items</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-[#999] font-medium uppercase tracking-wide">Total</p>
-              <p className="text-sm font-bold text-[#1a1a1a]">₹{order.total.toLocaleString("en-IN")}</p>
-            </div>
-            <div>
-              <p className="text-[10px] text-[#999] font-medium uppercase tracking-wide">Payment</p>
-              <p className="text-sm font-semibold text-[#0c831f]">{order.paymentMethod.toUpperCase()}</p>
-            </div>
-          </div>
-
-          {/* ── Order Items ── */}
-          <div className="mt-3 pt-3 border-t border-[#e8e8e8] space-y-2">
-            {order.items.map((item) => (
-              <div key={item.id} className="flex items-center gap-3">
-                <div className="relative h-9 w-9 flex-shrink-0 overflow-hidden rounded-lg bg-[#f2f2f2]">
-                  <img
-                    src={item.image}
-                    alt={item.name}
-                    className="h-full w-full object-cover"
-                    loading="lazy"
-                    decoding="async"
+          <div className="divide-y divide-[#f5f5f5]">
+            {safeItems.map((item) => (
+              <div key={item.id} className="flex items-center gap-3 px-5 py-3">
+                <div className="w-10 h-10 rounded-lg bg-[#f9f9f9] border border-[#efefef] overflow-hidden flex-shrink-0">
+                  {/* eslint-disable-next-line @next/next/no-img-element */}
+                  <img 
+                    src={item.image || "https://placehold.co/100x100?text=No+Image"} 
+                    alt={item.name} 
+                    className="w-full h-full object-cover" 
+                    onError={(e) => {
+                      e.currentTarget.src = "https://placehold.co/100x100?text=No+Image";
+                    }}
                   />
                 </div>
                 <div className="flex-1 min-w-0">
                   <p className="text-xs font-semibold text-[#1a1a1a] truncate">{item.name}</p>
                   <p className="text-[10px] text-[#999]">Qty: {item.quantity}</p>
                 </div>
-                <p className="text-xs font-bold text-[#1a1a1a]">₹{item.price * item.quantity}</p>
+                <span className="text-xs font-bold text-[#1a1a1a]">
+                  ₹{(item.price * item.quantity).toLocaleString("en-IN")}
+                </span>
               </div>
             ))}
           </div>
-        </div>
-
-        {/* ── Tracking Timeline ── */}
-        <div className="bg-white rounded-2xl border border-[#e8e8e8] p-5 shadow-sm">
-          <h3 className="text-sm font-bold text-[#1a1a1a] mb-5">Tracking Timeline</h3>
-          <div className="space-y-0">
-            {order.trackingSteps.map((step, index) => {
-              const IconComponent = iconMap[step.icon] || Package;
-              return (
-              <div key={step.id} className="flex gap-4">
-                <div className="flex flex-col items-center">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                    step.completed ? "bg-[#0c831f]" : "bg-[#e8e8e8]"
-                  }`}>
-                    <IconComponent className={`w-4 h-4 ${step.completed ? "text-white" : "text-[#999]"}`} />
-                  </div>
-                  {index < order.trackingSteps.length - 1 && (
-                    <div className={`w-0.5 h-12 ${step.completed ? "bg-[#0c831f]" : "bg-[#e8e8e8]"}`} />
-                  )}
-                </div>
-                <div className={`pb-8 ${index === order.trackingSteps.length - 1 ? "pb-0" : ""}`}>
-                  <p className={`text-sm font-bold ${step.completed ? "text-[#1a1a1a]" : "text-[#999]"}`}>
-                    {step.label}
-                  </p>
-                  <p className={`text-xs mt-0.5 ${step.completed ? "text-[#0c831f]" : "text-[#999]"}`}>
-                    {step.time}
-                  </p>
-                </div>
+          <div className="px-5 py-4 bg-[#fafafa] border-t border-[#e8e8e8] space-y-2">
+            {order.subtotal !== undefined && (
+              <div className="flex justify-between items-center text-xs text-[#666]">
+                <span>Item Total</span>
+                <span className="font-semibold text-[#1a1a1a]">₹{order.subtotal.toLocaleString("en-IN")}</span>
               </div>
-              );
-            })}
+            )}
+            {order.taxAmount !== undefined && order.taxAmount > 0 && (
+              <div className="flex justify-between items-center text-xs text-[#666]">
+                <span>Taxes</span>
+                <span className="font-semibold text-[#1a1a1a]">₹{order.taxAmount.toLocaleString("en-IN")}</span>
+              </div>
+            )}
+            {order.deliveryFee !== undefined && order.deliveryFee > 0 && (
+              <div className="flex justify-between items-center text-xs text-[#666]">
+                <span>Delivery Fee</span>
+                <span className="font-semibold text-[#1a1a1a]">₹{order.deliveryFee.toLocaleString("en-IN")}</span>
+              </div>
+            )}
+            {order.discountAmount !== undefined && order.discountAmount > 0 && (
+              <div className="flex justify-between items-center text-xs text-[#0c831f]">
+                <span>Discount</span>
+                <span className="font-semibold">-₹{order.discountAmount.toLocaleString("en-IN")}</span>
+              </div>
+            )}
+            <div className="flex justify-between items-center pt-2 mt-2 border-t border-[#e8e8e8]">
+              <div className="flex items-center gap-1.5 text-xs text-[#666]">
+                <Clock className="w-3.5 h-3.5" />
+                {order.deliverySlot || "Standard Delivery"}
+              </div>
+              <span className="text-sm font-black text-[#1a1a1a]">
+                ₹{order.total.toLocaleString("en-IN")}
+              </span>
+            </div>
           </div>
         </div>
 
-        {/* ── Need Help? ── */}
+        {/* ── Back CTA ── */}
         <Link
-          href="/account/help"
-          className="block bg-white rounded-2xl border border-[#e8e8e8] p-4 shadow-sm text-center hover:bg-[#fafafa] transition-colors"
+          href="/account/orders"
+          className="flex items-center justify-center gap-2 h-12 w-full rounded-xl border-2 border-[#e8e8e8] bg-white text-sm font-bold text-[#666] hover:border-[#ff4f8b] hover:text-[#ff4f8b] transition-all"
         >
-          <p className="text-sm font-bold text-[#ff4f8b]">Need help with this order?</p>
-          <p className="text-xs text-[#666] mt-1">Contact support or view FAQs</p>
+          <ChevronLeft className="w-4 h-4" />
+          Back to All Orders
         </Link>
+
       </div>
-
-      <ChatWithRider
-        isOpen={showChat}
-        onClose={() => setShowChat(false)}
-        riderName={order.deliveryPartner || "Delivery Partner"}
-        orderId={order.id}
-      />
-
-      <DeliveryProof
-        isOpen={showDeliveryProof}
-        onClose={() => setShowDeliveryProof(false)}
-        orderId={order.id}
-        deliveryDate={order.deliveryDate}
-        deliveryTime={order.estimatedTime || "10 mins"}
-        deliveryPerson={order.deliveryPartner || "Delivery Partner"}
-        deliveryAddress={addressStr}
-      />
     </main>
   );
 }

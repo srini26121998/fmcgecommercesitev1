@@ -21,6 +21,7 @@ interface AddressStore {
   deleteAddress: (id: string) => void;
   setDefaultAddress: (id: string) => void;
   getDefaultAddress: () => Address | undefined;
+  setAddresses: (addresses: Address[]) => void;
 }
 
 export const useAddressStore = create<AddressStore>()(
@@ -90,6 +91,8 @@ export const useAddressStore = create<AddressStore>()(
         })),
 
       getDefaultAddress: () => get().addresses.find((a) => a.isDefault),
+
+      setAddresses: (addresses) => set({ addresses }),
     }),
     { name: "address-storage" }
   )

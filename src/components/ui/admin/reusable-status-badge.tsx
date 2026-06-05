@@ -5,8 +5,12 @@ import { cn } from "@/lib/utils";
 
 const statusConfig: Record<string, { bg: string; text: string; dot: string }> = {
   active: { bg: "bg-[#e8f5e9]", text: "text-[#0c831f]", dot: "bg-[#0c831f]" },
-  inactive: { bg: "bg-[#f6f7f6]", text: "text-[#666]", dot: "bg-[#999]" },
+  inactive: { bg: "bg-[#fef2f2]", text: "text-[#dc2626]", dot: "bg-[#dc2626]" },
   pending: { bg: "bg-[#fffbeb]", text: "text-[#d97706]", dot: "bg-[#d97706]" },
+  approved: { bg: "bg-[#e8f5e9]", text: "text-[#0c831f]", dot: "bg-[#0c831f]" },
+  rejected: { bg: "bg-[#fef2f2]", text: "text-[#dc2626]", dot: "bg-[#dc2626]" },
+  pending_review: { bg: "bg-[#fffbeb]", text: "text-[#d97706]", dot: "bg-[#d97706]" },
+  pending_documents: { bg: "bg-[#fffbeb]", text: "text-[#d97706]", dot: "bg-[#d97706]" },
   draft: { bg: "bg-[#f3e8ff]", text: "text-[#9333ea]", dot: "bg-[#9333ea]" },
   archived: { bg: "bg-[#f6f7f6]", text: "text-[#999]", dot: "bg-[#ccc]" },
   busy: { bg: "bg-[#fff0f6]", text: "text-[#ff4f8b]", dot: "bg-[#ff4f8b]" },

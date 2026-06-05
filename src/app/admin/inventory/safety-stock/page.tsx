@@ -6,7 +6,7 @@ import { ReusableTable } from "@/components/ui/admin/reusable-table";
 import ReusableSearchBar from "@/components/ui/admin/reusable-search";
 import ReusableCard from "@/components/ui/admin/reusable-card";
 import StatusBadge from "@/components/ui/admin/reusable-status-badge";
-import { AlertTriangle, Shield, TrendingUp, Edit3, Eye, RefreshCw, X, Save } from "lucide-react";
+import { AlertTriangle, Shield, TrendingUp, Edit3, Eye, RefreshCw, X, Save, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { useSafetyStock } from "@/hooks/use-inventory";
 import type { SafetyStockRule } from "@/types/inventory";
@@ -17,8 +17,9 @@ export default function SafetyStockPage() {
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [saving, setSaving] = useState(false);
 
-  const { rules, loading, refresh } = useSafetyStock(statusFilter !== "all" ? statusFilter : undefined);
+  const { rules, loading, refresh, updateSafetyStock } = useSafetyStock(statusFilter !== "all" ? statusFilter : undefined);
 
   const [viewRule, setViewRule] = useState<SafetyStockRule | null>(null);
   const [editRule, setEditRule] = useState<SafetyStockRule | null>(null);
@@ -34,9 +35,18 @@ export default function SafetyStockPage() {
     setEditForm({});
   };
 
-  const handleEditSave = () => {
-    toast.success(`Safety stock configuration for "${editForm.product}" updated successfully`);
-    closeEditDrawer();
+  const handleEditSave = async () => {
+    if (!editRule || editForm.safetyLevel === undefined) return;
+    setSaving(true);
+    try {
+      await updateSafetyStock(Number(editRule.id), Number(editForm.safetyLevel));
+      toast.success(`Safety stock configuration for "${editForm.product}" updated successfully`);
+      closeEditDrawer();
+    } catch (err: any) {
+      toast.error(err?.message || "Failed to update safety stock. Please try again.");
+    } finally {
+      setSaving(false);
+    }
   };
 
   const filtered = useMemo(
@@ -179,7 +189,7 @@ export default function SafetyStockPage() {
 
       {/* Slide-in panel */}
       <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[420px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${editRule ? "translate-x-0" : "translate-x-full"}`}
+        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[420px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${editRule ? "translate-x-0" : "translate-x-full"}`}
       >
         {/* Drawer header */}
         <div className="flex items-center justify-between border-b border-[#e8e8e8] px-6 py-4">
@@ -278,13 +288,15 @@ export default function SafetyStockPage() {
           </button>
           <button
             onClick={handleEditSave}
-            className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] transition-all"
+            disabled={saving}
+            className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
           >
-            <Save className="h-4 w-4" />
-            Save Changes
+            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+            {saving ? "Saving…" : "Save Changes"}
           </button>
         </div>
       </aside>
     </DashboardLayout>
   );
 }
+

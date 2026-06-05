@@ -12,7 +12,18 @@ import { useUnassignedOrders, useDeliveryPartners } from "@/hooks/use-orders";
 import type { Order } from "@/types/orders";
 
 export default function AssignPartnerPage() {
-  const { orders, loading, search, setSearch, setPage, fetchOrders } = useUnassignedOrders();
+  const {
+    orders,
+    loading,
+    search,
+    setSearch,
+    setPage,
+    filterType,
+    setFilterType,
+    unassignedCount,
+    assignedCount,
+    fetchOrders,
+  } = useUnassignedOrders();
   const { partners, onlineCount, zones, fetchPartners } = useDeliveryPartners();
   const [showAssignModal, setShowAssignModal] = useState<Order | null>(null);
 
@@ -33,10 +44,34 @@ export default function AssignPartnerPage() {
         </section>
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <ReusableCard title="Unassigned" value={orders.length} icon={<Truck className="h-4 w-4" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
+          <ReusableCard title="Unassigned" value={unassignedCount} icon={<Truck className="h-4 w-4" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
           <ReusableCard title="Available Partners" value={onlineCount} icon={<UserPlus className="h-4 w-4" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
           <ReusableCard title="Total Partners" value={partners.length} icon={<Truck className="h-4 w-4" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
           <ReusableCard title="Delivery Zones" value={zones.length} icon={<MapPin className="h-4 w-4" />} color="text-[#9333ea]" bgColor="bg-[#f3e8ff]" />
+        </div>
+
+        {/* Tabs to switch between Unassigned and Assigned */}
+        <div className="flex border-b border-[#e8e8e8] gap-4">
+          <button
+            onClick={() => { setFilterType("unassigned"); setPage(1); }}
+            className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 ${
+              filterType === "unassigned"
+                ? "border-[#0c831f] text-[#0c831f]"
+                : "border-transparent text-[#666] hover:text-[#1a1a1a]"
+            }`}
+          >
+            Unassigned Orders ({unassignedCount})
+          </button>
+          <button
+            onClick={() => { setFilterType("assigned"); setPage(1); }}
+            className={`px-4 py-2.5 text-xs font-bold transition-all border-b-2 ${
+              filterType === "assigned"
+                ? "border-[#0c831f] text-[#0c831f]"
+                : "border-transparent text-[#666] hover:text-[#1a1a1a]"
+            }`}
+          >
+            Assigned Orders ({assignedCount})
+          </button>
         </div>
 
         <ReusableSearchBar value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search by order ID or customer..." />
@@ -63,7 +98,11 @@ export default function AssignPartnerPage() {
             { key: "total", header: "Total", width: "90px", align: "right", render: (o) => <span className="font-bold">₹{(o as Order).total}</span> },
           ]}
           actions={[
-            { label: "Assign Partner", icon: <UserPlus className="h-3.5 w-3.5" />, onClick: (o: Order) => setShowAssignModal(o) },
+            {
+              label: filterType === "assigned" ? "Reassign Partner" : "Assign Partner",
+              icon: <UserPlus className="h-3.5 w-3.5" />,
+              onClick: (o: Order) => setShowAssignModal(o)
+            },
           ]}
         />
       </div>
@@ -77,3 +116,4 @@ export default function AssignPartnerPage() {
     </DashboardLayout>
   );
 }
+

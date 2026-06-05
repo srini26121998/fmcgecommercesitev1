@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -25,7 +25,7 @@ export default function WishlistPage() {
           image: moved.image,
           quantity: 1,
         });
-        toast.success(`${moved.name} moved to cart 🛒`);
+        toast.success(`${moved.name} moved to cart ðŸ›’`);
       }
       setMovingId(null);
     }, 300);
