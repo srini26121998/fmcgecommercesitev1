@@ -28,6 +28,16 @@ const nextConfig: NextConfig = {
     ];
   },
 
+  // ── Rewrites ─────────────────────────────────────────
+  async rewrites() {
+    return [
+      {
+        source: '/backend-api/:path*',
+        destination: 'https://ecommerce-backend-1-zdlm.onrender.com/:path*',
+      },
+    ];
+  },
+
   // ── Security Headers ─────────────────────────────────
   async headers() {
     return [

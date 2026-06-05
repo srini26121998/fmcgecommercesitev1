@@ -6,7 +6,7 @@
 
 export const env = {
   /** Base URL for the API backend. */
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://ecommerce-backend-1-zdlm.onrender.com",
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "/backend-api",
 
   /** Current environment. */
   nodeEnv: process.env.NODE_ENV as "development" | "production" | "test",
