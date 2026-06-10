@@ -222,7 +222,6 @@ export default function SegmentationPage() {
                     <th className="px-4 py-3">Description</th>
                     <th className="px-4 py-3">Criteria</th>
                     <th className="px-4 py-3">Created At</th>
-                    <th className="px-4 py-3 text-right">Actions</th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-[#e8e8e8]">
@@ -233,7 +232,7 @@ export default function SegmentationPage() {
                       : JSON.stringify(seg.criteria);
 
                     return (
-                      <tr key={seg.id} className="text-sm hover:bg-[#f9fafb]">
+                      <tr key={seg.id} className="text-sm hover:bg-[#f9fafb] cursor-pointer" onClick={() => handleOpenView(seg)}>
                         <td className="px-4 py-3 font-semibold text-[#666]">#{seg.id}</td>
                         <td className="px-4 py-3 font-bold text-[#1a1a1a]">{seg.name}</td>
                         <td className="px-4 py-3 text-[#666] text-xs max-w-[200px] truncate" title={seg.description}>
@@ -246,24 +245,6 @@ export default function SegmentationPage() {
                         </td>
                         <td className="px-4 py-3 text-[#666] text-xs">
                           {seg.createdAt ? formatDate(seg.createdAt) : "—"}
-                        </td>
-                        <td className="px-4 py-3 text-right">
-                          <div className="flex items-center justify-end gap-2">
-                            <button
-                              onClick={() => handleOpenView(seg)}
-                              className="p-1.5 rounded-lg border border-[#e8e8e8] text-[#666] hover:text-[#1a1a1a] hover:bg-gray-50 transition-all"
-                              title="View details"
-                            >
-                              <Eye className="h-4.5 w-4.5" />
-                            </button>
-                            <button
-                              onClick={() => handleOpenEdit(seg)}
-                              className="p-1.5 rounded-lg border border-[#e8e8e8] text-[#666] hover:text-[#0c831f] hover:bg-gray-50 transition-all"
-                              title="Edit criteria"
-                            >
-                              <Edit2 className="h-4.5 w-4.5" />
-                            </button>
-                          </div>
                         </td>
                       </tr>
                     );
@@ -485,7 +466,18 @@ export default function SegmentationPage() {
               </div>
             </div>
 
-            <div className="flex justify-end pt-5 mt-4 border-t border-[#e8e8e8]">
+            <div className="flex justify-end gap-2 pt-5 mt-4 border-t border-[#e8e8e8]">
+              <button
+                type="button"
+                className="flex items-center gap-1.5 rounded-lg border border-[#e8e8e8] px-4 py-2 text-xs font-semibold text-[#666] hover:bg-[#f9fafb] hover:text-[#0c831f] transition-all"
+                onClick={() => {
+                  setIsViewOpen(false);
+                  handleOpenEdit(selectedSegment);
+                }}
+              >
+                <Edit2 className="h-3.5 w-3.5" />
+                Edit
+              </button>
               <button
                 type="button"
                 className="rounded-lg border border-[#e8e8e8] bg-gray-50 px-4 py-2 text-xs font-semibold text-[#1a1a1a] hover:bg-gray-100"

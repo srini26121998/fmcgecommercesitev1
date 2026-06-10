@@ -183,13 +183,13 @@ export default function VendorsPage() {
           />
           <ReusableCard
             title="Total Sales"
-            value={summary ? `?${(summary.totalSales / 10000000).toFixed(2)}Cr` : "-"}
+            value={summary ? `₹${(summary.totalSales / 10000000).toFixed(2)}Cr` : "-"}
             icon={<TrendingUp className="h-5 w-5" />}
             color="text-[#9333ea]" bgColor="bg-[#f3e8ff]"
           />
           <ReusableCard
             title="Pending Payouts"
-            value={summary ? `?${(summary.pendingPayouts / 100000).toFixed(1)}L` : "-"}
+            value={summary ? `₹${(summary.pendingPayouts / 100000).toFixed(1)}L` : "-"}
             icon={<DollarSign className="h-5 w-5" />}
             color="text-[#d97706]" bgColor="bg-[#fffbeb]"
             subtitle={summary ? `${summary.pendingVendors} pending approval` : undefined}
@@ -288,48 +288,7 @@ export default function VendorsPage() {
               }
             },
           ]}
-          actions={[
-            { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: handleViewVendor },
-            { label: "Edit", icon: <Edit3 className="h-3.5 w-3.5" />, onClick: handleEditVendorClick },
-            { label: "Call", icon: <Phone className="h-3.5 w-3.5" />, onClick: (v) => toast.success(`Calling ${v.phone}`) },
-            {
-              label: "Approve",
-              icon: <CheckCircle className="h-3.5 w-3.5" />,
-              onClick: async (v) => {
-                try {
-                  await approveVendor(v.id);
-                  toast.success(`${v.name || 'Vendor'} approved successfully`);
-                } catch {
-                  toast.error("Failed to approve vendor");
-                }
-              },
-              variant: "success",
-              show: (v) => v.status !== "active",
-            },
-            {
-              label: "Reject",
-              icon: <XCircle className="h-3.5 w-3.5" />,
-              onClick: async (v) => {
-                const reason = window.prompt("Reason for rejection:");
-                if (reason !== null) {
-                  try {
-                    await rejectVendor(v.id, reason || "Rejected by admin");
-                    toast.success(`${v.name || 'Vendor'} rejected successfully`);
-                  } catch {
-                    toast.error("Failed to reject vendor");
-                  }
-                }
-              },
-              variant: "danger",
-              show: (v) => v.status !== "rejected",
-            },
-            {
-              label: "Delete",
-              icon: <Trash2 className="h-3.5 w-3.5" />,
-              onClick: handleDeleteVendor,
-              variant: "danger",
-            },
-          ]}
+          onRowClick={handleViewVendor}
         />
       </div>
 
@@ -392,7 +351,24 @@ export default function VendorsPage() {
             </div>
 
             {/* Actions */}
-            <div className="flex gap-3 border-t border-[#e8e8e8] pt-4">
+            <div className="flex flex-wrap gap-3 border-t border-[#e8e8e8] pt-4">
+              <button
+                onClick={() => toast.success(`Calling ${selectedVendor.phone}`)}
+                className="flex items-center gap-1.5 rounded-xl border border-[#e8e8e8] bg-white px-4 py-2 text-sm font-bold text-[#666] hover:bg-[#f6f7f6]"
+              >
+                <Phone className="h-4 w-4" /> Call
+              </button>
+
+              <button
+                onClick={() => {
+                  setSelectedVendor(null);
+                  handleDeleteVendor(selectedVendor);
+                }}
+                className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100"
+              >
+                <Trash2 className="h-4 w-4" /> Delete
+              </button>
+
               {selectedVendor.status !== "active" && (
                 <button
                   onClick={async () => {
@@ -433,9 +409,9 @@ export default function VendorsPage() {
                   setSelectedVendor(null);
                   handleEditVendorClick(selectedVendor);
                 }}
-                className="ml-auto rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18]"
+                className="ml-auto flex items-center gap-1.5 rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18]"
               >
-                Edit Vendor
+                <Edit3 className="h-4 w-4" /> Edit Vendor
               </button>
             </div>
           </div>

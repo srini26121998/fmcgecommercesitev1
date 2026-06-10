@@ -57,6 +57,10 @@ export const productSchema = z.object({
     .string()
     .max(10, "Unit must be at most 10 characters")
     .optional(),
+  itemCode: z
+    .string()
+    .max(100, "Item Code must be at most 100 characters")
+    .optional(),
 });
 
 export type ProductInput = z.infer<typeof productSchema>;

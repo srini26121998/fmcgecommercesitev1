@@ -2,6 +2,7 @@
 
 import { useState, useEffect, useCallback, useRef } from "react";
 import { notificationService } from "@/services/notifications.service";
+import { adminToast } from "@/lib/admin-toast";
 import type {
   AdminNotification,
   NotificationFeed,
@@ -114,24 +115,43 @@ export function useAdminNotifications() {
   // Mark as read
   const handleMarkAsRead = useCallback(
     async (id: string) => {
-      await notificationService.markAsRead(id);
-      fetchNotifications(activeTab, search, page);
+      try {
+        const res = await notificationService.markAsRead(id);
+        if (res?.message) adminToast.success(res.message);
+        fetchNotifications(activeTab, search, page);
+      } catch (err) {
+        adminToast.apiError("Failed to mark as read");
+      }
     },
     [activeTab, search, page, fetchNotifications]
   );
 
   // Mark all as read
   const handleMarkAllAsRead = useCallback(async () => {
-    await notificationService.markAllAsRead();
-    setSelectedIds([]);
-    fetchNotifications(activeTab, search, page);
+    try {
+      const res = await notificationService.markAllAsRead();
+      if (res?.message) {
+        adminToast.success(res.message);
+      } else {
+        adminToast.success("All notifications marked as read");
+      }
+      setSelectedIds([]);
+      fetchNotifications(activeTab, search, page);
+    } catch (err) {
+      adminToast.apiError("Failed to mark all as read");
+    }
   }, [activeTab, search, page, fetchNotifications]);
 
   // Archive
   const handleArchive = useCallback(
     async (id: string) => {
-      await notificationService.archive(id);
-      fetchNotifications(activeTab, search, page);
+      try {
+        await notificationService.archive(id);
+        adminToast.success("Notification archived");
+        fetchNotifications(activeTab, search, page);
+      } catch (err) {
+        adminToast.apiError("Failed to archive notification");
+      }
     },
     [activeTab, search, page, fetchNotifications]
   );
@@ -139,16 +159,26 @@ export function useAdminNotifications() {
   // Bulk archive
   const handleBulkArchive = useCallback(async () => {
     if (selectedIds.length === 0) return;
-    await notificationService.bulkArchive(selectedIds);
-    setSelectedIds([]);
-    fetchNotifications(activeTab, search, page);
+    try {
+      await notificationService.bulkArchive(selectedIds);
+      adminToast.success("Notifications archived");
+      setSelectedIds([]);
+      fetchNotifications(activeTab, search, page);
+    } catch (err) {
+      adminToast.apiError("Failed to archive notifications");
+    }
   }, [selectedIds, activeTab, search, page, fetchNotifications]);
 
   // Delete
   const handleDelete = useCallback(
     async (id: string) => {
-      await notificationService.delete(id);
-      fetchNotifications(activeTab, search, page);
+      try {
+        await notificationService.delete(id);
+        adminToast.success("Notification deleted");
+        fetchNotifications(activeTab, search, page);
+      } catch (err) {
+        adminToast.apiError("Failed to delete notification");
+      }
     },
     [activeTab, search, page, fetchNotifications]
   );

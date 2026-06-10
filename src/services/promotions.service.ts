@@ -409,6 +409,55 @@ export const promotionService = {
         params: { ...filters, ...apiPagination },
       });
       const data = response.data || response;
+      
+      if (data && data.content !== undefined) {
+        const mappedTests = data.content.map((item: any) => ({
+          id: String(item.publicId || item.id),
+          name: item.name,
+          description: "",
+          variantA: {
+            label: item.variantAName || "Variant A",
+            description: "",
+            impressions: item.impressionsA || 0,
+            conversions: 0,
+            revenue: "₹0",
+            conversionRate: "—",
+          },
+          variantB: {
+            label: item.variantBName || "Variant B",
+            description: "",
+            impressions: item.impressionsB || 0,
+            conversions: 0,
+            revenue: "₹0",
+            conversionRate: "—",
+          },
+          audience: "50% each",
+          totalImpressions: (item.impressionsA || 0) + (item.impressionsB || 0),
+          winner: item.winner || null,
+          confidence: 0,
+          status: item.status?.toLowerCase() || "draft",
+          startedAt: item.createdAt ? item.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+          endedAt: null,
+          createdBy: "Admin",
+          createdAt: item.createdAt || new Date().toISOString(),
+        }));
+
+        return {
+          tests: mappedTests,
+          pagination: {
+            page: (data.page || 0) + 1,
+            pageSize: data.size || 20,
+            total: data.totalElements || 0
+          },
+          summary: {
+            total: data.totalElements || 0,
+            running: mappedTests.filter((t: any) => t.status === "running").length,
+            completed: mappedTests.filter((t: any) => t.status === "completed").length,
+            totalImpressions: mappedTests.reduce((sum: number, t: any) => sum + t.totalImpressions, 0)
+          }
+        };
+      }
+
       if (data?.pagination?.page !== undefined) {
         data.pagination.page += 1;
       }
@@ -421,8 +470,53 @@ export const promotionService = {
 
   async createABTest(data: Partial<ABTest>): Promise<ABTest> {
     try {
-      const response = await apiClient.post<any>("/api/v1/admin/promotions/ab-tests", data);
-      return response.data || response;
+      const payload = {
+        publicId: "",
+        id: 0,
+        name: data.name || "",
+        variantAName: data.variantA?.label || "",
+        variantBName: data.variantB?.label || "",
+        winner: data.winner || "",
+        status: data.status || "draft",
+        impressionsA: data.variantA?.impressions || 0,
+        impressionsB: data.variantB?.impressions || 0,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString()
+      };
+      
+      const response = await apiClient.post<any>("/api/v1/admin/promotions/ab-tests", payload);
+      const resData = response.data || response;
+      
+      return {
+        id: String(resData.publicId || resData.id || Date.now()),
+        name: resData.name || data.name,
+        description: data.description || "",
+        variantA: {
+          label: resData.variantAName || data.variantA?.label || "",
+          description: data.variantA?.description || "",
+          impressions: resData.impressionsA || 0,
+          conversions: 0,
+          revenue: "₹0",
+          conversionRate: "—"
+        },
+        variantB: {
+          label: resData.variantBName || data.variantB?.label || "",
+          description: data.variantB?.description || "",
+          impressions: resData.impressionsB || 0,
+          conversions: 0,
+          revenue: "₹0",
+          conversionRate: "—"
+        },
+        audience: data.audience || "50% each",
+        totalImpressions: (resData.impressionsA || 0) + (resData.impressionsB || 0),
+        winner: resData.winner || null,
+        confidence: 0,
+        status: resData.status?.toLowerCase() || "running",
+        startedAt: resData.createdAt ? resData.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+        endedAt: null,
+        createdBy: "Admin",
+        createdAt: resData.createdAt || new Date().toISOString()
+      } as ABTest;
     } catch (error) {
       console.error("[promotionService] createABTest failed:", error);
       throw error;
@@ -431,8 +525,49 @@ export const promotionService = {
 
   async updateABTest(id: string, data: Partial<ABTest>): Promise<ABTest | undefined> {
     try {
-      const response = await apiClient.put<any>(`/api/v1/admin/promotions/ab-tests/${id}`, data);
-      return response.data || response;
+      const payload = {
+        name: data.name,
+        variantAName: data.variantA?.label || "",
+        variantBName: data.variantB?.label || "",
+        winner: data.winner || "",
+        status: data.status || "draft",
+        impressionsA: data.variantA?.impressions || 0,
+        impressionsB: data.variantB?.impressions || 0,
+      };
+      
+      const response = await apiClient.put<any>(`/api/v1/admin/promotions/ab-tests/${id}`, payload);
+      const resData = response.data || response;
+      
+      return {
+        id: String(resData.publicId || resData.id || id),
+        name: resData.name || data.name,
+        description: data.description || "",
+        variantA: {
+          label: resData.variantAName || data.variantA?.label || "",
+          description: data.variantA?.description || "",
+          impressions: resData.impressionsA || 0,
+          conversions: 0,
+          revenue: "₹0",
+          conversionRate: "—"
+        },
+        variantB: {
+          label: resData.variantBName || data.variantB?.label || "",
+          description: data.variantB?.description || "",
+          impressions: resData.impressionsB || 0,
+          conversions: 0,
+          revenue: "₹0",
+          conversionRate: "—"
+        },
+        audience: data.audience || "50% each",
+        totalImpressions: (resData.impressionsA || 0) + (resData.impressionsB || 0),
+        winner: resData.winner || null,
+        confidence: 0,
+        status: resData.status?.toLowerCase() || "running",
+        startedAt: resData.createdAt ? resData.createdAt.split('T')[0] : new Date().toISOString().split('T')[0],
+        endedAt: null,
+        createdBy: "Admin",
+        createdAt: resData.createdAt || new Date().toISOString()
+      } as ABTest;
     } catch (error) {
       console.error(`[promotionService] updateABTest ${id} failed:`, error);
       throw error;

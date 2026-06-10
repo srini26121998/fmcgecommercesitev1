@@ -32,7 +32,7 @@ export default function VendorAnalyticsPage() {
         </section>
 
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          <ReusableCard title="Total Sales" value={`?${totalSales.toLocaleString()}`} icon={<DollarSign className="h-5 w-5" />} color="text-[#0c831f]" trend={{ value: "vs last month", direction: "up" }} />
+          <ReusableCard title="Total Sales" value={`₹${totalSales.toLocaleString()}`} icon={<DollarSign className="h-5 w-5" />} color="text-[#0c831f]" trend={{ value: "vs last month", direction: "up" }} />
           <ReusableCard title="Total Orders" value={totalOrders.toString()} icon={<ShoppingBag className="h-5 w-5" />} color="text-[#2563eb]" trend={{ value: "vs last month", direction: "up" }} />
           <ReusableCard title="Active Vendors" value={filtered.length.toString()} icon={<Star className="h-5 w-5" />} color="text-[#9333ea]" trend={{ value: "on platform", direction: "up" }} />
           <ReusableCard title="Avg Rating" value="4.5 ?" icon={<Activity className="h-5 w-5" />} color="text-[#d97706]" trend={{ value: "overall", direction: "up" }} />
@@ -53,7 +53,7 @@ export default function VendorAnalyticsPage() {
                     <span className="rounded bg-[#e8f5e9] px-2 py-0.5 text-xs font-bold text-[#0c831f]">{v.growth}</span>
                   </div>
                   <div className="mt-2 flex flex-wrap gap-4 text-xs text-[#666]">
-                    <span>?{v.totalSales.toLocaleString()} sales</span>
+                    <span>₹{v.totalSales.toLocaleString()} sales</span>
                     <span>{v.orders} orders</span>
                     <span>{v.products} products</span>
                     <span>{v.returns} returns ({((v.returns / v.orders) * 100).toFixed(1)}% return rate)</span>

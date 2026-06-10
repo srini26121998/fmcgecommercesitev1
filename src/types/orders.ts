@@ -92,7 +92,9 @@ export const DeliveryPartnerSchema = z.object({
   id: z.string().min(1),
   name: z.string().min(1, "Partner name is required"),
   phone: z.string().optional(),
-  vehicleType: z.enum(["bike", "scooter", "cycle", "van"]).optional(),
+  email: z.string().optional().nullable(),
+  vehicleType: z.enum(["bike", "scooter", "cycle", "van", "ev_scooter"]).optional(),
+  vehicleNumber: z.string().optional().nullable(),
   status: z.enum(["online", "offline", "busy", "available"]).default("available"),
   currentOrders: z.number().int().nonnegative().default(0),
   totalDeliveries: z.number().int().nonnegative().default(0),
@@ -100,6 +102,14 @@ export const DeliveryPartnerSchema = z.object({
   earnings: z.number().nonnegative().default(0),
   zone: z.string().optional(),
   joinedAt: z.string().optional(),
+  lastLocation: z
+    .object({
+      lat: z.number().nullable().optional(),
+      lng: z.number().nullable().optional(),
+      updatedAt: z.string().nullable().optional(),
+    })
+    .optional()
+    .nullable(),
 });
 
 export type DeliveryPartner = z.infer<typeof DeliveryPartnerSchema>;

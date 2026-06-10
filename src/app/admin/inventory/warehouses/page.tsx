@@ -1,16 +1,16 @@
 "use client";
 
 import { useState, useMemo } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "../../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
 import ReusableSearchBar from "@/components/ui/admin/reusable-search";
 import StatusBadge from "@/components/ui/admin/reusable-status-badge";
-import { Building2, Store, Plus, Eye, MapPin, RefreshCw, X, Save, Edit } from "lucide-react";
+import { Building2, Store, Plus, MapPin, RefreshCw, X, Save } from "lucide-react";
 import { toast } from "sonner";
 import { useWarehouses } from "@/hooks/use-inventory";
 import { WarehouseOverviewCards } from "@/components/ui/inventory";
 import type { Warehouse } from "@/types/inventory";
-import ReusableModal from "@/components/ui/admin/reusable-modal";
 import { inventoryService } from "@/services/inventory.service";
 import { Loader2 } from "lucide-react";
 
@@ -19,29 +19,20 @@ export default function WarehousesPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showAddModal, setShowAddModal] = useState(false);
-  const [viewWarehouse, setViewWarehouse] = useState<Warehouse | null>(null);
-  const [editWarehouse, setEditWarehouse] = useState<Warehouse | null>(null);
   const [editForm, setEditForm] = useState<Partial<Warehouse>>({});
   const [saving, setSaving] = useState(false);
   
-  const { warehouses, loading, refresh, createWarehouse, updateWarehouse } = useWarehouses();
+  const { warehouses, loading, refresh, createWarehouse } = useWarehouses();
+  const router = useRouter();
 
-  const isDrawerOpen = !!editWarehouse || showAddModal;
+  const isDrawerOpen = showAddModal;
 
   const openAddDrawer = () => {
-    setEditWarehouse(null);
     setEditForm({ type: "WAREHOUSE", status: "active", isActive: true });
     setShowAddModal(true);
   };
 
-  const openEditDrawer = (w: Warehouse) => {
-    setEditWarehouse(w);
-    setEditForm({ ...w });
-    setShowAddModal(false);
-  };
-
   const closeEditDrawer = () => {
-    setEditWarehouse(null);
     setEditForm({});
     setShowAddModal(false);
   };
@@ -52,9 +43,6 @@ export default function WarehousesPage() {
       if (showAddModal) {
         await createWarehouse(editForm);
         toast.success(`Warehouse "${editForm.name}" created successfully`);
-      } else if (editWarehouse) {
-        await updateWarehouse(editWarehouse.id, editForm);
-        toast.success(`Warehouse "${editForm.name}" updated successfully`);
       }
       closeEditDrawer();
       refresh();
@@ -125,6 +113,7 @@ export default function WarehousesPage() {
           total={filtered.length}
           onPageChange={setPage}
           onPageSizeChange={(s) => { setPageSize(s); setPage(1); }}
+          onRowClick={(w: Warehouse) => router.push(`/admin/inventory/warehouses/${w.id}`)}
           columns={[
             { key: "name", header: "Warehouse", sortable: true, render: (w: Warehouse) => (
               <div className="flex items-center gap-2.5">
@@ -168,66 +157,10 @@ export default function WarehousesPage() {
               <span>{w.manager ?? <span className="text-[#bbb] text-xs">—</span>}</span>
             )},
           ]}
-          actions={[
-            { label: "View", icon: <Eye className="h-3.5 w-3.5 text-blue-600" />, onClick: (w: Warehouse) => setViewWarehouse(w) },
-            { label: "Edit", icon: <Edit className="h-3.5 w-3.5 text-[#0c831f]" />, onClick: (w: Warehouse) => openEditDrawer(w) },
-          ]}
         />
       </div>
 
-      {/* View Modal */}
-      <ReusableModal
-        open={!!viewWarehouse}
-        onClose={() => setViewWarehouse(null)}
-        title="Warehouse Details"
-        subtitle={`Information for ${viewWarehouse?.name || ""}`}
-        size="md"
-      >
-        {viewWarehouse && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4 rounded-xl bg-[#f9fafb] p-4">
-              <div>
-                <p className="text-[10px] text-[#999] font-bold uppercase">Warehouse ID</p>
-                <p className="text-sm font-bold text-[#1a1a1a]">#{viewWarehouse.id}</p>
-              </div>
-              <div>
-                <p className="text-[10px] text-[#999] font-bold uppercase">Type</p>
-                <p className="text-sm font-bold text-[#1a1a1a]">{viewWarehouse.type}</p>
-              </div>
-            </div>
-            <div className="rounded-xl border border-[#e8e8e8] p-3">
-              <p className="text-[10px] text-[#666]">Address</p>
-              <p className="mt-0.5 text-xs font-bold text-[#1a1a1a]">{viewWarehouse.address || viewWarehouse.location || "—"}</p>
-            </div>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="rounded-xl border border-[#e8e8e8] p-3 text-center">
-                <p className="text-[10px] text-[#666]">Capacity</p>
-                <p className="mt-1 text-base font-black text-[#1a1a1a]">{viewWarehouse.capacity > 0 ? viewWarehouse.capacity.toLocaleString() : "N/A"}</p>
-              </div>
-              <div className="rounded-xl border border-[#e8e8e8] p-3 text-center">
-                <p className="text-[10px] text-[#666]">Utilization</p>
-                <p className="mt-1 text-base font-black text-[#1a1a1a]">{viewWarehouse.capacity > 0 ? `${viewWarehouse.utilization.toFixed(1)}%` : "N/A"}</p>
-              </div>
-              <div className="rounded-xl border border-[#e8e8e8] p-3 text-center">
-                <p className="text-[10px] text-[#666]">Total Products</p>
-                <p className="mt-1 text-base font-black text-[#1a1a1a]">{viewWarehouse.products}</p>
-              </div>
-            </div>
-            {viewWarehouse.manager && (
-              <div className="rounded-xl border border-[#e8e8e8] p-3">
-                <p className="text-[10px] text-[#666]">Warehouse Manager</p>
-                <p className="mt-0.5 text-xs font-bold text-[#1a1a1a]">{viewWarehouse.manager}</p>
-              </div>
-            )}
-            <div className="rounded-xl border border-[#e8e8e8] p-3">
-              <p className="text-[10px] text-[#666]">Status</p>
-              <p className="mt-0.5 text-xs font-bold text-[#1a1a1a]">{viewWarehouse.isActive ? "Active" : "Inactive"}</p>
-            </div>
-          </div>
-        )}
-      </ReusableModal>
-
-      {/* Edit Drawer */}
+      {/* Add Drawer */}
       {/* Overlay */}
       <div
         className={`fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm transition-opacity duration-300 ${isDrawerOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
@@ -242,16 +175,11 @@ export default function WarehousesPage() {
         <div className="flex items-center justify-between border-b border-[#e8e8e8] px-6 py-4">
           <div>
             <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0c831f]">
-              {editWarehouse ? "Edit Warehouse" : "Add Warehouse"}
+              Add Warehouse
             </p>
             <h2 className="mt-0.5 text-base font-black text-[#1a1a1a] truncate max-w-xs">
-              {editForm?.name || (editWarehouse ? "Unnamed Warehouse" : "New Warehouse")}
+              {editForm?.name || "New Warehouse"}
             </h2>
-            {editWarehouse && (
-              <p className="text-[10px] text-[#999] mt-0.5">
-                ID: {editWarehouse.id} · {editWarehouse.location}
-              </p>
-            )}
           </div>
           <button
             onClick={closeEditDrawer}

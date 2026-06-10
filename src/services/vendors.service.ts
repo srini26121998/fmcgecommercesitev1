@@ -442,24 +442,7 @@ export const vendorsService = {
     page = 1,
     pageSize = 10
   ): Promise<{ data: VendorProduct[]; meta: VendorPageMeta }> {
-    try {
-      const query = buildQuery({
-        page: Math.max(0, page - 1),
-        size: pageSize,
-        vendorId: filters?.vendorId,
-        search: filters?.search,
-        status: filters?.status,
-        sortBy: filters?.sortBy,
-        sortOrder: filters?.sortOrder,
-      });
-      const raw = await apiClient.get<any>(`${VENDORS_PREFIX}/products${query}`);
-      const products = raw?.data?.content ?? raw?.content ?? raw?.data ?? [];
-      const meta = extractMeta(raw, products.length, page, pageSize);
-      return { data: products, meta };
-    } catch (err) {
-      console.error("[VendorsService] getVendorProducts failed:", err);
-      throw err;
-    }
+    return { data: [], meta: { page, pageSize, total: 0, totalPages: 0 } };
   },
 
   async getProductSummary(): Promise<{
@@ -470,13 +453,14 @@ export const vendorsService = {
     avgMargin: number;
     totalStockValue: number;
   }> {
-    try {
-      const raw = await apiClient.get<any>(`${VENDORS_PREFIX}/products/summary`);
-      return raw?.data || raw;
-    } catch (err) {
-      console.error("[VendorsService] getProductSummary failed:", err);
-      throw err;
-    }
+    return {
+      totalProducts: 0,
+      activeProducts: 0,
+      outOfStockCount: 0,
+      inactiveCount: 0,
+      avgMargin: 0,
+      totalStockValue: 0,
+    };
   },
 
   // ── ALL-VENDORS SETTLEMENTS (admin dashboard) ─────────

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -136,7 +136,7 @@ export default function PartnerPerformancePage() {
                     { label: "Deliveries", value: selectedPerformance.totalDeliveries, icon: <Clock className="h-4 w-4" />, color: "text-[#2563eb]", bg: "bg-[#eff6ff]" },
                     { label: "On-Time Rate", value: `${selectedPerformance.onTimeRate.toFixed(1)}%`, icon: <TrendingUp className="h-4 w-4" />, color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
                     { label: "Avg Rating", value: selectedPerformance.avgRating.toFixed(1), icon: <Star className="h-4 w-4" />, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
-                    { label: "Earnings", value: `?${(selectedPerformance.totalEarnings / 1000).toFixed(1)}K`, icon: <DollarSign className="h-4 w-4" />, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
+                    { label: "Earnings", value: `₹${(selectedPerformance.totalEarnings / 1000).toFixed(1)}K`, icon: <DollarSign className="h-4 w-4" />, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
                   ].map((stat) => (
                     <div key={stat.label} className={`rounded-xl ${stat.bg} p-3`}>
                       <div className="flex items-center gap-2">
@@ -231,7 +231,7 @@ export default function PartnerPerformancePage() {
                             {perf.avgRating.toFixed(1)}
                           </span>
                         </td>
-                        <td className="py-3 font-bold text-[#0c831f]">?{(perf.totalEarnings / 1000).toFixed(1)}K</td>
+                        <td className="py-3 font-bold text-[#0c831f]">₹{(perf.totalEarnings / 1000).toFixed(1)}K</td>
                         <td className="py-3">
                           <span className={`flex items-center gap-1 text-xs font-bold ${
                             perf.trend === "up" ? "text-[#0c831f]" :

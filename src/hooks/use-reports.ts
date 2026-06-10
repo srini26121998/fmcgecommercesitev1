@@ -394,12 +394,9 @@ export function useSalesReports(initialFilters?: Partial<ReportFilters>) {
   const [summary, setSummary] = useState<{
     totalRevenue: number;
     totalOrders: number;
-    avgOrderValue: number;
-    totalRefunds: number;
+    averageOrderValue: number;
     totalDiscounts: number;
-    revenueGrowth: number;
-    ordersGrowth: number;
-    topCategory: string;
+    totalTax: number;
   } | null>(null);
   const { page, pageSize, meta, setMeta, goToPage, changePageSize } = usePagination(10);
   const [filters, setFilters] = useState<ReportFilters>({
@@ -586,12 +583,12 @@ export function useTaxReports(initialFilters?: Partial<ReportFilters>) {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [summary, setSummary] = useState<{
-    totalTaxCollected: number;
-    totalTaxPaid: number;
+    generatedReports: number;
     pendingFilings: number;
-    overdueFilings: number;
-    nextDueDate: string;
-    totalITCClaimed: number;
+    completedFilings: number;
+    upcomingTaxLiability: number;
+    nextDeadline: string;
+    nextDeadlineType: string;
   } | null>(null);
   const { page, pageSize, meta, setMeta, goToPage, changePageSize } = usePagination(10);
   const [filters, setFilters] = useState<ReportFilters>({

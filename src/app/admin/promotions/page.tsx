@@ -195,17 +195,7 @@ export default function PromotionsPage() {
             { key: "startDate", header: "Start", width: "110px", hideOnMobile: true },
             { key: "endDate", header: "End", width: "110px", hideOnMobile: true },
           ]}
-          actions={[
-            { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: (p) => setShowViewModal(p) },
-            { label: "Edit", icon: <Edit3 className="h-3.5 w-3.5" />, onClick: (p) => { setEditPromotion(p); setEditForm({ ...p }); } },
-            { label: "Duplicate", icon: <Copy className="h-3.5 w-3.5" />, onClick: async (p) => {
-              setIsSubmitting(true);
-              const res = await promotionService.createPromotion({ ...p, id: undefined, name: `${p.name} (Copy)` });
-              setIsSubmitting(false);
-              if (res) { toast.success(`Duplicated "${p.name}"`); fetchPromotions(); }
-            }},
-            { label: "Delete", icon: <Trash2 className="h-3.5 w-3.5" />, onClick: (p) => handleDelete(p.id, p.name), variant: "danger" },
-          ]}
+          onRowClick={(p) => setShowViewModal(p)}
         />
       </div>
 
@@ -316,6 +306,43 @@ export default function PromotionsPage() {
                 <span className="block text-xs font-bold text-[#999] uppercase">End Date</span>
                 <span className="font-semibold text-[#1a1a1a]">{showViewModal.endDate}</span>
               </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end gap-3 border-t border-[#e8e8e8] pt-4">
+              <button 
+                onClick={() => {
+                  setShowViewModal(null);
+                  setEditPromotion(showViewModal);
+                  setEditForm({ ...showViewModal });
+                }} 
+                className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-100 transition-colors"
+              >
+                <Edit3 className="h-4 w-4" /> Edit
+              </button>
+              <button 
+                onClick={async () => {
+                  setIsSubmitting(true);
+                  const res = await promotionService.createPromotion({ ...showViewModal, id: undefined, name: `${showViewModal.name} (Copy)` });
+                  setIsSubmitting(false);
+                  if (res) { 
+                    toast.success(`Duplicated "${showViewModal.name}"`); 
+                    fetchPromotions(); 
+                    setShowViewModal(null); 
+                  }
+                }} 
+                className="flex items-center gap-1.5 rounded-xl bg-purple-50 px-4 py-2 text-sm font-bold text-purple-600 hover:bg-purple-100 transition-colors"
+              >
+                <Copy className="h-4 w-4" /> Duplicate
+              </button>
+              <button 
+                onClick={() => {
+                  handleDelete(showViewModal.id, showViewModal.name);
+                  setShowViewModal(null);
+                }} 
+                className="flex items-center gap-1.5 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100 transition-colors"
+              >
+                <Trash2 className="h-4 w-4" /> Delete
+              </button>
             </div>
           </div>
         )}

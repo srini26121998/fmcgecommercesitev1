@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -6,57 +6,52 @@ import ReusableSearchBar from "@/components/ui/admin/reusable-search";
 import StatusBadge from "@/components/ui/admin/reusable-status-badge";
 import ReusableModal from "@/components/ui/admin/reusable-modal";
 import { ReusableDrawer } from "@/components/common/drawer";
-import { Truck, Phone, MapPin, Star, UserPlus, Eye, Edit3 } from "lucide-react";
+import { Truck, Phone, MapPin, Star, UserPlus, Eye, Edit3, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-
-const initialPartners = [
-  { id: "DP-001", name: "Rahul Verma", phone: "+91-98765-43201", vehicle: "Honda Activa - MH01 AB 1234", zone: "North Zone", rating: 4.8, deliveries: 1245, status: "online" },
-  { id: "DP-002", name: "Priya Mehta", phone: "+91-98765-43202", vehicle: "TVS iQube - MH02 CD 5678", zone: "East Zone", rating: 4.9, deliveries: 980, status: "online" },
-  { id: "DP-003", name: "Amit Singh", phone: "+91-98765-43203", vehicle: "Hero Splendor - DL03 EF 9012", zone: "West Zone", rating: 4.6, deliveries: 2100, status: "busy" },
-  { id: "DP-004", name: "Sunita Yadav", phone: "+91-98765-43204", vehicle: "Ola Electric - KA04 GH 3456", zone: "South Zone", rating: 4.7, deliveries: 1560, status: "online" },
-  { id: "DP-005", name: "Vikram Joshi", phone: "+91-98765-43205", vehicle: "Bajaj CT 100 - MH12 IJ 7890", zone: "Central Zone", rating: 4.4, deliveries: 890, status: "offline" },
-  { id: "DP-006", name: "Neha Kapoor", phone: "+91-98765-43206", vehicle: "Honda Activa - DL04 KL 1234", zone: "North Zone", rating: 4.8, deliveries: 1780, status: "online" },
-];
+import { useDeliveryPartners } from "@/hooks/use-delivery";
 
 export default function DeliveryPartnersPage() {
-  const [partnersList, setPartnersList] = useState(initialPartners);
-  const [search, setSearch] = useState("");
+  const { partners, loading, search, setSearch, addPartner, refresh } = useDeliveryPartners();
   const [showViewModal, setShowViewModal] = useState<any>(null);
   const [editPartner, setEditPartner] = useState<any>(null);
   const [isAdding, setIsAdding] = useState(false);
   const [editForm, setEditForm] = useState<any>({});
 
-  const filtered = partnersList.filter(p =>
-    !search || p.name.toLowerCase().includes(search.toLowerCase()) || p.zone.toLowerCase().includes(search.toLowerCase())
+  const filtered = partners.filter(p =>
+    !search || p.name?.toLowerCase().includes(search.toLowerCase()) || p.zone?.toLowerCase().includes(search.toLowerCase())
   );
 
   const handleAddNew = () => {
     setIsAdding(true);
     setEditForm({
-      id: `DP-${String(partnersList.length + 1).padStart(3, "0")}`,
       name: "",
       phone: "",
-      vehicle: "",
+      vehicleType: "bike",
+      vehicleNumber: "",
       zone: "North Zone",
       rating: 5.0,
-      deliveries: 0,
+      totalDeliveries: 0,
       status: "online",
     });
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
     if (isAdding) {
       if (!editForm.name) {
         toast.error("Name is required");
         return;
       }
-      setPartnersList(prev => [...prev, editForm]);
-      toast.success(`Successfully added partner ${editForm.name}`);
-      setIsAdding(false);
+      try {
+        await addPartner(editForm);
+        toast.success(`Successfully added partner ${editForm.name}`);
+        setIsAdding(false);
+      } catch (err) {
+        toast.error("Failed to add partner");
+      }
     } else if (editPartner) {
-      setPartnersList(prev => prev.map(p => p.id === editPartner.id ? { ...p, ...editForm } : p));
       toast.success(`Successfully updated partner ${editForm.name}`);
       setEditPartner(null);
+      refresh();
     }
   };
 
@@ -81,49 +76,59 @@ export default function DeliveryPartnersPage() {
 
         <ReusableSearchBar value={search} onChange={setSearch} placeholder="Search by name or zone..." />
 
-        <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
-          {filtered.map((p) => (
-            <div key={p.id} className="rounded-xl border border-[#e8e8e8] bg-white p-4 transition-all hover:shadow-sm hover:-translate-y-0.5">
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8f5e9]">
-                    <Truck className="h-5 w-5 text-[#0c831f]" />
+        {loading ? (
+          <div className="flex h-40 items-center justify-center rounded-xl border border-[#e8e8e8] bg-white">
+            <Loader2 className="h-6 w-6 animate-spin text-[#0c831f]" />
+          </div>
+        ) : filtered.length === 0 ? (
+          <div className="flex h-40 flex-col items-center justify-center rounded-xl border border-[#e8e8e8] bg-white text-sm text-[#666]">
+            <p>No delivery partners found.</p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {filtered.map((p: any) => (
+              <div key={p.id} className="rounded-xl border border-[#e8e8e8] bg-white p-4 transition-all hover:shadow-sm hover:-translate-y-0.5">
+                <div className="flex items-start justify-between">
+                  <div className="flex items-center gap-3">
+                    <div className="flex h-10 w-10 items-center justify-center rounded-full bg-[#e8f5e9]">
+                      <Truck className="h-5 w-5 text-[#0c831f]" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-bold text-[#1a1a1a]">{p.name}</p>
+                      <p className="flex items-center gap-1 text-xs text-[#999]">
+                        <Phone className="h-3 w-3" /> {p.phone || "N/A"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <p className="text-sm font-bold text-[#1a1a1a]">{p.name}</p>
-                    <p className="flex items-center gap-1 text-xs text-[#999]">
-                      <Phone className="h-3 w-3" /> {p.phone}
-                    </p>
+                  <StatusBadge status={p.status} />
+                </div>
+                <div className="mt-3 space-y-1.5 text-xs text-[#666]">
+                  <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-[#2563eb]" /> {p.zone} - {p.vehicleType || "Vehicle"} {p.vehicleNumber}</p>
+                  <p className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-[#d97706]" /> {p.rating || 5.0} rating • {p.totalDeliveries || 0} deliveries</p>
+                </div>
+                <div className="mt-3 flex items-center justify-between border-t border-[#e8e8e8] pt-3">
+                  <span className="text-[10px] font-mono text-[#999]">{p.id}</span>
+                  <div className="flex gap-1.5">
+                    <button
+                      onClick={() => setShowViewModal(p)}
+                      className="rounded-lg bg-[#f6f7f6] p-1.5 text-[#666] hover:bg-[#e8e8e8]"
+                      title="View details"
+                    >
+                      <Eye className="h-4 w-4" />
+                    </button>
+                    <button
+                      onClick={() => { setEditPartner(p); setEditForm({ ...p }); }}
+                      className="rounded-lg bg-[#f6f7f6] p-1.5 text-[#666] hover:bg-[#e8e8e8]"
+                      title="Edit profile"
+                    >
+                      <Edit3 className="h-4 w-4" />
+                    </button>
                   </div>
                 </div>
-                <StatusBadge status={p.status} />
               </div>
-              <div className="mt-3 space-y-1.5 text-xs text-[#666]">
-                <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-[#2563eb]" /> {p.zone} - {p.vehicle}</p>
-                <p className="flex items-center gap-1.5"><Star className="h-3.5 w-3.5 text-[#d97706]" /> {p.rating} rating ₹ {p.deliveries} deliveries</p>
-              </div>
-              <div className="mt-3 flex items-center justify-between border-t border-[#e8e8e8] pt-3">
-                <span className="text-[10px] font-mono text-[#999]">{p.id}</span>
-                <div className="flex gap-1.5">
-                  <button
-                    onClick={() => setShowViewModal(p)}
-                    className="rounded-lg bg-[#f6f7f6] p-1.5 text-[#666] hover:bg-[#e8e8e8]"
-                    title="View details"
-                  >
-                    <Eye className="h-4 w-4" />
-                  </button>
-                  <button
-                    onClick={() => { setEditPartner(p); setEditForm({ ...p }); }}
-                    className="rounded-lg bg-[#f6f7f6] p-1.5 text-[#666] hover:bg-[#e8e8e8]"
-                    title="Edit profile"
-                  >
-                    <Edit3 className="h-4 w-4" />
-                  </button>
-                </div>
-              </div>
-            </div>
-          ))}
-        </div>
+            ))}
+          </div>
+        )}
       </div>
 
       <ReusableModal
@@ -148,7 +153,7 @@ export default function DeliveryPartnersPage() {
             <div className="grid grid-cols-2 gap-4">
               <div>
                 <span className="block text-[10px] font-bold text-[#666] uppercase">Vehicle</span>
-                <span className="text-sm font-bold text-[#1a1a1a]">{showViewModal.vehicle}</span>
+                <span className="text-sm font-bold text-[#1a1a1a]">{showViewModal.vehicleType || "Vehicle"} {showViewModal.vehicleNumber}</span>
               </div>
               <div>
                 <span className="block text-[10px] font-bold text-[#666] uppercase">Status</span>
@@ -162,14 +167,14 @@ export default function DeliveryPartnersPage() {
                 <span className="block text-[10px] font-bold text-[#666] uppercase">Rating</span>
                 <div className="flex items-center gap-1 mt-0.5">
                   <Star className="h-3 w-3 text-[#d97706] fill-current" />
-                  <span className="text-sm font-bold text-[#1a1a1a]">{showViewModal.rating}</span>
+                  <span className="text-sm font-bold text-[#1a1a1a]">{showViewModal.rating || 5.0}</span>
                 </div>
               </div>
             </div>
 
             <div className="rounded-xl bg-[#f9fafb] p-3 text-center">
               <span className="block text-[10px] font-bold text-[#666] uppercase">Total Deliveries</span>
-              <span className="text-lg font-bold text-[#1a1a1a]">{showViewModal.deliveries}</span>
+              <span className="text-lg font-bold text-[#1a1a1a]">{showViewModal.totalDeliveries || 0}</span>
             </div>
 
             <div className="flex justify-end pt-2">
@@ -231,15 +236,27 @@ export default function DeliveryPartnersPage() {
               />
             </div>
 
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-[#666]">Vehicle Info</label>
-              <input
-                type="text"
-                value={editForm.vehicle || ""}
-                onChange={(e) => setEditForm((f: any) => ({ ...f, vehicle: e.target.value }))}
-                placeholder="Honda Activa - MH01 AB 1234"
-                className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
-              />
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Vehicle Type</label>
+                <input
+                  type="text"
+                  value={editForm.vehicleType || ""}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, vehicleType: e.target.value }))}
+                  placeholder="e.g. Bike"
+                  className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
+                />
+              </div>
+              <div className="flex-1">
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Vehicle Number</label>
+                <input
+                  type="text"
+                  value={editForm.vehicleNumber || ""}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, vehicleNumber: e.target.value }))}
+                  placeholder="e.g. MH01 AB 1234"
+                  className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
+                />
+              </div>
             </div>
 
             <div>

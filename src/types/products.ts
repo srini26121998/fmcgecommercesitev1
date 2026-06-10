@@ -80,6 +80,7 @@ export const ProductSchema = z.object({
   media: z.array(ProductMediaSchema).default([]),
   seo: ProductSEOSchema.optional(),
   history: z.array(ProductHistoryEntrySchema).default([]),
+  itemCode: z.string().optional(),
   createdAt: z.string(),
   updatedAt: z.string(),
 });

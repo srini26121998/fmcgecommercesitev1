@@ -99,8 +99,8 @@ export const menuItems: MenuItem[] = [
       { icon: Boxes, label: "Stock Management", href: "/admin/inventory" },
       { icon: Warehouse, label: "Warehouses", href: "/admin/inventory/warehouses" },
       { icon: MoveHorizontal, label: "Stock Transfers", href: "/admin/inventory/stock-transfers" },
-      { icon: Clock, label: "FEFO Dashboard", href: "/admin/inventory/fefo" },
-      { icon: TrendingUp, label: "Forecast Dashboard", href: "/admin/inventory/forecast" },
+      // { icon: Clock, label: "FEFO Dashboard", href: "/admin/inventory/fefo" },
+      // { icon: TrendingUp, label: "Forecast Dashboard", href: "/admin/inventory/forecast" },
     ],
   },
   {
@@ -140,7 +140,7 @@ export const menuItems: MenuItem[] = [
       { icon: Ticket, label: "Coupons", href: "/admin/promotions/coupons" },
       { icon: Zap, label: "Flash Sales", href: "/admin/promotions/flash-sales" },
       { icon: Megaphone, label: "Campaign Builder", href: "/admin/promotions/campaign-builder" },
-      { icon: Bell, label: "Push Notifications", href: "/admin/promotions/push-notifications" },
+      // { icon: Bell, label: "Push Notifications", href: "/admin/promotions/push-notifications" },
       { icon: FlaskConical, label: "A/B Testing", href: "/admin/promotions/ab-testing" },
     ],
   },
@@ -170,7 +170,7 @@ export const menuItems: MenuItem[] = [
     caption: "Supplier network",
     submenu: [
       { icon: Store, label: "Vendors", href: "/admin/vendors" },
-      { icon: UserPlus, label: "Vendor Onboarding", href: "/admin/vendors/onboarding" },
+      // { icon: UserPlus, label: "Vendor Onboarding", href: "/admin/vendors/onboarding" },
       { icon: Package, label: "Vendor Products", href: "/admin/vendors/products" },
       { icon: Banknote, label: "Settlements", href: "/admin/vendors/settlements" },
       { icon: Activity, label: "Analytics", href: "/admin/vendors/analytics" },

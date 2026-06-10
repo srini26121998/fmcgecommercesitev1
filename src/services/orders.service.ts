@@ -862,7 +862,37 @@ export const orderService = {
    */
   async getDeliveryPartners(search?: string): Promise<PartnersListResponse> {
     try {
-      let filtered = MOCK_DELIVERY_PARTNERS;
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/riders");
+      const riders = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+
+      const items: DeliveryPartner[] = riders.map((r: any) => {
+        let status = "offline";
+        const avail = (r.availabilityStatus || "").toUpperCase();
+        if (avail === "FREE") status = "online";
+        else if (avail === "BUSY") status = "busy";
+        
+        return {
+          id: String(r.id || r.publicId),
+          name: r.name || "Unknown",
+          phone: r.phone || "",
+          email: r.email || "",
+          vehicleType: r.vehicleType?.toLowerCase() || "bike",
+          vehicleNumber: r.vehicleNumber || "",
+          status,
+          currentOrders: 0,
+          totalDeliveries: 0,
+          rating: 5,
+          earnings: 0,
+          zone: "Chennai",
+          lastLocation: {
+            lat: r.currentLat || null,
+            lng: r.currentLng || null,
+            updatedAt: r.lastLocationUpdate || null,
+          }
+        };
+      });
+
+      let filtered = items;
       if (search) {
         const query = search.toLowerCase();
         filtered = filtered.filter(
@@ -871,7 +901,7 @@ export const orderService = {
             (p.zone && p.zone.toLowerCase().includes(query))
         );
       }
-      return { partners: filtered, total: filtered.length, isMock: true };
+      return { partners: filtered, total: filtered.length, isMock: false };
     } catch (err) {
       console.error("[OrderService] getDeliveryPartners failed:", err);
       throw err;
@@ -884,14 +914,44 @@ export const orderService = {
    */
   async getPartnersByZone(zone: string): Promise<DeliveryPartner[]> {
     try {
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/riders");
+      const riders = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+
+      const items: DeliveryPartner[] = riders.map((r: any) => {
+        let status = "offline";
+        const avail = (r.availabilityStatus || "").toUpperCase();
+        if (avail === "FREE") status = "online";
+        else if (avail === "BUSY") status = "busy";
+        
+        return {
+          id: String(r.id || r.publicId),
+          name: r.name || "Unknown",
+          phone: r.phone || "",
+          email: r.email || "",
+          vehicleType: r.vehicleType?.toLowerCase() || "bike",
+          vehicleNumber: r.vehicleNumber || "",
+          status,
+          currentOrders: 0,
+          totalDeliveries: 0,
+          rating: 5,
+          earnings: 0,
+          zone: "Chennai",
+          lastLocation: {
+            lat: r.currentLat || null,
+            lng: r.currentLng || null,
+            updatedAt: r.lastLocationUpdate || null,
+          }
+        };
+      });
+
       const normalizedZone = zone.trim().toLowerCase();
-      const zonePartners = MOCK_DELIVERY_PARTNERS.filter(
+      const zonePartners = items.filter(
         (p) => p.zone && p.zone.toLowerCase().includes(normalizedZone)
       );
       if (zonePartners.length > 0) {
         return zonePartners;
       }
-      return MOCK_DELIVERY_PARTNERS.filter((p) => p.status === "online");
+      return items.filter((p) => p.status === "online" || p.status === "available");
     } catch (err) {
       console.error(`[OrderService] getPartnersByZone failed for ${zone}:`, err);
       throw err;
@@ -919,7 +979,7 @@ export const orderService = {
 
   /**
    * Get substitution requests.
-   * GET /api/v1/orders/substitutions
+   * GET /api/v1/admin/orders/substitutions
    */
   async getSubstitutions(
     filters?: { search?: string; status?: string },
@@ -933,10 +993,18 @@ export const orderService = {
       if (pagination?.pageSize) params.set("limit", String(pagination.pageSize));
 
       const qs = params.toString();
-      const url = qs ? `/api/v1/orders/substitutions?${qs}` : `/api/v1/orders/substitutions`;
+      const url = qs ? `/api/v1/admin/orders/substitutions?${qs}` : `/api/v1/admin/orders/substitutions`;
       const raw = await apiClient.get<any>(url);
-      const subs: Substitution[] = raw.data?.substitutions || raw.substitutions || raw.data || [];
-      const total = raw.data?.total ?? raw.total ?? subs.length;
+      
+      let subs: Substitution[] = [];
+      if (Array.isArray(raw.data?.content)) subs = raw.data.content;
+      else if (Array.isArray(raw.content)) subs = raw.content;
+      else if (Array.isArray(raw.data?.substitutions)) subs = raw.data.substitutions;
+      else if (Array.isArray(raw.substitutions)) subs = raw.substitutions;
+      else if (Array.isArray(raw.data)) subs = raw.data;
+      else if (Array.isArray(raw)) subs = raw;
+
+      const total = raw.data?.totalElements ?? raw.totalElements ?? raw.data?.total ?? raw.total ?? subs.length;
       const page = pagination?.page ?? 1;
       const pageSize = pagination?.pageSize ?? 10;
       return { substitutions: subs, pagination: { page, pageSize, total } };
@@ -948,12 +1016,12 @@ export const orderService = {
 
   /**
    * Approve or reject a product substitution.
-   * POST /api/v1/orders/substitutions/:id/decide
+   * POST /api/v1/admin/orders/substitutions/:id/decide
    */
   async decideSubstitution(data: SubstitutionDecisionData): Promise<boolean> {
     try {
       await apiClient.post(
-        `/api/v1/orders/substitutions/${data.substitutionId}/decide`,
+        `/api/v1/admin/orders/substitutions/${data.substitutionId}/decide`,
         { status: data.status, decidedBy: data.decidedBy }
       );
       return true;
@@ -967,7 +1035,7 @@ export const orderService = {
 
   /**
    * Get bulk processing jobs (admin).
-   * GET /api/v1/orders/bulk-jobs
+   * GET /api/v1/admin/bulk-jobs
    */
   async getBulkJobs(
     search?: string,
@@ -980,10 +1048,18 @@ export const orderService = {
       if (pagination?.pageSize) params.set("limit", String(pagination.pageSize));
 
       const qs = params.toString();
-      const url = qs ? `/api/v1/orders/bulk-jobs?${qs}` : `/api/v1/orders/bulk-jobs`;
+      const url = qs ? `/api/v1/admin/bulk-jobs?${qs}` : `/api/v1/admin/bulk-jobs`;
       const raw = await apiClient.get<any>(url);
-      const jobs: BulkJob[] = raw.data?.jobs || raw.jobs || raw.data || [];
-      const total = raw.data?.total ?? raw.total ?? jobs.length;
+      
+      let jobs: BulkJob[] = [];
+      if (Array.isArray(raw.data?.content)) jobs = raw.data.content;
+      else if (Array.isArray(raw.content)) jobs = raw.content;
+      else if (Array.isArray(raw.data?.jobs)) jobs = raw.data.jobs;
+      else if (Array.isArray(raw.jobs)) jobs = raw.jobs;
+      else if (Array.isArray(raw.data)) jobs = raw.data;
+      else if (Array.isArray(raw)) jobs = raw;
+
+      const total = raw.data?.totalElements ?? raw.totalElements ?? raw.data?.total ?? raw.total ?? jobs.length;
       const page = pagination?.page ?? 1;
       const pageSize = pagination?.pageSize ?? 10;
       return { jobs, pagination: { page, pageSize, total } };
@@ -995,7 +1071,7 @@ export const orderService = {
 
   /**
    * Create a bulk action (status update, assignment, cancellation, etc.).
-   * POST /api/v1/orders/bulk-action
+   * POST /api/v1/admin/orders/bulk-action
    */
   async createBulkAction(data: {
     actionType: string;
@@ -1004,7 +1080,7 @@ export const orderService = {
   }): Promise<BulkJob> {
     try {
       const raw = await apiClient.post<any>(
-        `/api/v1/orders/bulk-action`,
+        `/api/v1/admin/orders/bulk-action`,
         data
       );
       return raw.data?.job || raw.job || raw.data;

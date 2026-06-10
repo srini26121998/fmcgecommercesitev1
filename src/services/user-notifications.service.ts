@@ -15,5 +15,10 @@ export const userNotificationService = {
   async markAllAsRead(): Promise<boolean> {
     await apiClient.patch("/api/v1/notifications/mark-all-read");
     return true;
+  },
+
+  async markAsRead(publicId: string): Promise<any> {
+    const response = await apiClient.post<any>(`/api/v1/notifications/${publicId}/read`);
+    return response.data || response;
   }
 };

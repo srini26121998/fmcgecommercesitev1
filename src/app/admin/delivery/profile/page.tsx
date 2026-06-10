@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -169,8 +169,8 @@ export default function PartnerProfilePage() {
                 {[
                   { label: "Current Orders", value: profile.currentOrders, color: "text-[#2563eb]", bg: "bg-[#eff6ff]" },
                   { label: "Total Deliveries", value: profile.totalDeliveries.toLocaleString(), color: "text-[#0c831f]", bg: "bg-[#e8f5e9]" },
-                  { label: "Total Earnings", value: `?${(profile.totalEarnings / 1000).toFixed(1)}K`, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
-                  { label: "This Month", value: `?${(profile.thisMonthEarnings / 1000).toFixed(1)}K`, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
+                  { label: "Total Earnings", value: `₹${(profile.totalEarnings / 1000).toFixed(1)}K`, color: "text-[#9333ea]", bg: "bg-[#f3e8ff]" },
+                  { label: "This Month", value: `₹${(profile.thisMonthEarnings / 1000).toFixed(1)}K`, color: "text-[#d97706]", bg: "bg-[#fffbeb]" },
                 ].map((stat) => (
                   <div key={stat.label} className={`rounded-xl ${stat.bg} p-3 text-center`}>
                     <p className={`text-lg font-black ${stat.color}`}>{stat.value}</p>

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -75,16 +75,16 @@ export default function TaxReportsPage() {
         {/* KPI Cards */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <ReusableCard
-            title="Total Tax Collected"
-            value={summary ? `?${(summary.totalTaxCollected / 10000000).toFixed(2)}Cr` : "₹"}
-            icon={<Landmark className="h-5 w-5" />}
+            title="Generated Reports"
+            value={summary?.generatedReports ?? 0}
+            icon={<FileText className="h-5 w-5" />}
             color="text-[#2563eb]"
             bgColor="bg-[#eff6ff]"
           />
           <ReusableCard
-            title="ITC Claimed"
-            value={summary ? `?${(summary.totalITCClaimed / 100000).toFixed(1)}L` : "₹"}
-            icon={<DollarSign className="h-5 w-5" />}
+            title="Completed Filings"
+            value={summary?.completedFilings ?? 0}
+            icon={<CheckCircle className="h-5 w-5" />}
             color="text-[#0c831f]"
             bgColor="bg-[#e8f5e9]"
           />
@@ -94,14 +94,14 @@ export default function TaxReportsPage() {
             icon={<Clock className="h-5 w-5" />}
             color="text-[#d97706]"
             bgColor="bg-[#fffbeb]"
-            subtitle={summary?.overdueFilings ? `${summary.overdueFilings} overdue` : undefined}
           />
           <ReusableCard
-            title="Next Due Date"
-            value={summary?.nextDueDate ?? "₹"}
-            icon={<Calendar className="h-5 w-5" />}
+            title="Upcoming Liability"
+            value={summary?.upcomingTaxLiability !== undefined ? `₹${summary.upcomingTaxLiability.toLocaleString("en-IN")}` : "₹"}
+            icon={<Landmark className="h-5 w-5" />}
             color="text-[#9333ea]"
             bgColor="bg-[#f3e8ff]"
+            subtitle={summary?.nextDeadline ? `Due: ${summary.nextDeadline}` : undefined}
           />
         </div>
 
@@ -112,9 +112,8 @@ export default function TaxReportsPage() {
             <div>
               <p className="text-sm font-bold text-amber-700">
                 {summary.pendingFilings} filing{summary.pendingFilings > 1 ? "s" : ""} pending
-                {summary.overdueFilings > 0 && ` ₹ ${summary.overdueFilings} overdue`}
               </p>
-              <p className="text-xs text-amber-600">Next due: {summary.nextDueDate}</p>
+              <p className="text-xs text-amber-600">Next due: {summary.nextDeadline} ({summary.nextDeadlineType})</p>
             </div>
           </div>
         )}
@@ -175,7 +174,7 @@ export default function TaxReportsPage() {
               sortable: true,
               render: (r) => (
                 <span className="font-bold">
-                  {r.totalTaxAmount > 0 ? `?${(r.totalTaxAmount / 100000).toFixed(2)}L` : "₹"}
+                  {r.totalTaxAmount > 0 ? `₹${(r.totalTaxAmount / 100000).toFixed(2)}L` : "₹"}
                 </span>
               ),
             },
@@ -275,12 +274,12 @@ export default function TaxReportsPage() {
                 <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#666]">Tax Breakdown</h4>
                 <div className="space-y-2.5">
                   {[
-                    { label: "Taxable Value", value: selectedReport.taxableValue > 0 ? `?${(selectedReport.taxableValue / 100000).toFixed(2)}L` : "₹" },
-                    { label: "CGST", value: selectedReport.cgst > 0 ? `?${(selectedReport.cgst / 1000).toFixed(1)}K` : "₹" },
-                    { label: "SGST", value: selectedReport.sgst > 0 ? `?${(selectedReport.sgst / 1000).toFixed(1)}K` : "₹" },
-                    { label: "IGST", value: selectedReport.igst > 0 ? `?${(selectedReport.igst / 1000).toFixed(1)}K` : "₹" },
-                    { label: "TDS", value: selectedReport.tds > 0 ? `?${(selectedReport.tds / 1000).toFixed(1)}K` : "₹" },
-                    { label: "Total Tax Amount", value: `?${(selectedReport.totalTaxAmount / 100000).toFixed(2)}L`, highlight: true },
+                    { label: "Taxable Value", value: selectedReport.taxableValue > 0 ? `₹${(selectedReport.taxableValue / 100000).toFixed(2)}L` : "₹" },
+                    { label: "CGST", value: selectedReport.cgst > 0 ? `₹${(selectedReport.cgst / 1000).toFixed(1)}K` : "₹" },
+                    { label: "SGST", value: selectedReport.sgst > 0 ? `₹${(selectedReport.sgst / 1000).toFixed(1)}K` : "₹" },
+                    { label: "IGST", value: selectedReport.igst > 0 ? `₹${(selectedReport.igst / 1000).toFixed(1)}K` : "₹" },
+                    { label: "TDS", value: selectedReport.tds > 0 ? `₹${(selectedReport.tds / 1000).toFixed(1)}K` : "₹" },
+                    { label: "Total Tax Amount", value: `₹${(selectedReport.totalTaxAmount / 100000).toFixed(2)}L`, highlight: true },
                   ].map((item) => (
                     <div
                       key={item.label}

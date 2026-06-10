@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import DashboardLayout from "../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
@@ -218,7 +218,7 @@ export default function CustomersPage() {
         {/* KPI Strip */}
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <ReusableCard title="Total Customers" value={summary.total} icon={<Users className="h-4 w-4" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
-          <ReusableCard title="Total Revenue" value={`?${summary.totalRevenue.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
+          <ReusableCard title="Total Revenue" value={`₹${summary.totalRevenue.toLocaleString()}`} icon={<TrendingUp className="h-4 w-4" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
           <ReusableCard title="VIP Customers" value={summary.vip} icon={<Star className="h-4 w-4" />} color="text-[#9333ea]" bgColor="bg-[#f3e8ff]" />
           <ReusableCard title="At Risk" value={summary.atRisk} icon={<AlertTriangle className="h-4 w-4" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
         </div>
@@ -277,7 +277,7 @@ export default function CustomersPage() {
             { key: "segment", header: "Segment", width: "100px", render: (c: Customer) => <StatusBadge status={c.segment} /> },
             { key: "status", header: "Status", width: "100px", render: (c: Customer) => <StatusBadge status={c.status} /> },
             { key: "totalOrders", header: "Orders", width: "80px", align: "right", sortable: true },
-            { key: "totalSpent", header: "Spent", width: "100px", align: "right", sortable: true, render: (c: Customer) => <span className="font-semibold">?{c.totalSpent.toLocaleString()}</span> },
+            { key: "totalSpent", header: "Spent", width: "100px", align: "right", sortable: true, render: (c: Customer) => <span className="font-semibold">₹{c.totalSpent.toLocaleString()}</span> },
             { key: "city", header: "City", width: "100px", hideOnMobile: true },
             { key: "lastOrderDate", header: "Last Order", width: "110px", hideOnMobile: true, render: (c: Customer) => c.lastOrderDate || <span className="text-[#999]">₹</span> },
           ]}
@@ -356,8 +356,8 @@ export default function CustomersPage() {
                     { label: "Segment", value: <StatusBadge status={showDetailModal.segment} /> },
                     { label: "Status", value: <StatusBadge status={showDetailModal.status} /> },
                     { label: "Total Orders", value: showDetailModal.totalOrders },
-                    { label: "Total Spent", value: `?${showDetailModal.totalSpent.toLocaleString()}` },
-                    { label: "Avg Order Value", value: `?${showDetailModal.avgOrderValue}` },
+                    { label: "Total Spent", value: `₹${showDetailModal.totalSpent.toLocaleString()}` },
+                    { label: "Avg Order Value", value: `₹${showDetailModal.avgOrderValue}` },
                     { label: "LTV", value: showDetailModal.lifetimeValue || "₹" },
                   ].map((f) => (
                     <div key={f.label} className="rounded-xl bg-[#f9fafb] p-3">

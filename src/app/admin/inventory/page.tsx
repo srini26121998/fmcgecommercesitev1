@@ -1,103 +1,45 @@
 "use client";
 
 import { useState, useMemo, useCallback } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
 import ReusableSearchBar from "@/components/ui/admin/reusable-search";
 import ReusableExportButton from "@/components/ui/admin/reusable-export";
-import { RefreshCw, ArrowRightLeft, Eye, Edit3, Package, X, Save, Loader2, AlertTriangle, History } from "lucide-react";
+import { RefreshCw, ArrowRightLeft, Package, Loader2, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useInventoryItems, useWarehouses, useInventoryReport } from "@/hooks/use-inventory";
 import { inventoryService } from "@/services/inventory.service";
-import type { StockAdjustPayload, StockMovement } from "@/services/inventory.service";
 import { InventoryOverviewCards, WarehouseCards } from "@/components/ui/inventory";
 import StockTransferForm from "@/components/ui/inventory/stock-transfer-form";
 import type { InventoryItem, StockTransfer } from "@/types/inventory";
 import ReusableModal from "@/components/ui/admin/reusable-modal";
 import { adminToast } from "@/lib/admin-toast";
-import { validateForm, inventorySchemas } from "@/validation/admin";
 import * as XLSX from "xlsx";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 
 export default function InventoryPage() {
+  const router = useRouter();
+
   const [search, setSearch] = useState("");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [sortBy, setSortBy] = useState<string>("productName");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("asc");
   const [showTransferModal, setShowTransferModal] = useState(false);
-  const [viewItem, setViewItem] = useState<InventoryItem | null>(null);
-  const [viewingItemId, setViewingItemId] = useState<string | null>(null);
-  const [editItem, setEditItem] = useState<InventoryItem | null>(null);
-  const [editForm, setEditForm] = useState<Partial<InventoryItem>>({});
-  const [saving, setSaving] = useState(false);
   const [showOutOfStockModal, setShowOutOfStockModal] = useState(false);
   const [outOfStockItems, setOutOfStockItems] = useState<InventoryItem[]>([]);
   const [loadingOutOfStock, setLoadingOutOfStock] = useState(false);
   const [showLowStockModal, setShowLowStockModal] = useState(false);
   const [lowStockItemsList, setLowStockItemsList] = useState<InventoryItem[]>([]);
   const [loadingLowStock, setLoadingLowStock] = useState(false);
-  
-  const [showMovementsModal, setShowMovementsModal] = useState(false);
-  const [movementsList, setMovementsList] = useState<StockMovement[]>([]);
-  const [loadingMovements, setLoadingMovements] = useState(false);
-  const [selectedProductForMovements, setSelectedProductForMovements] = useState<InventoryItem | null>(null);
 
   const { items, loading, pagination, refresh: refreshItems } = useInventoryItems({ page, pageSize, search, sortBy, sortOrder });
   const { warehouses } = useWarehouses();
-  const { report, loading: reportLoading } = useInventoryReport();
+  const { report } = useInventoryReport();
 
-  const openEditDrawer = (item: InventoryItem) => {
-    setEditItem(item);
-    setEditForm({ ...item });
-  };
 
-  const closeEditDrawer = () => {
-    setEditItem(null);
-    setEditForm({});
-  };
-
-  const handleEditSave = useCallback(async () => {
-    if (!editItem) return;
-    setSaving(true);
-    try {
-      const payload: StockAdjustPayload = {
-        productId: editItem.id,
-        quantity: (editForm.stock as any) === "" ? 0 : (editForm.stock ?? editItem.stock),
-        type: "ADJUSTMENT",
-        reason: "Manual stock update via admin panel",
-        warehouseId: editForm.warehouseId ?? editItem.warehouseId,
-      };
-
-      // Check if stock or safety stock changed
-      const stockChanged = editForm.stock !== undefined && editForm.stock !== editItem.stock;
-      const safetyStockChanged = editForm.safetyStock !== undefined && editForm.safetyStock !== editItem.safetyStock;
-
-      if (stockChanged) {
-        // ── Client-side Validation ──
-        const validation = validateForm(inventorySchemas.adjustStock, payload);
-        if (!validation.success) {
-          adminToast.validationError(validation.errors);
-          setSaving(false);
-          return;
-        }
-        await inventoryService.adjustStock(payload);
-      }
-
-      if (safetyStockChanged) {
-        await inventoryService.updateSafetyStock(Number(editItem.id), Number(editForm.safetyStock));
-      }
-
-      adminToast.success(`Inventory for "${editForm.productName}" updated successfully`);
-      closeEditDrawer();
-      refreshItems();
-    } catch (err: any) {
-      adminToast.apiError(err?.message || "Failed to update inventory. Please try again.");
-    } finally {
-      setSaving(false);
-    }
-  }, [editItem, editForm, refreshItems]);
 
   const handleOpenOutOfStock = async () => {
     setShowOutOfStockModal(true);
@@ -125,35 +67,7 @@ export default function InventoryPage() {
     }
   };
 
-  const handleOpenMovements = async (item: InventoryItem) => {
-    setSelectedProductForMovements(item);
-    setShowMovementsModal(true);
-    setLoadingMovements(true);
-    try {
-      const res = await inventoryService.getProductMovements(item.id, { page: 1, pageSize: 20 });
-      setMovementsList(res.data || []);
-    } catch (err: any) {
-      adminToast.apiError("Failed to fetch movement history");
-    } finally {
-      setLoadingMovements(false);
-    }
-  };
 
-  const handleViewItem = async (item: InventoryItem) => {
-    if (viewingItemId) return;
-    setViewingItemId(item.id);
-    const toastId = toast.loading("Loading complete item details...");
-    try {
-      const res = await inventoryService.getInventoryItem(item.id);
-      setViewItem(res.data || item);
-    } catch (err: any) {
-      adminToast.apiError("Failed to fetch item details");
-      setViewItem(item); // fallback
-    } finally {
-      toast.dismiss(toastId);
-      setViewingItemId(null);
-    }
-  };
 
   const createTransfer = useCallback(
     async (data: Omit<StockTransfer, "id" | "status" | "createdAt">) => {
@@ -349,6 +263,7 @@ export default function InventoryPage() {
           sortKey={sortBy}
           sortDir={sortOrder}
           onSortChange={(key, dir) => { setSortBy(key); setSortOrder(dir); setPage(1); }}
+          onRowClick={(i: InventoryItem) => router.push(`/admin/inventory/${i.id}`)}
           columns={[
             {
               key: "productName", header: "Product", sortable: true, render: (i: InventoryItem) => (
@@ -436,13 +351,8 @@ export default function InventoryPage() {
                     {c.label}
                   </span>
                 );
-              }
+              },
             },
-          ]}
-          actions={[
-            { label: "View", icon: <Eye className="h-4 w-4 text-blue-600" />, onClick: (i: InventoryItem) => handleViewItem(i) },
-            { label: "Edit", icon: <Edit3 className="h-4 w-4 text-emerald-600" />, onClick: (i: InventoryItem) => openEditDrawer(i) },
-            { label: "History", icon: <History className="h-4 w-4 text-purple-600" />, onClick: (i: InventoryItem) => handleOpenMovements(i) },
           ]}
         />
       </div>
@@ -455,8 +365,6 @@ export default function InventoryPage() {
         warehouses={warehouseList}
         products={productList}
       />
-
-      {/* Out of Stock Modal */}
       <ReusableModal
         open={showOutOfStockModal}
         onClose={() => setShowOutOfStockModal(false)}
@@ -710,419 +618,6 @@ export default function InventoryPage() {
                             {(item as any).weight || "—"} {(item as any).unit || ""}
                           </span>
                         </div>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </ReusableModal>
-
-      {/* View Modal */}
-      <ReusableModal
-        open={!!viewItem}
-        onClose={() => setViewItem(null)}
-        title="Inventory Item Details"
-        subtitle={viewItem?.productName || ""}
-        size="lg"
-      >
-        {viewItem && (
-          <div className="space-y-5">
-            {/* Status badge */}
-            <div className="flex flex-wrap items-center gap-2">
-              <span
-                className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-[11px] font-bold uppercase tracking-wide ${viewItem.status === "in_stock" ? "bg-[#dcfce7] text-[#166534]"
-                    : viewItem.status === "low_stock" ? "bg-[#fef9c3] text-[#854d0e]"
-                      : viewItem.status === "out_of_stock" ? "bg-[#fee2e2] text-[#991b1b]"
-                        : "bg-[#f0fdf4] text-[#166534]"}
-                `}
-              >
-                <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                {viewItem.status.replace(/_/g, " ")}
-              </span>
-              {viewItem.barcode && (
-                <span className="rounded-full bg-[#f3f4f6] px-3 py-1 text-[11px] font-mono text-[#555]">
-                  Barcode: {viewItem.barcode}
-                </span>
-              )}
-            </div>
-
-            {/* Product Information */}
-            <div className="rounded-2xl border border-[#e8e8e8] overflow-hidden">
-              <div className="bg-[#f9fafb] px-4 py-2.5 border-b border-[#e8e8e8]">
-                <p className="text-[10px] font-black uppercase tracking-widest text-[#0c831f]">Product Information</p>
-              </div>
-              <div className="divide-y divide-[#f0f0f0]">
-                <div className="grid grid-cols-2 divide-x divide-[#f0f0f0]">
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] text-[#999] font-semibold uppercase">Product Name</p>
-                    <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{viewItem.productName}</p>
-                  </div>
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] text-[#999] font-semibold uppercase">SKU</p>
-                    <p className="mt-0.5 text-sm font-mono font-bold text-[#1a1a1a]">{viewItem.sku}</p>
-                  </div>
-                </div>
-                {((viewItem as any).brand || (viewItem as any).weight) && (
-                  <div className="grid grid-cols-2 divide-x divide-[#f0f0f0]">
-                    {(viewItem as any).brand && (
-                      <div className="px-4 py-3">
-                        <p className="text-[10px] text-[#999] font-semibold uppercase">Brand</p>
-                        <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{(viewItem as any).brand}</p>
-                      </div>
-                    )}
-                    {(viewItem as any).weight && (
-                      <div className="px-4 py-3">
-                        <p className="text-[10px] text-[#999] font-semibold uppercase">Weight / Unit</p>
-                        <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">
-                          {(viewItem as any).weight}{(viewItem as any).unit ? ` · ${(viewItem as any).unit}` : ""}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-                {(viewItem as any).description && (
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] text-[#999] font-semibold uppercase">Description</p>
-                    <p className="mt-0.5 text-xs text-[#555]">{(viewItem as any).description}</p>
-                  </div>
-                )}
-                {(viewItem as any).productStatus && (
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] text-[#999] font-semibold uppercase">Product Status</p>
-                    <p className="mt-0.5 text-sm font-bold text-[#0c831f]">{(viewItem as any).productStatus}</p>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Pricing */}
-            {((viewItem as any).price != null || (viewItem as any).mrp != null) && (
-              <div className="rounded-2xl border border-[#e8e8e8] overflow-hidden">
-                <div className="bg-[#f9fafb] px-4 py-2.5 border-b border-[#e8e8e8]">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#0c831f]">Pricing</p>
-                </div>
-                <div className="grid grid-cols-3 divide-x divide-[#f0f0f0]">
-                  {(viewItem as any).price != null && (
-                    <div className="px-4 py-3 text-center">
-                      <p className="text-[10px] text-[#999] font-semibold uppercase">Sale Price</p>
-                      <p className="mt-1 text-lg font-black text-[#0c831f]">₹{(viewItem as any).price}</p>
-                    </div>
-                  )}
-                  {(viewItem as any).mrp != null && (
-                    <div className="px-4 py-3 text-center">
-                      <p className="text-[10px] text-[#999] font-semibold uppercase">MRP</p>
-                      <p className="mt-1 text-lg font-black text-[#999] line-through">₹{(viewItem as any).mrp}</p>
-                    </div>
-                  )}
-                  {(viewItem as any).costPrice != null && (
-                    <div className="px-4 py-3 text-center">
-                      <p className="text-[10px] text-[#999] font-semibold uppercase">Cost Price</p>
-                      <p className="mt-1 text-lg font-black text-[#555]">₹{(viewItem as any).costPrice}</p>
-                    </div>
-                  )}
-                </div>
-                {(viewItem as any).taxRate != null && (
-                  <div className="border-t border-[#f0f0f0] px-4 py-2">
-                    <p className="text-[10px] text-[#999]">Tax Rate: <span className="font-bold text-[#1a1a1a]">{(viewItem as any).taxRate}%</span></p>
-                  </div>
-                )}
-              </div>
-            )}
-
-            {/* Stock Details */}
-            <div className="rounded-2xl border border-[#e8e8e8] overflow-hidden">
-              <div className="bg-[#f9fafb] px-4 py-2.5 border-b border-[#e8e8e8]">
-                <p className="text-[10px] font-black uppercase tracking-widest text-[#0c831f]">Stock Details</p>
-              </div>
-              <div className="grid grid-cols-3 divide-x divide-[#f0f0f0] border-b border-[#f0f0f0]">
-                <div className="px-4 py-3 text-center">
-                  <p className="text-[10px] text-[#999] font-semibold uppercase">Total Stock</p>
-                  <p className="mt-1 text-xl font-black text-[#1a1a1a]">{viewItem.stock}</p>
-                </div>
-                <div className="px-4 py-3 text-center">
-                  <p className="text-[10px] text-[#999] font-semibold uppercase">Reserved</p>
-                  <p className="mt-1 text-xl font-black text-[#f59e0b]">{viewItem.reserved}</p>
-                </div>
-                <div className="px-4 py-3 text-center">
-                  <p className="text-[10px] text-[#999] font-semibold uppercase">Available</p>
-                  <p className={`mt-1 text-xl font-black ${viewItem.available <= viewItem.lowStockThreshold ? "text-[#dc2626]" : "text-[#0c831f]"}`}>
-                    {viewItem.available}
-                  </p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 divide-x divide-[#f0f0f0] border-b border-[#f0f0f0]">
-                <div className="px-4 py-3">
-                  <p className="text-[10px] text-[#999] font-semibold uppercase">Safety Stock</p>
-                  <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{viewItem.safetyStock} units</p>
-                </div>
-                <div className="px-4 py-3">
-                  <p className="text-[10px] text-[#999] font-semibold uppercase">Reorder Point</p>
-                  <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{viewItem.lowStockThreshold} units</p>
-                </div>
-              </div>
-              <div className="grid grid-cols-2 divide-x divide-[#f0f0f0]">
-                <div className="px-4 py-3">
-                  <p className="text-[10px] text-[#999] font-semibold uppercase">Batch Number</p>
-                  <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{viewItem.batch || "—"}</p>
-                </div>
-                <div className="px-4 py-3">
-                  <p className="text-[10px] text-[#999] font-semibold uppercase">Expiry Date</p>
-                  <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{viewItem.expiryDate || "—"}</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Warehouse Info */}
-            <div className="rounded-2xl border border-[#e8e8e8] overflow-hidden">
-              <div className="bg-[#f9fafb] px-4 py-2.5 border-b border-[#e8e8e8]">
-                <p className="text-[10px] font-black uppercase tracking-widest text-[#0c831f]">Warehouse</p>
-              </div>
-              <div className="divide-y divide-[#f0f0f0]">
-                <div className="grid grid-cols-2 divide-x divide-[#f0f0f0]">
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] text-[#999] font-semibold uppercase">Name</p>
-                    <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{viewItem.warehouse}</p>
-                  </div>
-                  {(viewItem as any).warehouseType && (
-                    <div className="px-4 py-3">
-                      <p className="text-[10px] text-[#999] font-semibold uppercase">Type</p>
-                      <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{(viewItem as any).warehouseType}</p>
-                    </div>
-                  )}
-                </div>
-                {(viewItem as any).warehouseAddress && (
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] text-[#999] font-semibold uppercase">Address</p>
-                    <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{(viewItem as any).warehouseAddress}</p>
-                  </div>
-                )}
-                {(viewItem as any).warehouseIsActive != null && (
-                  <div className="px-4 py-3">
-                    <p className="text-[10px] text-[#999] font-semibold uppercase">Active Status</p>
-                    <span className={`mt-0.5 inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase ${(viewItem as any).warehouseIsActive ? "bg-[#dcfce7] text-[#166534]" : "bg-[#f3f4f6] text-[#888]"
-                      }`}>
-                      <span className="h-1.5 w-1.5 rounded-full bg-current" />
-                      {(viewItem as any).warehouseIsActive ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Timestamps */}
-            {((viewItem as any).productCreatedAt || (viewItem as any).productUpdatedAt) && (
-              <div className="rounded-2xl border border-[#e8e8e8] overflow-hidden">
-                <div className="bg-[#f9fafb] px-4 py-2.5 border-b border-[#e8e8e8]">
-                  <p className="text-[10px] font-black uppercase tracking-widest text-[#0c831f]">Timestamps</p>
-                </div>
-                <div className="grid grid-cols-2 divide-x divide-[#f0f0f0]">
-                  {(viewItem as any).productCreatedAt && (
-                    <div className="px-4 py-3">
-                      <p className="text-[10px] text-[#999] font-semibold uppercase">Created At</p>
-                      <p className="mt-0.5 text-xs font-bold text-[#1a1a1a]">
-                        {new Date((viewItem as any).productCreatedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
-                      </p>
-                    </div>
-                  )}
-                  {(viewItem as any).productUpdatedAt && (
-                    <div className="px-4 py-3">
-                      <p className="text-[10px] text-[#999] font-semibold uppercase">Last Updated</p>
-                      <p className="mt-0.5 text-xs font-bold text-[#1a1a1a]">
-                        {new Date((viewItem as any).productUpdatedAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-
-            {/* Last Updated */}
-            <p className="text-center text-[10px] text-[#bbb]">
-              Last updated: {new Date(viewItem.lastUpdated).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
-            </p>
-          </div>
-        )}
-      </ReusableModal>
-
-      {/* Edit Drawer */}
-      {/* Overlay */}
-      <div
-        className={`fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm transition-opacity duration-300 ${editItem ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-        onClick={closeEditDrawer}
-      />
-
-      {/* Slide-in panel */}
-      <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[100vw] sm:w-[420px] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${editItem ? "translate-x-0" : "translate-x-full"}`}
-      >
-        {/* Drawer header */}
-        <div className="flex items-center justify-between border-b border-[#e8e8e8] px-6 py-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0c831f]">
-              Edit Inventory
-            </p>
-            <h2 className="mt-0.5 text-base font-black text-[#1a1a1a] truncate max-w-xs">
-              {editItem?.productName}
-            </h2>
-            <p className="text-[10px] text-[#999] mt-0.5">
-              SKU: {editItem?.sku} · {editItem?.warehouse}
-            </p>
-          </div>
-          <button
-            onClick={closeEditDrawer}
-            className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e8e8e8] text-[#666] hover:bg-[#f6f7f6] transition-all"
-            aria-label="Close edit panel"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Scrollable fields */}
-        <div className="flex-1 overflow-y-auto px-6 py-5 space-y-4">
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Product Name</label>
-            <input
-              type="text"
-              value={editForm.productName ?? ""}
-              disabled
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#888] cursor-not-allowed outline-none transition-colors"
-            />
-          </div>
-
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">SKU</label>
-            <input
-              type="text"
-              value={editForm.sku ?? ""}
-              disabled
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#888] cursor-not-allowed outline-none transition-colors"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-[#666]">Total Stock</label>
-              <input
-                type="number"
-                value={editForm.stock ?? ""}
-                onChange={(e) => setEditForm((f) => ({ ...f, stock: e.target.value === "" ? ("" as any) : Number(e.target.value) }))}
-                className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-[#666]">Reserved Stock</label>
-              <input
-                type="number"
-                value={editForm.reserved ?? ""}
-                onChange={(e) => setEditForm((f) => ({ ...f, reserved: e.target.value === "" ? ("" as any) : Number(e.target.value) }))}
-                className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
-              />
-            </div>
-          </div>
-
-          <div className="grid grid-cols-2 gap-3">
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-[#666]">Low Stock Threshold</label>
-              <input
-                type="number"
-                value={editForm.lowStockThreshold ?? ""}
-                onChange={(e) => setEditForm((f) => ({ ...f, lowStockThreshold: e.target.value === "" ? ("" as any) : Number(e.target.value) }))}
-                className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
-              />
-            </div>
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-[#666]">Safety Stock</label>
-              <input
-                type="number"
-                value={editForm.safetyStock ?? ""}
-                onChange={(e) => setEditForm((f) => ({ ...f, safetyStock: e.target.value === "" ? ("" as any) : Number(e.target.value) }))}
-                className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Drawer footer */}
-        <div className="flex items-center justify-end gap-3 border-t border-[#e8e8e8] bg-white px-6 py-4">
-          <button
-            onClick={closeEditDrawer}
-            className="rounded-xl border border-[#e8e8e8] bg-white px-5 py-2.5 text-sm font-bold text-[#666] hover:bg-[#f6f7f6] transition-all"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleEditSave}
-            disabled={saving}
-            className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] transition-all disabled:opacity-60 disabled:cursor-not-allowed"
-          >
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
-      </aside>
-
-      {/* Movements Modal */}
-      <ReusableModal
-        open={showMovementsModal}
-        onClose={() => setShowMovementsModal(false)}
-        title="Stock Movements"
-        subtitle={selectedProductForMovements ? `History for ${selectedProductForMovements.productName}` : ""}
-        size="lg"
-      >
-        <div className="space-y-4">
-          {loadingMovements ? (
-            <div className="flex h-40 items-center justify-center">
-              <Loader2 className="h-8 w-8 animate-spin text-[#0c831f]" />
-            </div>
-          ) : movementsList.length === 0 ? (
-            <div className="flex h-40 flex-col items-center justify-center rounded-2xl border border-dashed border-[#e8e8e8] bg-[#f9fafb]">
-              <History className="h-8 w-8 text-[#999] mb-2" />
-              <p className="text-sm font-semibold text-[#666]">No stock movements found.</p>
-            </div>
-          ) : (
-            <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-1 relative">
-              <div className="absolute left-[19px] top-4 bottom-4 w-0.5 bg-[#e8e8e8]" />
-              {movementsList.map((movement) => (
-                <div key={movement.id} className="relative flex gap-4">
-                  <div className={`relative z-10 flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-full shadow-sm ${
-                    movement.type === "IN" ? "bg-[#dcfce7] text-[#166534]" : 
-                    movement.type === "OUT" ? "bg-[#fee2e2] text-[#991b1b]" : 
-                    "bg-[#eff6ff] text-[#2563eb]"
-                  }`}>
-                    {movement.type === "IN" ? <ArrowRightLeft className="h-4 w-4 rotate-90" /> : 
-                     movement.type === "OUT" ? <ArrowRightLeft className="h-4 w-4 -rotate-90" /> : 
-                     <Edit3 className="h-4 w-4" />}
-                  </div>
-                  
-                  <div className="flex-1 rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm hover:shadow-md transition-shadow">
-                    <div className="flex justify-between items-start mb-2">
-                      <div>
-                        <div className="flex items-center gap-2">
-                          <span className={`text-[11px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full ${
-                            movement.type === "IN" ? "bg-[#f0fdf4] text-[#166534]" : 
-                            movement.type === "OUT" ? "bg-[#fef2f2] text-[#991b1b]" : 
-                            "bg-[#eff6ff] text-[#2563eb]"
-                          }`}>{movement.type}</span>
-                          <span className="font-bold text-lg text-[#1a1a1a]">{movement.quantity > 0 ? `+${movement.quantity}` : movement.quantity}</span>
-                        </div>
-                        <p className="text-sm font-medium text-[#1a1a1a] mt-1">{movement.reason || "Manual stock update"}</p>
-                      </div>
-                      <span className="text-[10px] font-medium text-[#999] bg-[#f9fafb] px-2 py-1 rounded">
-                        {new Date(movement.createdAt).toLocaleString("en-IN", { dateStyle: "medium", timeStyle: "short" })}
-                      </span>
-                    </div>
-                    
-                    <div className="grid grid-cols-2 gap-3 mt-3 pt-3 border-t border-[#f0f0f0] text-xs">
-                      <div>
-                        <span className="text-[#999] font-medium block">Performed By</span>
-                        <span className="text-[#1a1a1a] font-semibold">{movement.performedBy || "System Admin"}</span>
-                      </div>
-                      <div>
-                        <span className="text-[#999] font-medium block">Warehouse</span>
-                        <span className="text-[#1a1a1a] font-semibold">{movement.warehouse || movement.warehouseId || "—"}</span>
                       </div>
                     </div>
                   </div>

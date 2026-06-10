@@ -61,8 +61,20 @@ export function useUserNotifications() {
   };
 
   const markAsRead = async (id: string) => {
-      // API doesn't specify single mark as read, doing locally for now
+    if (!isLoggedIn) {
       useNotificationStore.getState().markAsRead(id);
+      return null;
+    }
+    try {
+      const response = await userNotificationService.markAsRead(id);
+      useNotificationStore.getState().markAsRead(id);
+      useNotificationStore.getState().setSelectedNotificationData(response);
+      return response;
+    } catch (error) {
+      console.error("Failed to mark as read", error);
+      useNotificationStore.getState().markAsRead(id);
+      return null;
+    }
   };
 
   const clearAll = () => {

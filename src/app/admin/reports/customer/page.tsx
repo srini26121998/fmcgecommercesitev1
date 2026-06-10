@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import DashboardLayout from "../../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
@@ -50,7 +50,7 @@ export default function CustomerReportsPage() {
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <ReusableCard title="Total Customers" value={summary?.totalCustomers ?? 0} icon={<Users className="h-5 w-5" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
-          <ReusableCard title="Total Revenue" value={summary ? `?${(summary.totalRevenue / 100000).toFixed(1)}L` : "₹"} icon={<DollarSign className="h-5 w-5" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
+          <ReusableCard title="Total Revenue" value={summary ? `₹${(summary.totalRevenue / 100000).toFixed(1)}L` : "₹"} icon={<DollarSign className="h-5 w-5" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
           <ReusableCard title="Avg Retention Rate" value={summary ? `${summary.avgRetentionRate}%` : "₹"} icon={<Heart className="h-5 w-5" />} color="text-[#ff4f8b]" bgColor="bg-[#fff0f6]" />
           <ReusableCard title="Platinum Customers" value={summary?.platinumCount ?? 0} icon={<TrendingUp className="h-5 w-5" />} color="text-[#9333ea]" bgColor="bg-[#f3e8ff]" subtitle={summary ? `${summary.atRiskCount} at risk` : undefined} />
         </div>
@@ -98,7 +98,7 @@ export default function CustomerReportsPage() {
               width: "110px",
               align: "right",
               sortable: true,
-              render: (r) => <span className="font-bold">?{(r.totalSpent / 1000).toFixed(1)}K</span>,
+              render: (r) => <span className="font-bold">₹{(r.totalSpent / 1000).toFixed(1)}K</span>,
             },
             { key: "segment", header: "Segment", width: "100px", render: (r) => <StatusBadge status={r.segment} /> },
             { key: "acquisitionChannel", header: "Source", width: "110px", hideOnMobile: true },

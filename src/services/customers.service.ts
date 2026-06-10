@@ -23,16 +23,19 @@ import type { PaginationState } from "@/types/products";
 // ── Helpers ──────────────────────────────────────────────
 
 function computeCustomersSummary(customers: Customer[]) {
+  const safeCustomers = Array.isArray(customers) ? customers : [];
+  const validOrdersCount = safeCustomers.filter((c) => c.totalOrders > 0).length;
+
   return {
-    total: customers.length,
-    active: customers.filter((c) => c.status === "active").length,
-    vip: customers.filter((c) => c.segment === "vip").length,
-    new: customers.filter((c) => c.segment === "new").length,
-    atRisk: customers.filter((c) => c.segment === "at_risk").length,
-    churned: customers.filter((c) => c.segment === "churned").length,
-    totalRevenue: customers.reduce((s, c) => s + c.totalSpent, 0),
-    avgOrderValue: customers.length > 0
-      ? Math.round(customers.reduce((s, c) => s + c.avgOrderValue, 0) / customers.filter((c) => c.totalOrders > 0).length)
+    total: safeCustomers.length,
+    active: safeCustomers.filter((c) => c.status === "active").length,
+    vip: safeCustomers.filter((c) => c.segment === "vip").length,
+    new: safeCustomers.filter((c) => c.segment === "new").length,
+    atRisk: safeCustomers.filter((c) => c.segment === "at_risk").length,
+    churned: safeCustomers.filter((c) => c.segment === "churned").length,
+    totalRevenue: safeCustomers.reduce((s, c) => s + (c.totalSpent || 0), 0),
+    avgOrderValue: safeCustomers.length > 0 && validOrdersCount > 0
+      ? Math.round(safeCustomers.reduce((s, c) => s + (c.avgOrderValue || 0), 0) / validOrdersCount)
       : 0,
   };
 }
@@ -62,8 +65,19 @@ export const customerService = {
       const qs = params.toString();
       const url = qs ? `/api/v1/admin/customers?${qs}` : `/api/v1/admin/customers`;
       const response = await apiClient.get<any>(url);
-      const customers = response.data?.customers || response.customers || response.data || [];
-      const total = response.data?.total || response.total || customers.length;
+      
+      let customers = [];
+      if (Array.isArray(response)) {
+        customers = response;
+      } else if (Array.isArray(response?.data?.customers)) {
+        customers = response.data.customers;
+      } else if (Array.isArray(response?.customers)) {
+        customers = response.customers;
+      } else if (Array.isArray(response?.data)) {
+        customers = response.data;
+      }
+      
+      const total = response?.data?.total || response?.total || customers.length;
       
       return {
         customers,

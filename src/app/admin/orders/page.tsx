@@ -176,6 +176,22 @@ export default function OrdersPage() {
                 render: (o) => <span className="font-bold text-[#0c831f] text-xs">{(o as Order).id}</span>,
               },
               {
+                key: "createdAt",
+                header: "Order Date",
+                width: "130px",
+                sortable: true,
+                hideOnMobile: true,
+                render: (o) => {
+                  const date = new Date((o as Order).createdAt);
+                  return (
+                    <div>
+                      <span className="block text-xs font-bold text-[#1a1a1a]">{date.toLocaleDateString("en-IN")}</span>
+                      <span className="block text-[10px] text-[#999]">{date.toLocaleTimeString("en-IN", { hour: '2-digit', minute: '2-digit' })}</span>
+                    </div>
+                  );
+                },
+              },
+              {
                 key: "customer",
                 header: "Customer",
                 width: "160px",
@@ -183,9 +199,9 @@ export default function OrdersPage() {
                 render: (o) => {
                   const ord = o as Order;
                   return (
-                    <div>
-                      <span className="font-bold text-[#1a1a1a] block text-xs">{ord.customer}</span>
-                      <span className="block text-[10px] text-[#999] truncate max-w-[140px]">{ord.email}</span>
+                    <div className="w-full max-w-[150px] whitespace-normal overflow-hidden">
+                      <span className="font-bold text-[#1a1a1a] block text-xs truncate w-full">{ord.customer}</span>
+                      <span className="block text-[10px] text-[#999] truncate w-full">{ord.email}</span>
                     </div>
                   );
                 },
@@ -197,7 +213,7 @@ export default function OrdersPage() {
                 render: (o) => {
                   const ord = o as Order;
                   return (
-                    <div className="space-y-0.5">
+                    <div className="space-y-0.5 w-full max-w-[170px] whitespace-normal overflow-hidden">
                       {ord.items.slice(0, 2).map((item, i) => (
                         <div key={i} className="text-[10px] text-[#444] flex gap-1">
                           <span className="truncate max-w-[120px] font-medium">{item.product}</span>
@@ -236,6 +252,28 @@ export default function OrdersPage() {
                 },
               },
               {
+                key: "discountAmount",
+                header: "Discount",
+                width: "80px",
+                align: "right",
+                hideOnMobile: true,
+                render: (o) => {
+                  const discount = (o as Order).discountAmount;
+                  return <span className="text-xs text-[#dc2626]">{discount ? `-${formatINR(discount)}` : "-"}</span>;
+                },
+              },
+              {
+                key: "deliveryFee",
+                header: "Del. Fee",
+                width: "80px",
+                align: "right",
+                hideOnMobile: true,
+                render: (o) => {
+                  const fee = (o as Order).deliveryFee;
+                  return <span className="text-xs text-[#555]">{fee ? formatINR(fee) : <span className="text-[#0c831f] font-bold">FREE</span>}</span>;
+                },
+              },
+              {
                 key: "taxAmount",
                 header: "Tax",
                 width: "80px",
@@ -254,18 +292,26 @@ export default function OrdersPage() {
                 sortable: true,
                 render: (o) => <span className="font-bold text-sm text-[#1a1a1a]">{formatINR((o as Order).total)}</span>,
               },
-              // {
-              //   key: "deliveryAddress",
-              //   header: "Delivery Address",
-              //   width: "180px",
-              //   hideOnMobile: true,
-              //   render: (o) => {
-              //     const addr = (o as Order).deliveryAddress;
-              //     return addr && addr !== "N/A" ? (
-              //       <span className="text-[10px] text-[#555] leading-tight block max-w-[170px]">{addr}</span>
-              //     ) : <span className="text-[#bbb] text-[10px]">-</span>;
-              //   },
-              // },
+              {
+                key: "deliveryAddress",
+                header: "Delivery Address",
+                width: "180px",
+                hideOnMobile: true,
+                render: (o) => {
+                  const addr = (o as Order).deliveryAddress;
+                  if (!addr || addr === "N/A") return <span className="text-[#bbb] text-[10px]">-</span>;
+                  const parts = addr.split(",").map(p => p.trim());
+                  const hasLabel = parts.length > 1 && parts[0].length < 15;
+                  const label = hasLabel ? parts[0] : null;
+                  const details = hasLabel ? parts.slice(1).join(", ") : addr;
+                  return (
+                    <div className="flex flex-col items-start gap-1 w-full max-w-[170px] whitespace-normal overflow-hidden">
+                      {label && <span className="inline-flex items-center rounded bg-[#f3f4f6] px-1.5 py-0.5 text-[9px] font-bold text-[#4b5563] uppercase tracking-wider">{label}</span>}
+                      <span className="text-[10px] text-[#555] leading-snug line-clamp-2 break-words w-full" title={details}>{details}</span>
+                    </div>
+                  );
+                },
+              },
               {
                 key: "timeline",
                 header: "Last Event",
@@ -275,9 +321,9 @@ export default function OrdersPage() {
                   const ord = o as Order;
                   const last = ord.timeline?.[ord.timeline.length - 1];
                   return last ? (
-                    <div>
-                      <span className="text-[10px] font-bold text-[#555] capitalize block">{last.status.replace(/_/g, " ")}</span>
-                      {last.note && <span className="text-[10px] text-[#999] block truncate max-w-[140px]">{last.note}</span>}
+                    <div className="w-full max-w-[140px] whitespace-normal overflow-hidden">
+                      <span className="text-[10px] font-bold text-[#555] capitalize block truncate w-full">{last.status.replace(/_/g, " ")}</span>
+                      {last.note && <span className="text-[10px] text-[#999] block truncate w-full">{last.note}</span>}
                     </div>
                   ) : <span className="text-[#bbb] text-[10px]">-</span>;
                 },
@@ -309,9 +355,6 @@ export default function OrdersPage() {
                 hideOnMobile: true,
                 render: (o) => <StatusBadge status={(o as Order).paymentStatus} />,
               },
-            ]}
-            actions={[
-              { label: "View", icon: <Eye className="h-4 w-4 text-blue-600" />, onClick: (o: Order) => handleViewOrder(o) },
             ]}
           />
         ) : (

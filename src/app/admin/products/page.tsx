@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
 import ReusableSearchBar from "@/components/ui/admin/reusable-search";
@@ -13,7 +14,6 @@ import {
   Plus,
   Edit3,
   Trash2,
-  Eye,
   Copy,
   RefreshCw,
   Filter,
@@ -50,15 +50,13 @@ export default function ProductsPage() {
 
   const { createProduct, updateProduct, deleteProduct, submitting } = useProductForm();
 
+  const router = useRouter();
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
-  const [showAddModal, setShowAddModal] = useState(false);
-  const [addForm, setAddForm] = useState<Partial<ProductFormData>>({});
-  const [addFiles, setAddFiles] = useState<UploadedFile[]>([]);
+
   const [editFiles, setEditFiles] = useState<UploadedFile[]>([]);
   const [showDeleteModal, setShowDeleteModal] = useState<string | null>(null);
-  const [showViewModal, setShowViewModal] = useState<string | null>(null);
 
   const { confirm, ConfirmDialogElement } = useConfirm({
     title: "Delete Product?",
@@ -124,10 +122,7 @@ export default function ProductsPage() {
     updateFilters({ category: value === "all" ? "" : value as never });
   };
 
-  const resetAddForm = () => {
-    setAddForm({});
-    setAddFiles([]);
-  };
+
 
   // -- Image handling helpers --------------------------------
   function filesToMedia(files: UploadedFile[], productName: string): ProductMedia[] {
@@ -142,24 +137,7 @@ export default function ProductsPage() {
     }));
   }
 
-  const handleAddProduct = async () => {
-    const validation = validateForm(productSchema, addForm);
-    if (!validation.success) {
-      adminToast.validationError(validation.errors);
-      return;
-    }
 
-    const media = filesToMedia(addFiles, addForm.name!);
-    const result = await createProduct({ ...addForm, media: media.length > 0 ? media : undefined });
-    if (result) {
-      adminToast.success(`"${addForm.name}" created successfully`);
-      setShowAddModal(false);
-      resetAddForm();
-      fetchProducts();
-    } else {
-      adminToast.apiError("Failed to create product");
-    }
-  };
 
   const handleDelete = async (id: string) => {
     const product = products.find((p) => p.id === id);
@@ -178,16 +156,7 @@ export default function ProductsPage() {
     }
   };
 
-  const handleDuplicate = (p: Product) => {
-    const { id, createdAt, updatedAt, media, variants, ...duplicateData } = p;
-    setAddForm({
-      ...duplicateData,
-      name: `${p.name} (Copy)`,
-      sku: `${p.sku}-COPY`,
-    });
-    setAddFiles([]);
-    setShowAddModal(true);
-  };
+
 
   const handleExport = (fmt: string) => {
     const headers = ["ID", "Name", "SKU", "Barcode", "Brand", "Category", "Price", "MRP", "Stock", "Status"];
@@ -260,7 +229,7 @@ export default function ProductsPage() {
     }
   };
 
-  const selectedProduct = products.find((p) => p.id === showViewModal);
+
 
   const totalProducts = products.length;
   const totalStock = products.reduce((acc, p) => acc + (p.stock || 0), 0);
@@ -297,7 +266,7 @@ export default function ProductsPage() {
               </button>
               <ReusableExportButton onExport={handleExport} />
               <button
-                onClick={() => { resetAddForm(); setShowAddModal(true); }}
+                onClick={() => router.push("/admin/products/new")}
                 className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-4 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] transition-all"
               >
                 <Plus className="h-4 w-4" />
@@ -381,7 +350,7 @@ export default function ProductsPage() {
           onPageSizeChange={setPageSize}
           isLoading={loading}
           enableSelection
-          onRowClick={(p) => setShowViewModal(p.id)}
+          onRowClick={(p) => router.push(`/admin/products/${p.id}`)}
           bulkActions={[
             {
               label: "Delete",
@@ -464,308 +433,8 @@ export default function ProductsPage() {
             // { key: "createdAt", header: "Created", width: "120px", hideOnMobile: true, render: (p) => <span className="text-[10px] text-[#999]">{p.createdAt ? new Date(p.createdAt).toLocaleDateString() : "—"}</span> },
             // { key: "updatedAt", header: "Updated", width: "120px", hideOnMobile: true, render: (p) => <span className="text-[10px] text-[#999]">{p.updatedAt ? new Date(p.updatedAt).toLocaleDateString() : "—"}</span> },
           ]}
-          actions={[
-            {
-              label: "View",
-              icon: <Eye className="h-3.5 w-3.5 text-blue-500" />,
-              onClick: (p) => setShowViewModal(p.id),
-            },
-            {
-              label: "Edit",
-              icon: <Edit3 className="h-3.5 w-3.5 text-[#0c831f]" />,
-              onClick: (p) => openEditDrawer(p),
-            },
-            {
-              label: "Duplicate",
-              icon: <Copy className="h-3.5 w-3.5 text-amber-500" />,
-              onClick: handleDuplicate,
-            },
-            {
-              label: "Delete",
-              icon: <Trash2 className="h-3.5 w-3.5 text-red-500" />,
-              onClick: (p) => handleDelete(p.id),
-              variant: "danger",
-            },
-          ]}
         />
       </div>
-
-      {/* Add Product Modal */}
-      <ReusableModal
-        open={showAddModal}
-        onClose={() => { setShowAddModal(false); resetAddForm(); }}
-        title="Add New Product"
-        subtitle="Fill in the details to create a new product"
-        size="lg"
-      >
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-          {/* Product Name */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Product Name *</label>
-            <input
-              type="text"
-              placeholder="Enter product name"
-              value={addForm.name ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, name: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-            />
-          </div>
-          {/* SKU */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">SKU *</label>
-            <input
-              type="text"
-              placeholder="e.g. PROD-SKU-001"
-              value={addForm.sku ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, sku: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-            />
-          </div>
-          {/* Category */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Category</label>
-            <select
-              value={addForm.category ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, category: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
-            >
-              <option value="">Select Category</option>
-              {["Groceries", "Fruits", "Vegetables", "Dairy", "Beverages", "Snacks", "Health", "Personal Care", "Home Care", "Baby Care"].map((c) => (
-                <option key={c} value={c}>{c}</option>
-              ))}
-            </select>
-          </div>
-          {/* Brand */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Brand</label>
-            <input
-              type="text"
-              placeholder="Brand name"
-              value={addForm.brand ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, brand: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-            />
-          </div>
-          {/* Price */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Price (?)</label>
-            <input
-              type="number"
-              placeholder="0"
-              value={addForm.price ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, price: Number(e.target.value) }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-            />
-          </div>
-          {/* MRP */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">MRP (?)</label>
-            <input
-              type="number"
-              placeholder="0"
-              value={addForm.mrp ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, mrp: Number(e.target.value) }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-            />
-          </div>
-          {/* Stock */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Stock</label>
-            <input
-              type="number"
-              placeholder="0"
-              value={addForm.stock ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, stock: Number(e.target.value) }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-            />
-          </div>
-          {/* Weight */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Weight</label>
-            <input
-              type="text"
-              placeholder="e.g. 1 kg, 500 ml"
-              value={addForm.weight ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, weight: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-            />
-          </div>
-          {/* Tax Rate */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Tax Rate (%)</label>
-            <input
-              type="number"
-              placeholder="5"
-              value={addForm.taxRate ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, taxRate: Number(e.target.value) }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-            />
-          </div>
-          {/* Warehouse */}
-          <div>
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Warehouse</label>
-            <select
-              value={addForm.warehouse ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, warehouse: e.target.value }))}
-              className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
-            >
-              <option value="">Select Warehouse</option>
-              {["Mumbai Hub", "Delhi Central", "Pune Cold Storage", "Bangalore Cold Room", "Hyderabad Depot"].map((w) => (
-                <option key={w} value={w}>{w}</option>
-              ))}
-            </select>
-          </div>
-          {/* Description */}
-          <div className="sm:col-span-2">
-            <label className="mb-1.5 block text-xs font-bold text-[#666]">Description</label>
-            <textarea
-              rows={3}
-              placeholder="Product description..."
-              value={addForm.description ?? ""}
-              onChange={(e) => setAddForm((f) => ({ ...f, description: e.target.value }))}
-              className="w-full rounded-xl border border-[#e8e8e8] bg-white px-3 py-2.5 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f] resize-none"
-            />
-          </div>
-
-          {/* Featured / Flash Sale / Discount */}
-          <div className="sm:col-span-2 grid grid-cols-1 sm:grid-cols-3 gap-4">
-            <label className="flex items-center gap-3 rounded-xl border border-[#e8e8e8] bg-white px-4 py-3 cursor-pointer hover:border-[#0c831f] transition-colors">
-              <input
-                type="checkbox"
-                checked={addForm.isFeatured ?? false}
-                onChange={(e) => setAddForm((f) => ({ ...f, isFeatured: e.target.checked }))}
-                className="h-4 w-4 rounded border-[#e8e8e8] text-[#0c831f] focus:ring-[#0c831f]"
-              />
-              <div>
-                <p className="text-xs font-bold text-[#1a1a1a]">Featured</p>
-                <p className="text-[10px] text-[#999]">Show on homepage banners</p>
-              </div>
-            </label>
-            <label className="flex items-center gap-3 rounded-xl border border-[#e8e8e8] bg-white px-4 py-3 cursor-pointer hover:border-[#0c831f] transition-colors">
-              <input
-                type="checkbox"
-                checked={addForm.isFlashSale ?? false}
-                onChange={(e) => setAddForm((f) => ({ ...f, isFlashSale: e.target.checked }))}
-                className="h-4 w-4 rounded border-[#e8e8e8] text-[#ff4f8b] focus:ring-[#ff4f8b]"
-              />
-              <div>
-                <p className="text-xs font-bold text-[#1a1a1a]">Flash Sale</p>
-                <p className="text-[10px] text-[#999]">Mark as limited-time deal</p>
-              </div>
-            </label>
-            <div>
-              <label className="mb-1.5 block text-xs font-bold text-[#666]">Discount %</label>
-              <input
-                type="number"
-                min={0}
-                max={100}
-                placeholder="Override %"
-                value={addForm.discountPercent ?? ""}
-                onChange={(e) => setAddForm((f) => ({ ...f, discountPercent: Number(e.target.value) }))}
-                className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none placeholder:text-[#999] focus:border-[#0c831f]"
-              />
-            </div>
-          </div>
-        </div>
-
-        {/* Image Upload */}
-        <div className="mt-4">
-          <label className="mb-1.5 block text-xs font-bold text-[#666]">Product Images</label>
-          <FileUpload
-            files={addFiles}
-            onFilesChange={setAddFiles}
-            maxFiles={5}
-            maxSizeMB={5}
-            accept="image/*"
-            variant="standalone"
-          />
-        </div>
-
-        <div className="mt-6 flex justify-end gap-3 border-t border-[#e8e8e8] pt-4">
-          <button
-            onClick={() => { setShowAddModal(false); resetAddForm(); }}
-            className="rounded-xl border border-[#e8e8e8] bg-white px-5 py-2.5 text-sm font-bold text-[#666] hover:bg-[#f6f7f6]"
-          >
-            Cancel
-          </button>
-          <button
-            onClick={handleAddProduct}
-            disabled={submitting}
-            className="rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            {submitting ? "Creating..." : "Create Product"}
-          </button>
-        </div>
-      </ReusableModal>
-
-      {/* View Product Modal */}
-      <ReusableModal
-        open={!!showViewModal}
-        onClose={() => setShowViewModal(null)}
-        title={selectedProduct?.name || "Product Details"}
-        subtitle={`SKU: ${selectedProduct?.sku || ""} · ${selectedProduct?.category || ""}`}
-        size="lg"
-      >
-        {selectedProduct && (
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {[
-                { label: "ID", value: selectedProduct.id },
-                { label: "Barcode", value: selectedProduct.barcode || "—" },
-                { label: "Brand", value: selectedProduct.brand || "—" },
-                { label: "Category", value: selectedProduct.category },
-                { label: "Price", value: `₹${selectedProduct.price}` },
-                { label: "MRP", value: `₹${selectedProduct.mrp}` },
-                { label: "Cost Price", value: `₹${selectedProduct.costPrice}` },
-                { label: "Tax Rate", value: `${selectedProduct.taxRate}%` },
-                { label: "Unit", value: selectedProduct.unit },
-                { label: "Weight", value: selectedProduct.weight },
-                { label: "Stock", value: selectedProduct.stock.toString() },
-                { label: "Status", value: selectedProduct.status },
-                { label: "Warehouse", value: selectedProduct.warehouse || "—" },
-                { label: "Supplier", value: selectedProduct.supplier || "—" },
-                { label: "Featured", value: selectedProduct.isFeatured ? "Yes" : "No" },
-                { label: "Flash Sale", value: selectedProduct.isFlashSale ? "Yes" : "No" },
-                // { label: "Created", value: selectedProduct.createdAt || "—" },
-                // { label: "Updated", value: selectedProduct.updatedAt || "—" },
-              ].map((f) => (
-                <div key={f.label} className="rounded-lg bg-[#f9fafb] px-3 py-2">
-                  <p className="text-[10px] font-bold uppercase text-[#999]">{f.label}</p>
-                  <p className="mt-0.5 text-sm font-bold text-[#1a1a1a]">{f.value}</p>
-                </div>
-              ))}
-            </div>
-            {selectedProduct.description && (
-              <div className="rounded-lg bg-[#f9fafb] px-3 py-2">
-                <p className="text-[10px] font-bold uppercase text-[#999]">Description</p>
-                <p className="mt-0.5 text-sm text-[#666]">{selectedProduct.description}</p>
-              </div>
-            )}
-            {selectedProduct.tags.length > 0 && (
-              <div className="flex flex-wrap gap-1.5">
-                {selectedProduct.tags.map((tag) => (
-                  <span key={tag} className="rounded-full bg-[#e8f5e9] px-2.5 py-1 text-[10px] font-medium text-[#0c831f]">
-                    {tag}
-                  </span>
-                ))}
-              </div>
-            )}
-            {selectedProduct.variants.length > 0 && (
-              <div>
-                <p className="mb-2 text-xs font-bold text-[#666]">Variants</p>
-                <div className="space-y-1">
-                  {selectedProduct.variants.map((v) => (
-                    <div key={v.id} className="flex items-center justify-between rounded-lg bg-[#f9fafb] px-3 py-1.5">
-                      <span className="text-sm font-medium text-[#1a1a1a]">{v.name}</span>
-                      <span className="text-xs text-[#666]">₹{v.price} · Stock: {v.stock}</span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            )}
-          </div>
-        )}
-      </ReusableModal>
 
       {/* Confirm Dialog Element */}
       {ConfirmDialogElement}
@@ -817,14 +486,23 @@ export default function ProductsPage() {
             />
           </div>
 
-          {/* SKU & Barcode */}
-          <div className="grid grid-cols-2 gap-3">
+          {/* SKU, Item Code & Barcode */}
+          <div className="grid grid-cols-3 gap-3">
             <div>
               <label className="mb-1.5 block text-xs font-bold text-[#666]">SKU</label>
               <input
                 type="text"
                 value={editForm.sku ?? ""}
                 onChange={(e) => setEditForm((f) => ({ ...f, sku: e.target.value }))}
+                className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
+              />
+            </div>
+            <div>
+              <label className="mb-1.5 block text-xs font-bold text-[#666]">Item Code</label>
+              <input
+                type="text"
+                value={editForm.itemCode ?? ""}
+                onChange={(e) => setEditForm((f) => ({ ...f, itemCode: e.target.value }))}
                 className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors"
               />
             </div>

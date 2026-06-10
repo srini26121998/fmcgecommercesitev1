@@ -35,10 +35,47 @@ export const deliveryService = {
     params?: Partial<DeliveryQueryParams>
   ): Promise<DeliveryApiResponse<PaginatedResponse<DeliveryPartner>>> {
     try {
-      const response = await apiClient.get<any>("/api/v1/admin/delivery/fleet", { params });
+      const response = await apiClient.get<any>("/api/v1/admin/delivery/riders", { params });
+      
+      const riders = Array.isArray(response.data) ? response.data : (response.data?.data || []);
+
+      const items = riders.map((r: any) => {
+        let status = "offline";
+        const avail = (r.availabilityStatus || "").toUpperCase();
+        if (avail === "FREE") status = "online";
+        else if (avail === "BUSY") status = "busy";
+        
+        return {
+          id: String(r.id || r.publicId),
+          name: r.name || "Unknown",
+          phone: r.phone || "",
+          email: r.email || "",
+          vehicleType: r.vehicleType?.toLowerCase() || "bike",
+          vehicleNumber: r.vehicleNumber || "",
+          status,
+          currentOrders: 0,
+          totalDeliveries: 0,
+          rating: 5,
+          earnings: 0,
+          zone: "Chennai",
+          lastLocation: {
+            lat: r.currentLat || null,
+            lng: r.currentLng || null,
+            updatedAt: r.lastLocationUpdate || null,
+          }
+        };
+      });
+
       return {
         success: true,
-        data: response.data,
+        data: {
+          items,
+          pagination: {
+            page: 1,
+            pageSize: items.length || 10,
+            total: items.length
+          }
+        },
       };
     } catch (error: any) {
       console.error("[deliveryService] Failed to fetch partners from API", error);

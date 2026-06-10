@@ -4,6 +4,7 @@ import { useState } from "react";
 import { Bell, Package, Tag, Truck, X, Heart, Clock, Megaphone, Gift, RefreshCw } from "lucide-react";
 import { useUserNotifications } from "@/hooks/use-user-notifications";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 const NOTIFICATION_ICONS: Record<string, { icon: React.ElementType; color: string; bgColor: string }> = {
   order: { icon: Package, color: "text-[#0c831f]", bgColor: "bg-[#e8f5e9]" },
@@ -28,6 +29,7 @@ const getTimeAgo = (timestamp: number) => {
 export default function NotificationPanel() {
   const [isOpen, setIsOpen] = useState(false);
   const { notifications, unreadCount, markAsRead, markAllAsRead, clearAll } = useUserNotifications();
+  const router = useRouter();
 
   return (
     <div className="relative">
@@ -85,11 +87,21 @@ export default function NotificationPanel() {
                     const iconConfig = NOTIFICATION_ICONS[notification.type] || NOTIFICATION_ICONS.system;
                     const Icon = iconConfig.icon;
                     return (
-                      <Link
+                      <a
                         key={notification.id}
-                        href={notification.actionUrl || "#"}
-                        onClick={() => { markAsRead(notification.id); setIsOpen(false); }}
-                        className={`flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[#fafafa] ${
+                        href="#"
+                        onClick={async (e) => { 
+                          e.preventDefault();
+                          const targetId = notification.publicId || notification.id;
+                          const res = await markAsRead(targetId); 
+                          if (res) {
+                            router.push(`/notifications/${targetId}`);
+                          } else if (notification.actionUrl) {
+                            router.push(notification.actionUrl);
+                          }
+                          setIsOpen(false); 
+                        }}
+                        className={`flex items-start gap-3 px-4 py-3 text-left transition-colors hover:bg-[#fafafa] cursor-pointer ${
                           !notification.read ? "bg-[#fff0f6]/40" : ""
                         }`}
                       >
@@ -108,7 +120,7 @@ export default function NotificationPanel() {
                           <p className="text-xs text-[#666] mt-0.5 line-clamp-2">{notification.message}</p>
                           <p className="text-[10px] text-[#999] mt-1">{getTimeAgo(typeof notification.createdAt === 'number' ? notification.createdAt : Date.now())}</p>
                         </div>
-                      </Link>
+                      </a>
                     );
                   })}
                 </div>

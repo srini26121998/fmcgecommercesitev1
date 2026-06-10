@@ -1,6 +1,7 @@
-﻿"use client";
+"use client";
 
 import { useMemo } from "react";
+import { useRouter } from "next/navigation";
 import DashboardLayout from "../dashboard-layout";
 import { useAdminNotifications } from "@/hooks/use-admin-notifications";
 import ReusableSearchBar from "@/components/ui/admin/reusable-search";
@@ -24,6 +25,7 @@ import {
   CreditCard,
   ArrowUp,
   Inbox,
+  ArrowLeft,
 } from "lucide-react";
 
 // -- Notification Type Config ------------------------------
@@ -312,6 +314,7 @@ function NotificationSkeleton() {
 // -- Main Page ---------------------------------------------
 
 export default function NotificationsPage() {
+  const router = useRouter();
   const {
     feed,
     stats,
@@ -359,16 +362,24 @@ export default function NotificationsPage() {
         {/* -- Header -------------------------------------- */}
         <section className="rounded-2xl border border-[#e8e8e8] bg-white p-5 shadow-sm sm:p-6">
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0c831f]">
-                Notifications
-              </p>
-              <h1 className="mt-1 text-xl font-bold text-[#1a1a1a] sm:text-2xl">
-                Notification Center
-              </h1>
-              <p className="mt-1 text-xs text-[#666]">
-                Stay updated with orders, inventory, vendors, and system alerts
-              </p>
+            <div className="flex items-center gap-4">
+              <button
+                onClick={() => router.back()}
+                className="flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-xl border border-[#e8e8e8] text-[#666] hover:bg-[#f6f7f6] transition-all"
+              >
+                <ArrowLeft className="w-5 h-5" />
+              </button>
+              <div>
+                <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0c831f]">
+                  Notifications
+                </p>
+                <h1 className="mt-1 text-xl font-bold text-[#1a1a1a] sm:text-2xl">
+                  Notification Center
+                </h1>
+                <p className="mt-1 text-xs text-[#666]">
+                  Stay updated with orders, inventory, vendors, and system alerts
+                </p>
+              </div>
             </div>
             <div className="flex items-center gap-2">
               {selectedIds.length > 0 && (

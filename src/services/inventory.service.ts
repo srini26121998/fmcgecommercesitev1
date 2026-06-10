@@ -444,8 +444,18 @@ export const inventoryService = {
         data: extractObject<InventoryReport>(res),
       };
     } catch (error: any) {
-      console.warn("[inventoryService.getInventoryReport]", error);
-      throw error;
+      console.warn("[inventoryService.getInventoryReport]", error.message || error);
+      return {
+        success: false,
+        data: {
+          totalProducts: 0,
+          totalStock: 0,
+          totalValue: 0,
+          outOfStockCount: 0,
+          lowStockCount: 0,
+          warehouseCount: 0,
+        }
+      };
     }
   },
 
@@ -595,6 +605,19 @@ export const inventoryService = {
       };
     } catch (error: any) {
       console.warn("[inventoryService.getTransfers]", error);
+      throw error;
+    }
+  },
+
+  async getTransfer(id: string): Promise<{ success: boolean; data: StockTransfer }> {
+    try {
+      // Find within paginated endpoint since there's no single transfer endpoint
+      const res = await inventoryService.getTransfers({ pageSize: 1000 });
+      const transfer = res.data.find(t => t.id === id || (t as any).transferNumber === id);
+      if (!transfer) throw new Error(`Transfer ${id} not found`);
+      return { success: true, data: transfer };
+    } catch (error: any) {
+      console.warn("[inventoryService.getTransfer]", error);
       throw error;
     }
   },

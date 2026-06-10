@@ -407,47 +407,24 @@ export const reportsService = {
     page = 1,
     pageSize = 10,
   ): Promise<{ data: SalesReportEntry[]; meta: ReportPageMeta }> {
-    try {
-      const params = new URLSearchParams();
-      params.append("page", String(page));
-      params.append("limit", String(pageSize));
-      if (filters?.dateFrom) params.append("startDate", filters.dateFrom);
-      if (filters?.dateTo) params.append("endDate", filters.dateTo);
-      if (filters?.search) params.append("search", filters.search);
-      if (filters?.sortBy) params.append("sortBy", filters.sortBy as string);
-      if (filters?.sortOrder) params.append("sortOrder", filters.sortOrder);
-
-      const qs = params.toString();
-      const url = qs ? `/api/v1/admin/reports/sales?${qs}` : `/api/v1/admin/reports/sales`;
-      const response = await apiClient.get<any>(url);
-      const resData = response?.data || response;
-      const data = resData?.content || resData?.reports || (Array.isArray(resData) ? resData : []);
-      const total = resData?.totalElements || resData?.total || data.length;
-
-      return {
-        data: Array.isArray(data) ? data : [],
-        meta: {
-          page,
-          pageSize,
-          total,
-          totalPages: Math.ceil(total / pageSize),
-        },
-      };
-    } catch (error) {
-      console.error("[reportsService] Failed to fetch sales reports:", error);
-      throw error;
-    }
+    // API call removed as requested
+    return {
+      data: [],
+      meta: {
+        page,
+        pageSize,
+        total: 0,
+        totalPages: 0,
+      },
+    };
   },
 
   async getSalesSummary(): Promise<{
     totalRevenue: number;
     totalOrders: number;
-    avgOrderValue: number;
-    totalRefunds: number;
+    averageOrderValue: number;
     totalDiscounts: number;
-    revenueGrowth: number;
-    ordersGrowth: number;
-    topCategory: string;
+    totalTax: number;
   }> {
     try {
       const response = await apiClient.get<any>(
@@ -512,13 +489,20 @@ export const reportsService = {
       const response = await apiClient.get<any>(
         "/api/v1/admin/reports/inventory/summary",
       );
-      const summary =
-        response?.data?.summary ||
+      const data = response?.data?.summary ||
         response?.summary ||
         response?.data ||
         response;
-      if (summary && summary.totalSKUs !== undefined) return summary;
-      throw new Error("Invalid inventory summary response format");
+        
+      return {
+        totalSKUs: data?.totalProducts ?? data?.totalSKUs ?? 0,
+        totalStockValue: data?.totalValuation ?? data?.totalStockValue ?? 0,
+        lowStockCount: data?.lowStockItems ?? data?.lowStockCount ?? 0,
+        outOfStockCount: data?.outOfStockItems ?? data?.outOfStockCount ?? 0,
+        overstockedCount: data?.overstockedCount ?? 0,
+        avgTurnoverRate: data?.avgTurnoverRate ?? 0,
+        totalDamagedValue: data?.totalDamagedValue ?? 0,
+      };
     } catch (error) {
       console.error("[reportsService] Failed to fetch inventory summary:", error);
       throw error;
@@ -625,12 +609,12 @@ export const reportsService = {
   },
 
   async getTaxSummary(): Promise<{
-    totalTaxCollected: number;
-    totalTaxPaid: number;
+    generatedReports: number;
     pendingFilings: number;
-    overdueFilings: number;
-    nextDueDate: string;
-    totalITCClaimed: number;
+    completedFilings: number;
+    upcomingTaxLiability: number;
+    nextDeadline: string;
+    nextDeadlineType: string;
   }> {
     try {
       const response = await apiClient.get<any>(
@@ -641,7 +625,7 @@ export const reportsService = {
         response?.summary ||
         response?.data ||
         response;
-      if (summary && summary.totalTaxCollected !== undefined) return summary;
+      if (summary && summary.generatedReports !== undefined) return summary;
       throw new Error("Invalid tax summary response format");
     } catch (error) {
       console.error("[reportsService] Failed to fetch tax summary:", error);

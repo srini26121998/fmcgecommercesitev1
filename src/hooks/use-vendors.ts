@@ -390,7 +390,6 @@ export function useVendorOnboarding(initialFilters?: Partial<VendorFilters>) {
     goToPage, changePageSize,
   };
 }
-
 // ══════════════════════════════════════════════════════════
 // ── 4. useVendorProducts ──────────────────────────────────
 // Products listed under a specific vendor (or all vendors).

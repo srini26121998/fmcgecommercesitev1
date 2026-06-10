@@ -56,8 +56,9 @@ interface StatusBadgeProps {
 }
 
 export default function StatusBadge({ status, dot = true, size = "sm" }: StatusBadgeProps) {
-  const cfg = statusConfig[status.toLowerCase()] || { bg: "bg-[#f6f7f6]", text: "text-[#666]", dot: "bg-[#999]" };
-  const displayLabel = status.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+  const safeStatus = String(status || "unknown");
+  const cfg = statusConfig[safeStatus.toLowerCase()] || { bg: "bg-[#f6f7f6]", text: "text-[#666]", dot: "bg-[#999]" };
+  const displayLabel = safeStatus.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
   const sizeClasses = size === "sm" ? "px-2 py-0.5 text-[10px]" : "px-2.5 py-1 text-xs";
 
   return (

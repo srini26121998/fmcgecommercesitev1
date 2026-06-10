@@ -29,7 +29,7 @@ interface PriceEditorProps {
 type SortField = "name" | "brand" | "category" | "status" | "stock" | "price" | "mrp" | "cost" | "margin" | "tax";
 type SortDir = "asc" | "desc";
 type MarginFilter = "all" | "high" | "medium" | "low";
-type ColumnKey = "product" | "brand" | "category" | "status" | "stock" | "price" | "mrp" | "cost" | "margin" | "tax" | "actions";
+type ColumnKey = "product" | "brand" | "category" | "status" | "stock" | "price" | "mrp" | "cost" | "margin" | "tax";
 
 export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorProps) {
   // ── Sorting ──────────────────────────────────────────────
@@ -46,7 +46,7 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
 
   // ── Columns ──────────────────────────────────────────────
   const [columns, setColumns] = useState<ColumnKey[]>([
-    "product", "brand", "category", "status", "stock", "price", "mrp", "cost", "margin", "tax", "actions"
+    "product", "brand", "category", "status", "stock", "price", "mrp", "cost", "margin", "tax"
   ]);
   const [draggedCol, setDraggedCol] = useState<ColumnKey | null>(null);
 
@@ -59,7 +59,7 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
 
   const handleDrop = (e: React.DragEvent, targetCol: ColumnKey) => {
     e.preventDefault();
-    if (!draggedCol || draggedCol === targetCol || targetCol === "actions" || draggedCol === "actions") return;
+    if (!draggedCol || draggedCol === targetCol) return;
     const newCols = [...columns];
     const sourceIdx = newCols.indexOf(draggedCol);
     const targetIdx = newCols.indexOf(targetCol);
@@ -179,10 +179,7 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
   };
 
   const getHeaderProps = (col: ColumnKey) => {
-    const isFrozen = col === "actions";
-    const baseThClass = `px-4 py-3 select-none transition-colors whitespace-nowrap ${
-      isFrozen ? "sticky right-0 z-20 bg-[#f9fafb] shadow-[-4px_0_12px_rgba(0,0,0,0.05)] w-28 text-right" : ""
-    } ${draggedCol === col ? "opacity-50 bg-[#e8e8e8]" : ""}`;
+    const baseThClass = `px-4 py-3 select-none transition-colors whitespace-nowrap ${draggedCol === col ? "opacity-50 bg-[#e8e8e8]" : ""}`;
     
     let alignmentClass = "text-left";
     let isSortable = true;
@@ -200,7 +197,6 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
       case "cost": alignmentClass = "text-center"; field = "cost"; label = "Cost Price"; break;
       case "margin": alignmentClass = "text-right"; field = "margin"; label = "Margin"; break;
       case "tax": alignmentClass = "text-right"; field = "tax"; label = "Tax"; break;
-      case "actions": alignmentClass = "text-right"; isSortable = false; label = "Actions"; break;
     }
 
     return {
@@ -208,14 +204,13 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
       onClick: isSortable ? () => handleSort(field as SortField) : undefined,
       label,
       field,
-      draggable: !isFrozen,
+      draggable: true,
       col
     };
   };
 
   const renderCell = (item: PricingItem, col: ColumnKey) => {
-    const isFrozen = col === "actions";
-    const baseTdClass = `px-4 py-3 ${isFrozen ? "sticky right-0 z-10 bg-white group-hover:bg-[#f9fafb] shadow-[-4px_0_12px_rgba(0,0,0,0.05)] transition-colors" : ""}`;
+    const baseTdClass = `px-4 py-3`;
 
     switch (col) {
       case "product":
@@ -267,34 +262,6 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
         );
       case "tax":
         return <td key={col} className={`${baseTdClass} text-right`}>{item.tax}%</td>;
-      case "actions":
-        return (
-          <td key={col} className={`${baseTdClass} text-right`}>
-            <div className="flex items-center justify-end gap-1">
-              <button
-                onClick={() => setViewItem(item)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#eff6ff] text-[#3b82f6] transition hover:bg-[#dbeafe]"
-                title="View"
-              >
-                <Eye className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => openEditDrawer(item)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#e8f5e9] text-[#0c831f] transition hover:bg-[#dcfce7]"
-                title="Edit pricing"
-              >
-                <Edit3 className="h-3.5 w-3.5" />
-              </button>
-              <button
-                onClick={() => deleteItem(item)}
-                className="flex h-7 w-7 items-center justify-center rounded-lg bg-[#fef2f2] text-[#dc2626] transition hover:bg-[#fee2e2]"
-                title="Delete"
-              >
-                <Trash2 className="h-3.5 w-3.5" />
-              </button>
-            </div>
-          </td>
-        );
       default:
         return null;
     }
@@ -359,7 +326,11 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
           </thead>
           <tbody className="divide-y divide-[#e8e8e8]">
             {displayItems.map((item) => (
-              <tr key={item.id} className="text-sm transition hover:bg-[#f9fafb] group">
+              <tr 
+                key={item.id} 
+                className="text-sm transition hover:bg-[#f9fafb] group cursor-pointer"
+                onClick={() => setViewItem(item)}
+              >
                 {columns.map((col) => renderCell(item, col))}
               </tr>
             ))}
@@ -518,12 +489,18 @@ export default function PriceEditor({ items, onUpdate, isLoading }: PriceEditorP
                 </p>
               </div>
             </div>
-            <div className="border-t border-[#e8e8e8] px-6 py-4 flex justify-end">
+            <div className="border-t border-[#e8e8e8] px-6 py-4 flex justify-end gap-3">
               <button
                 onClick={() => { setViewItem(null); openEditDrawer(viewItem); }}
                 className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] transition-all"
               >
                 <Edit3 className="h-4 w-4" /> Edit Pricing
+              </button>
+              <button
+                onClick={() => { setViewItem(null); deleteItem(viewItem); }}
+                className="flex items-center gap-2 rounded-xl border border-[#e8e8e8] bg-white px-5 py-2.5 text-sm font-bold text-[#dc2626] hover:bg-[#fef2f2] hover:border-[#fca5a5] transition-all"
+              >
+                <Trash2 className="h-4 w-4" /> Delete
               </button>
             </div>
           </div>

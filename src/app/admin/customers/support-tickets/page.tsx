@@ -24,9 +24,7 @@ export default function SupportTicketsPage() {
   const [showEditModal, setShowEditModal] = useState<SupportTicket | null>(null);
   const [assigning, setAssigning] = useState<string | null>(null);
 
-  // Form states for Create
   const [createForm, setCreateForm] = useState({
-    userId: 0,
     userName: "",
     userEmail: "",
     subject: "",
@@ -43,14 +41,13 @@ export default function SupportTicketsPage() {
   const handleCreateSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const payload = {
-      ...createForm,
-      userId: Number(createForm.userId)
+      ...createForm
     };
     const success = await createTicket(payload);
     if (success) {
       toast.success("Ticket created successfully");
       setShowCreateModal(false);
-      setCreateForm({ userId: 0, userName: "", userEmail: "", subject: "", description: "", status: "open", priority: "medium" });
+      setCreateForm({ userName: "", userEmail: "", subject: "", description: "", status: "open", priority: "medium" });
     }
   };
 
@@ -165,7 +162,7 @@ export default function SupportTicketsPage() {
                 { key: "customer", header: "Customer", render: (t: any) => (
                   <div className="flex flex-col">
                     <span className="font-semibold text-[#1a1a1a]">{t.userName || t.customer}</span>
-                    <span className="text-[10px] text-[#666]">{t.userEmail || t.email} {t.userId ? `(ID: ${t.userId})` : ''}</span>
+                    <span className="text-[10px] text-[#666]">{t.userEmail || t.email}</span>
                   </div>
                 )},
                 { key: "subject", header: "Subject", render: (t: any) => (
@@ -180,12 +177,7 @@ export default function SupportTicketsPage() {
                   <span className="text-xs text-[#666]">{t.createdAt ? t.createdAt.split('T')[0] : '—'}</span>
                 )},
               ]}
-              actions={[
-                { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: (t: SupportTicket) => setShowDetailModal(t) },
-                { label: "Edit", icon: <Pencil className="h-3.5 w-3.5" />, onClick: (t: SupportTicket) => openEditModal(t) },
-                { label: "Assign", icon: <Reply className="h-3.5 w-3.5" />, onClick: (t: SupportTicket) => handleAssign(t.id), show: (t: SupportTicket) => t.status === "open" },
-                { label: "Resolve", icon: <CheckCircle className="h-3.5 w-3.5" />, onClick: (t: SupportTicket) => handleResolve(t.id), show: (t: SupportTicket) => t.status === "in_progress" },
-              ]}
+              onRowClick={(t: SupportTicket) => setShowDetailModal(t)}
             />
 
             {/* Empty State */}
@@ -206,14 +198,14 @@ export default function SupportTicketsPage() {
           <div className="space-y-5">
             <div className="grid grid-cols-2 gap-4">
               {[
-                { label: "Customer", value: showDetailModal.customer },
-                { label: "Email", value: showDetailModal.email },
+                { label: "Customer", value: (showDetailModal as any).userName || showDetailModal.customer || "—" },
+                { label: "Email", value: (showDetailModal as any).userEmail || showDetailModal.email || "—" },
                 { label: "Priority", value: <StatusBadge status={showDetailModal.priority} /> },
                 { label: "Status", value: <StatusBadge status={showDetailModal.status} /> },
                 { label: "Assigned To", value: showDetailModal.assignedTo || <span className="text-[#999]">Unassigned</span> },
                 { label: "Category", value: showDetailModal.category || "—" },
                 { label: "Created", value: showDetailModal.createdAt },
-                { label: "Updated", value: showDetailModal.updatedAt },
+                { label: "Updated", value: showDetailModal.updatedAt || "—" },
               ].map((f) => (
                 <div key={f.label} className="rounded-xl bg-[#f9fafb] p-3">
                   <p className="text-[10px] font-bold uppercase tracking-wide text-[#999]">{f.label}</p>
@@ -258,6 +250,9 @@ export default function SupportTicketsPage() {
             )}
 
             <div className="flex justify-end gap-3 border-t border-[#e8e8e8] pt-4">
+              <button onClick={() => { openEditModal(showDetailModal); setShowDetailModal(null); }} className="rounded-xl bg-[#f59e0b] px-4 py-2 text-sm font-bold text-white hover:bg-[#d97706]">
+                Edit
+              </button>
               {showDetailModal.status === "open" && (
                 <button onClick={() => { handleAssign(showDetailModal.id); }} className="rounded-xl bg-[#2563eb] px-4 py-2 text-sm font-bold text-white hover:bg-[#1d4ed8]">
                   Assign & Reply
@@ -276,15 +271,9 @@ export default function SupportTicketsPage() {
       {/* Create Ticket Modal */}
       <ReusableModal open={showCreateModal} onClose={() => setShowCreateModal(false)} title="Create Support Ticket" size="md">
         <form onSubmit={handleCreateSubmit} className="space-y-4">
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-[#666]">User ID</label>
-              <input required type="number" value={createForm.userId} onChange={(e) => setCreateForm({ ...createForm, userId: Number(e.target.value) })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]" />
-            </div>
-            <div className="space-y-1">
-              <label className="text-xs font-bold text-[#666]">User Name</label>
-              <input required type="text" value={createForm.userName} onChange={(e) => setCreateForm({ ...createForm, userName: e.target.value })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]" />
-            </div>
+          <div className="space-y-1">
+            <label className="text-xs font-bold text-[#666]">User Name</label>
+            <input required type="text" value={createForm.userName} onChange={(e) => setCreateForm({ ...createForm, userName: e.target.value })} className="w-full rounded-xl border border-[#e8e8e8] px-3 py-2 outline-none focus:border-[#0c831f]" />
           </div>
           <div className="space-y-1">
             <label className="text-xs font-bold text-[#666]">User Email</label>
@@ -319,7 +308,7 @@ export default function SupportTicketsPage() {
             </div>
           </div>
           <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl border border-[#e8e8e8] bg-white px-4 py-2 text-sm font-bold text-[#666] hover:bg-[#f6f7f6]">Cancel</button>
+            <button type="button" onClick={() => setShowCreateModal(false)} className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-bold text-white hover:bg-[#dc2626]">Cancel</button>
             <button type="submit" className="rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18]">Create Ticket</button>
           </div>
         </form>
@@ -338,7 +327,7 @@ export default function SupportTicketsPage() {
             </select>
           </div>
           <div className="flex justify-end gap-3 pt-4">
-            <button type="button" onClick={() => setShowEditModal(null)} className="rounded-xl border border-[#e8e8e8] bg-white px-4 py-2 text-sm font-bold text-[#666] hover:bg-[#f6f7f6]">Cancel</button>
+            <button type="button" onClick={() => setShowEditModal(null)} className="rounded-xl bg-[#ef4444] px-4 py-2 text-sm font-bold text-white hover:bg-[#dc2626]">Cancel</button>
             <button type="submit" className="rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18]">Save Changes</button>
           </div>
         </form>

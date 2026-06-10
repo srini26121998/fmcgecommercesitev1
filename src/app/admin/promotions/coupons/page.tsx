@@ -100,12 +100,7 @@ export default function CouponsPage() {
             { key: "status", header: "Status", width: "100px", render: (c) => <StatusBadge status={c.status} /> },
             { key: "endDate", header: "Expires", width: "110px", hideOnMobile: true },
           ]}
-          actions={[
-            { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: (c) => setShowViewModal(c) },
-            { label: "Edit", icon: <Edit3 className="h-3.5 w-3.5" />, onClick: (c) => { setEditCoupon(c); setEditForm({ ...c }); } },
-            { label: "Copy Code", icon: <Copy className="h-3.5 w-3.5" />, onClick: (c) => { navigator.clipboard.writeText(c.code); toast.success(`Copied ${c.code}!`); } },
-            { label: "Delete", icon: <Trash2 className="h-3.5 w-3.5" />, onClick: (c) => handleDelete(c.id, c.code), variant: "danger" },
-          ]}
+          onRowClick={(c) => setShowViewModal(c)}
         />
       </div>
 
@@ -169,6 +164,37 @@ export default function CouponsPage() {
                 <span className="block text-xs font-bold text-[#999] uppercase">End Date</span>
                 <span className="font-semibold text-[#1a1a1a]">{showViewModal.endDate}</span>
               </div>
+            </div>
+            
+            <div className="mt-6 flex justify-end gap-3 border-t border-[#e8e8e8] pt-4">
+              <button 
+                onClick={() => {
+                  setShowViewModal(null);
+                  setEditCoupon(showViewModal);
+                  setEditForm({ ...showViewModal });
+                }} 
+                className="flex items-center gap-1.5 rounded-xl bg-blue-50 px-4 py-2 text-sm font-bold text-blue-600 hover:bg-blue-100 transition-colors"
+              >
+                <Edit3 className="h-4 w-4" /> Edit
+              </button>
+              <button 
+                onClick={() => {
+                  navigator.clipboard.writeText(showViewModal.code); 
+                  toast.success(`Copied ${showViewModal.code}!`);
+                }} 
+                className="flex items-center gap-1.5 rounded-xl bg-purple-50 px-4 py-2 text-sm font-bold text-purple-600 hover:bg-purple-100 transition-colors"
+              >
+                <Copy className="h-4 w-4" /> Copy Code
+              </button>
+              <button 
+                onClick={() => {
+                  handleDelete(showViewModal.id, showViewModal.code);
+                  setShowViewModal(null);
+                }} 
+                className="flex items-center gap-1.5 rounded-xl bg-red-50 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100 transition-colors"
+              >
+                <Trash2 className="h-4 w-4" /> Delete
+              </button>
             </div>
           </div>
         )}

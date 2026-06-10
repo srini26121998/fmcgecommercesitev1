@@ -167,7 +167,23 @@ export const InventoryDetailResponseSchema = z.object({
 });
 export type InventoryDetailResponse = z.infer<typeof InventoryDetailResponseSchema>;
 
-// ── 9. Params Types ───────────────────────────────────────
+// ── 9. Stock Movement ─────────────────────────────────────
+export type StockMovementType = "IN" | "OUT" | "ADJUSTMENT" | "TRANSFER";
+
+export interface StockMovement {
+  id: string;
+  productId?: string;
+  type: StockMovementType;
+  quantity: number;
+  reason?: string;
+  performedBy?: string;
+  warehouse?: string;
+  warehouseId?: string;
+  createdAt: string;
+  notes?: string;
+}
+
+// ── 10. Params Types ──────────────────────────────────────
 export interface InventoryQueryParams {
   page?: number;
   pageSize?: number;

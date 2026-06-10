@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -102,13 +102,9 @@ export default function SubstitutionsPage() {
             { key: "substitute", header: "Substituted With", render: (s) => <span className="text-[#0c831f] font-semibold">{(s as Substitution).substitute}</span> },
             { key: "reason", header: "Reason", width: "120px", hideOnMobile: true, render: (s) => (s as Substitution).reason || "₹" },
             { key: "status", header: "Status", width: "110px", render: (s) => <StatusBadge status={(s as Substitution).status} /> },
-            { key: "amount", header: "Amount", width: "90px", align: "right", render: (s) => <span className="font-bold">?{(s as Substitution).amount}</span> },
+            { key: "amount", header: "Amount", width: "90px", align: "right", render: (s) => <span className="font-bold">₹{(s as Substitution).amount}</span> },
           ]}
-          actions={[
-            { label: "Accept", icon: <CheckCircle className="h-3.5 w-3.5" />, onClick: (s: Substitution) => handleDecide(s, "accepted"), variant: "success", show: (s: Substitution) => s.status === "pending" },
-            { label: "Reject", icon: <XCircle className="h-3.5 w-3.5" />, onClick: (s: Substitution) => handleDecide(s, "rejected"), variant: "danger", show: (s: Substitution) => s.status === "pending" },
-            { label: "View", icon: <Eye className="h-3.5 w-3.5" />, onClick: (s: Substitution) => setViewSubstitution(s) },
-          ]}
+          onRowClick={(s: Substitution) => setViewSubstitution(s)}
         />
 
         {error && (
@@ -157,7 +153,7 @@ export default function SubstitutionsPage() {
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Amount</p>
-                <p className="font-semibold text-[#1a1a1a]">?{viewSubstitution.amount}</p>
+                <p className="font-semibold text-[#1a1a1a]">₹{viewSubstitution.amount}</p>
               </div>
               <div>
                 <p className="text-[10px] text-[#999] font-medium uppercase">Reason</p>
@@ -175,6 +171,29 @@ export default function SubstitutionsPage() {
                 <p className="font-semibold text-[#666]">{viewSubstitution.decidedAt || "₹"}</p>
               </div>
             </div>
+
+            {viewSubstitution.status === "pending" && (
+              <div className="flex gap-3 border-t border-[#e8e8e8] pt-4 mt-4">
+                <button
+                  onClick={() => {
+                    handleDecide(viewSubstitution, "accepted");
+                    setViewSubstitution(null);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-[#0c831f]/20 bg-[#e8f5e9] px-4 py-2 text-sm font-bold text-[#0c831f] hover:bg-[#d0f0d4]"
+                >
+                  <CheckCircle className="h-4 w-4" /> Accept
+                </button>
+                <button
+                  onClick={() => {
+                    handleDecide(viewSubstitution, "rejected");
+                    setViewSubstitution(null);
+                  }}
+                  className="flex items-center gap-1.5 rounded-xl border border-red-200 bg-red-50 px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-100"
+                >
+                  <XCircle className="h-4 w-4" /> Reject
+                </button>
+              </div>
+            )}
           </div>
         )}
       </ReusableModal>

@@ -54,94 +54,43 @@ function buildNotificationFeed(
   return { groups, totalUnread, totalCount, page, pageSize };
 }
 
-// ── In-Memory Mock Store ──────────────────────────────────
+// ── API Integration & Caching ─────────────────────────────
+import { apiClient } from "@/lib/api-client";
 
-let mockNotifications: AdminNotification[] = [
-  {
-    id: "notif-1",
-    type: "order",
-    priority: "normal",
-    title: "New order received",
-    message: "Order #ORD-4920 has been placed by Ramesh Kumar for ₹1,250.",
-    channel: "in_app",
-    read: false,
-    archived: false,
-    createdAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 5 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "notif-2",
-    type: "inventory",
-    priority: "high",
-    title: "Low Inventory Alert",
-    message: "Fortune Soya Health Oil (1L) stock is below safety threshold (50 units remaining).",
-    channel: "in_app",
-    read: false,
-    archived: false,
-    createdAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 25 * 60 * 1000).toISOString(),
-  },
-  {
-    id: "notif-3",
-    type: "vendor",
-    priority: "normal",
-    title: "New Vendor Registration",
-    message: "Organic Farms Pvt Ltd has submitted registration documents for approval.",
-    channel: "in_app",
-    read: true,
-    archived: false,
-    createdAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 2 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "notif-4",
-    type: "system",
-    priority: "critical",
-    title: "Database Backup Completed with Warnings",
-    message: "Weekly DB backup completed, but 2 media attachments failed to verify.",
-    channel: "in_app",
-    read: false,
-    archived: false,
-    createdAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 5 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "notif-5",
-    type: "promotion",
-    priority: "low",
-    title: "Campaign 'Diwali Mega Sale' ended",
-    message: "Promo code DIWALI50 is now expired. Total redemptions: 1,420.",
-    channel: "in_app",
-    read: true,
-    archived: false,
-    createdAt: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 26 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "notif-6",
-    type: "delivery",
-    priority: "normal",
-    title: "Delivery delayed",
-    message: "Shipment for order #ORD-4811 is delayed due to local traffic conditions.",
-    channel: "in_app",
-    read: false,
-    archived: false,
-    createdAt: new Date(Date.now() - 30 * 3600 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 30 * 3600 * 1000).toISOString(),
-  },
-  {
-    id: "notif-7",
-    type: "customer",
-    priority: "normal",
-    title: "Customer feedback received",
-    message: "Suresh Pillai left a 5-star review on 'Tata Salt Lite'.",
-    channel: "in_app",
-    read: true,
-    archived: false,
-    createdAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
-    updatedAt: new Date(Date.now() - 10 * 24 * 3600 * 1000).toISOString(),
+let cachedNotifications: AdminNotification[] | null = null;
+let lastFetchTime = 0;
+
+async function fetchNotificationsFromAPI(): Promise<AdminNotification[]> {
+  const now = Date.now();
+  // Short TTL cache (1 second) to handle concurrent calls from getNotifications and getNotificationStats
+  if (cachedNotifications && now - lastFetchTime < 1000) {
+    return cachedNotifications;
   }
-];
+
+  try {
+    const response = await apiClient.get<any>("/api/v1/notifications");
+    const data = response.data?.data || response.data || [];
+    
+    cachedNotifications = data.map((n: any) => ({
+      id: String(n.id || n.publicId),
+      type: (n.type || "system").toLowerCase(),
+      priority: "normal",
+      title: n.title || "Notification",
+      message: n.message || "",
+      channel: "in_app",
+      read: n.isRead || false,
+      archived: false,
+      createdAt: n.createdAt || new Date().toISOString(),
+      updatedAt: n.updatedAt || new Date().toISOString(),
+      actionUrl: n.referenceId ? `/admin/orders/${n.referenceId}` : undefined,
+    }));
+    lastFetchTime = now;
+    return cachedNotifications || [];
+  } catch (error) {
+    console.error("Failed to fetch notifications from API:", error);
+    return cachedNotifications || [];
+  }
+}
 
 let mockPreferences: NotificationPreferences = {
   orderUpdates: true,
@@ -171,8 +120,7 @@ export const notificationService = {
     params: NotificationQueryParams = {}
   ): Promise<NotificationFeed> {
     try {
-      // Filter out archived notifications unless status is explicitly archived
-      let items = mockNotifications;
+      let items = await fetchNotificationsFromAPI();
       
       if (params.status === "archived") {
         items = items.filter(n => n.archived);
@@ -219,7 +167,8 @@ export const notificationService = {
    */
   async getNotificationStats(): Promise<NotificationStats> {
     try {
-      const active = mockNotifications.filter(n => !n.archived);
+      const allItems = await fetchNotificationsFromAPI();
+      const active = allItems.filter(n => !n.archived);
       const total = active.length;
       const unread = active.filter(n => !n.read).length;
 
@@ -263,11 +212,15 @@ export const notificationService = {
   /**
    * Mark a single notification as read.
    */
-  async markAsRead(id: string): Promise<void> {
+  async markAsRead(id: string): Promise<any> {
     try {
-      mockNotifications = mockNotifications.map(n =>
-        n.id === id ? { ...n, read: true } : n
-      );
+      const res = await apiClient.patch<any>(`/api/v1/notifications/${id}/read`);
+      if (cachedNotifications) {
+        cachedNotifications = cachedNotifications.map(n =>
+          n.id === String(id) ? { ...n, read: true } : n
+        );
+      }
+      return res?.data || res;
     } catch (error) {
       console.error(`[notificationService] markAsRead ${id} failed:`, error);
       throw error;
@@ -277,9 +230,13 @@ export const notificationService = {
   /**
    * Mark all notifications as read.
    */
-  async markAllAsRead(): Promise<void> {
+  async markAllAsRead(): Promise<any> {
     try {
-      mockNotifications = mockNotifications.map(n => ({ ...n, read: true }));
+      const res = await apiClient.patch<any>("/api/v1/notifications/mark-all-read");
+      if (cachedNotifications) {
+        cachedNotifications = cachedNotifications.map(n => ({ ...n, read: true }));
+      }
+      return res?.data || res;
     } catch (error) {
       console.error("[notificationService] markAllAsRead failed:", error);
       throw error;
@@ -291,11 +248,12 @@ export const notificationService = {
    */
   async getUnreadCount(): Promise<{ count: number }> {
     try {
-      const count = mockNotifications.filter(n => !n.archived && !n.read).length;
+      const response = await apiClient.get<any>("/api/v1/notifications/unread-count");
+      const count = typeof response === 'number' ? response : (response.data?.count ?? response.count ?? response.data ?? 0);
       return { count };
     } catch (error) {
       console.error("[notificationService] getUnreadCount failed:", error);
-      throw error;
+      return { count: 0 };
     }
   },
 
@@ -304,9 +262,12 @@ export const notificationService = {
    */
   async archive(id: string): Promise<void> {
     try {
-      mockNotifications = mockNotifications.map(n =>
-        n.id === id ? { ...n, archived: true } : n
-      );
+      await apiClient.delete(`/api/v1/notifications/${id}`).catch(() => {});
+      if (cachedNotifications) {
+        cachedNotifications = cachedNotifications.map(n =>
+          n.id === String(id) ? { ...n, archived: true } : n
+        );
+      }
     } catch (error) {
       console.error(`[notificationService] archive ${id} failed:`, error);
       throw error;
@@ -318,9 +279,11 @@ export const notificationService = {
    */
   async bulkArchive(ids: string[]): Promise<void> {
     try {
-      mockNotifications = mockNotifications.map(n =>
-        ids.includes(n.id) ? { ...n, archived: true } : n
-      );
+      if (cachedNotifications) {
+        cachedNotifications = cachedNotifications.map(n =>
+          ids.includes(n.id) ? { ...n, archived: true } : n
+        );
+      }
     } catch (error) {
       console.error("[notificationService] bulkArchive failed:", error);
       throw error;
@@ -332,7 +295,10 @@ export const notificationService = {
    */
   async delete(id: string): Promise<void> {
     try {
-      mockNotifications = mockNotifications.filter(n => n.id !== id);
+      await apiClient.delete(`/api/v1/notifications/${id}`).catch(() => {});
+      if (cachedNotifications) {
+        cachedNotifications = cachedNotifications.filter(n => n.id !== String(id));
+      }
     } catch (error) {
       console.error(`[notificationService] delete ${id} failed:`, error);
       throw error;
@@ -354,7 +320,9 @@ export const notificationService = {
         createdAt: notification.createdAt || new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       };
-      mockNotifications.unshift(newNotif);
+      if (cachedNotifications) {
+        cachedNotifications.unshift(newNotif);
+      }
     } catch (error) {
       console.error("[notificationService] addNotification failed:", error);
       throw error;

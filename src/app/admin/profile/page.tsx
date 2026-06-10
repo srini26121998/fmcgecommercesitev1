@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../dashboard-layout";
@@ -273,7 +273,7 @@ export default function ProfilePage() {
           <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
             {[
               { label: "Orders Processed", value: stats.totalOrdersProcessed, icon: Activity },
-              { label: "Revenue Managed", value: `?${(stats.totalRevenueManaged / 10000000).toFixed(1)}Cr`, icon: Activity },
+              { label: "Revenue Managed", value: `₹${(stats.totalRevenueManaged / 10000000).toFixed(1)}Cr`, icon: Activity },
               { label: "Active Sessions", value: stats.activeSessions, icon: Monitor },
               { label: "Days on Platform", value: stats.daysSinceJoined, icon: Calendar },
               { label: "Login Streak", value: `${stats.loginStreak}d`, icon: Clock },

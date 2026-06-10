@@ -12,6 +12,7 @@ export interface Notification {
   timestamp: string;
   createdAt?: string | number;
   actionUrl?: string;
+  publicId?: string;
 }
 
 interface NotificationState {
@@ -22,11 +23,15 @@ interface NotificationState {
   markAllAsRead: () => void;
   clearNotifications: () => void;
   clearAll: () => void;
+  selectedNotificationData: any;
+  setSelectedNotificationData: (data: any) => void;
 }
 
 export const useNotificationStore = create<NotificationState>((set) => ({
   notifications: [],
   unreadCount: 0,
+  selectedNotificationData: null,
+  setSelectedNotificationData: (data) => set({ selectedNotificationData: data }),
 
   addNotification: (notification) =>
     set((state) => ({
@@ -43,10 +48,10 @@ export const useNotificationStore = create<NotificationState>((set) => ({
       unreadCount: state.unreadCount + 1,
     })),
 
-  markAsRead: (id) =>
+  markAsRead: (idOrPublicId) =>
     set((state) => {
       const updated = state.notifications.map((n) =>
-        n.id === id ? { ...n, read: true } : n
+        n.id === idOrPublicId || n.publicId === idOrPublicId ? { ...n, read: true } : n
       );
       return {
         notifications: updated,

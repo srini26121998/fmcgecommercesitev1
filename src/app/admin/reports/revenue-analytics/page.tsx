@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -36,10 +36,10 @@ export default function RevenueAnalyticsPage() {
         )}
 
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-          <ReusableCard title="Total Revenue" value={summary ? `?${(summary.totalRevenue / 10000000).toFixed(2)}Cr` : "₹"} icon={<DollarSign className="h-5 w-5" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" trend={summary ? { value: `${summary.revenueGrowth}%`, direction: summary.revenueGrowth >= 0 ? "up" : "down" } : undefined} />
-          <ReusableCard title="Gross Profit" value={summary ? `?${(summary.totalGrossProfit / 10000000).toFixed(2)}Cr` : "₹"} icon={<TrendingUp className="h-5 w-5" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
+          <ReusableCard title="Total Revenue" value={summary ? `₹${(summary.totalRevenue / 10000000).toFixed(2)}Cr` : "₹"} icon={<DollarSign className="h-5 w-5" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" trend={summary ? { value: `${summary.revenueGrowth}%`, direction: summary.revenueGrowth >= 0 ? "up" : "down" } : undefined} />
+          <ReusableCard title="Gross Profit" value={summary ? `₹${(summary.totalGrossProfit / 10000000).toFixed(2)}Cr` : "₹"} icon={<TrendingUp className="h-5 w-5" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
           <ReusableCard title="Avg Gross Margin" value={summary ? `${summary.avgGrossMargin}%` : "₹"} icon={<BarChart3 className="h-5 w-5" />} color="text-[#9333ea]" bgColor="bg-[#f3e8ff]" />
-          <ReusableCard title="Net Profit" value={summary ? `?${(summary.totalNetProfit / 10000000).toFixed(2)}Cr` : "₹"} icon={<PiggyBank className="h-5 w-5" />} color="text-[#ff4f8b]" bgColor="bg-[#fff0f6]" />
+          <ReusableCard title="Net Profit" value={summary ? `₹${(summary.totalNetProfit / 10000000).toFixed(2)}Cr` : "₹"} icon={<PiggyBank className="h-5 w-5" />} color="text-[#ff4f8b]" bgColor="bg-[#fff0f6]" />
         </div>
 
         <ReusableChart
@@ -73,7 +73,7 @@ export default function RevenueAnalyticsPage() {
                 return (
                   <div key={point.label} className="flex flex-1 flex-col items-center gap-1.5 h-full justify-end">
                     <span className="text-[9px] font-bold text-[#666]">
-                      {activeMetric === "margin" ? `${point.value}%` : `?${(point.value / 100000).toFixed(0)}L`}
+                      {activeMetric === "margin" ? `${point.value}%` : `₹${(point.value / 100000).toFixed(0)}L`}
                     </span>
                     <div
                       className="w-full rounded-t-md transition-all duration-300"
@@ -102,16 +102,16 @@ export default function RevenueAnalyticsPage() {
           onPageSizeChange={changePageSize}
           columns={[
             { key: "month", header: "Month", sortable: true, render: (r) => <span className="font-bold text-[#1a1a1a]">{r.month}</span> },
-            { key: "revenue", header: "Revenue", align: "right", sortable: true, render: (r) => <span className="font-bold">?{(r.revenue / 100000).toFixed(1)}L</span> },
-            { key: "cogs", header: "COGS", align: "right", render: (r) => <span className="text-[#666]">?{(r.cogs / 100000).toFixed(1)}L</span> },
-            { key: "grossProfit", header: "Gross Profit", align: "right", render: (r) => <span className="font-bold text-[#0c831f]">?{(r.grossProfit / 100000).toFixed(1)}L</span> },
+            { key: "revenue", header: "Revenue", align: "right", sortable: true, render: (r) => <span className="font-bold">₹{(r.revenue / 100000).toFixed(1)}L</span> },
+            { key: "cogs", header: "COGS", align: "right", render: (r) => <span className="text-[#666]">₹{(r.cogs / 100000).toFixed(1)}L</span> },
+            { key: "grossProfit", header: "Gross Profit", align: "right", render: (r) => <span className="font-bold text-[#0c831f]">₹{(r.grossProfit / 100000).toFixed(1)}L</span> },
             { key: "grossMargin", header: "Margin", align: "right", render: (r) => <span className="font-bold">{r.grossMargin}%</span> },
             { key: "netProfit", header: "Net Profit", align: "right", render: (r) => (
               <span className={`font-bold ${r.netProfit >= 0 ? "text-[#0c831f]" : "text-red-500"}`}>
                 ?{(r.netProfit / 100000).toFixed(1)}L
               </span>
             )},
-            { key: "ebitda", header: "EBITDA", align: "right", hideOnMobile: true, render: (r) => <span className="font-bold text-[#9333ea]">?{(r.ebitda / 100000).toFixed(1)}L</span> },
+            { key: "ebitda", header: "EBITDA", align: "right", hideOnMobile: true, render: (r) => <span className="font-bold text-[#9333ea]">₹{(r.ebitda / 100000).toFixed(1)}L</span> },
           ]}
           actions={[
             { label: "View Details", icon: <Eye className="h-3.5 w-3.5" />, onClick: (r) => toast.info(`Viewing details for ${r.month}`) },

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -42,10 +42,10 @@ export default function SalesReportsPage() {
   const [selectedEntry, setSelectedEntry] = useState<SalesReportEntry | null>(null);
 
   // Build chart data from loaded entries (most recent 14 days)
-  const chartData = [...data]
-    .sort((a, b) => a.date.localeCompare(b.date))
+  const chartData = [...(data || [])]
+    .sort((a, b) => (a.date || "").localeCompare(b.date || ""))
     .slice(-14)
-    .map((r) => ({ label: r.date.slice(5), value: r.grossRevenue }));
+    .map((r) => ({ label: (r.date || "").slice(5), value: r.grossRevenue || 0 }));
   const maxChart = Math.max(...chartData.map((d) => d.value), 1);
 
   return (
@@ -75,34 +75,32 @@ export default function SalesReportsPage() {
         <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
           <ReusableCard
             title="Total Revenue (MTD)"
-            value={summary ? `?${(summary.totalRevenue / 10000000).toFixed(2)}Cr` : "₹"}
+            value={summary?.totalRevenue != null ? `₹${(summary.totalRevenue / 10000000).toFixed(2)}Cr` : "₹0"}
             icon={<DollarSign className="h-5 w-5" />}
             color="text-[#0c831f]"
             bgColor="bg-[#e8f5e9]"
-            trend={summary ? { value: `${summary.revenueGrowth}%`, direction: "up" } : undefined}
           />
           <ReusableCard
             title="Total Orders (MTD)"
-            value={summary ? summary.totalOrders.toLocaleString() : "₹"}
+            value={summary?.totalOrders != null ? summary.totalOrders.toLocaleString() : "0"}
             icon={<ShoppingCart className="h-5 w-5" />}
             color="text-[#2563eb]"
             bgColor="bg-[#eff6ff]"
-            trend={summary ? { value: `${summary.ordersGrowth}%`, direction: "up" } : undefined}
           />
           <ReusableCard
             title="Avg Order Value"
-            value={summary ? `?${summary.avgOrderValue.toLocaleString()}` : "₹"}
+            value={summary?.averageOrderValue != null ? `₹${summary.averageOrderValue.toLocaleString()}` : "₹0"}
             icon={<TrendingUp className="h-5 w-5" />}
             color="text-[#9333ea]"
             bgColor="bg-[#f3e8ff]"
           />
           <ReusableCard
-            title="Total Refunds"
-            value={summary ? `?${(summary.totalRefunds / 100000).toFixed(1)}L` : "₹"}
+            title="Total Tax"
+            value={summary?.totalTax != null ? `₹${(summary.totalTax / 100000).toFixed(2)}L` : "₹0"}
             icon={<RefreshCw className="h-5 w-5" />}
             color="text-[#d97706]"
             bgColor="bg-[#fffbeb]"
-            subtitle={summary ? `Discounts: ?${(summary.totalDiscounts / 100000).toFixed(1)}L` : undefined}
+            subtitle={summary?.totalDiscounts != null ? `Discounts: ₹${(summary.totalDiscounts / 100000).toFixed(1)}L` : undefined}
           />
         </div>
 
@@ -123,7 +121,7 @@ export default function SalesReportsPage() {
                 return (
                   <div key={point.label} className="flex flex-1 flex-col items-center gap-1 h-full justify-end">
                     <span className="text-[8px] font-bold text-[#666]">
-                      ?{(point.value / 100000).toFixed(0)}L
+                      ₹{(point.value / 100000).toFixed(0)}L
                     </span>
                     <div
                       className="w-full rounded-t-sm transition-all duration-300"
@@ -187,28 +185,28 @@ export default function SalesReportsPage() {
               header: "Gross Revenue",
               align: "right",
               sortable: true,
-              render: (r) => <span className="font-bold">?{(r.grossRevenue / 100000).toFixed(2)}L</span>,
+              render: (r) => <span className="font-bold">₹{(r.grossRevenue / 100000).toFixed(2)}L</span>,
             },
             {
               key: "netRevenue",
               header: "Net Revenue",
               align: "right",
               hideOnMobile: true,
-              render: (r) => <span className="font-bold text-[#0c831f]">?{(r.netRevenue / 100000).toFixed(2)}L</span>,
+              render: (r) => <span className="font-bold text-[#0c831f]">₹{(r.netRevenue / 100000).toFixed(2)}L</span>,
             },
             {
               key: "orders",
               header: "Orders",
               align: "right",
               sortable: true,
-              render: (r) => <span className="font-bold">{r.orders.toLocaleString()}</span>,
+              render: (r) => <span className="font-bold">{r.orders != null ? r.orders.toLocaleString() : "0"}</span>,
             },
             {
               key: "avgOrderValue",
               header: "AOV",
               align: "right",
               width: "80px",
-              render: (r) => <span>?{r.avgOrderValue}</span>,
+              render: (r) => <span>₹{r.avgOrderValue}</span>,
             },
             {
               key: "refunds",
@@ -216,7 +214,7 @@ export default function SalesReportsPage() {
               align: "right",
               width: "90px",
               hideOnMobile: true,
-              render: (r) => <span className="text-[#d97706]">?{(r.refunds / 1000).toFixed(1)}K</span>,
+              render: (r) => <span className="text-[#d97706]">₹{(r.refunds / 1000).toFixed(1)}K</span>,
             },
 {
                key: "returnRate",
@@ -262,11 +260,11 @@ export default function SalesReportsPage() {
               <h4 className="mb-3 text-xs font-black uppercase tracking-wide text-[#666]">Revenue Breakdown</h4>
               <div className="space-y-2.5">
                 {[
-                  { label: "Gross Revenue", value: `?${(selectedEntry.grossRevenue / 100000).toFixed(2)}L`, highlight: false },
-                  { label: "Discounts Applied", value: `-?${(selectedEntry.discounts / 1000).toFixed(1)}K`, highlight: false },
-                  { label: "Promo Cost", value: `-?${(selectedEntry.promoCost / 1000).toFixed(1)}K`, highlight: false },
-                  { label: "Refunds", value: `-?${(selectedEntry.refunds / 1000).toFixed(1)}K`, highlight: false },
-                  { label: "Net Revenue", value: `?${(selectedEntry.netRevenue / 100000).toFixed(2)}L`, highlight: true },
+                  { label: "Gross Revenue", value: `₹${(selectedEntry.grossRevenue / 100000).toFixed(2)}L`, highlight: false },
+                  { label: "Discounts Applied", value: `-₹${(selectedEntry.discounts / 1000).toFixed(1)}K`, highlight: false },
+                  { label: "Promo Cost", value: `-₹${(selectedEntry.promoCost / 1000).toFixed(1)}K`, highlight: false },
+                  { label: "Refunds", value: `-₹${(selectedEntry.refunds / 1000).toFixed(1)}K`, highlight: false },
+                  { label: "Net Revenue", value: `₹${(selectedEntry.netRevenue / 100000).toFixed(2)}L`, highlight: true },
                 ].map((item) => (
                   <div
                     key={item.label}
@@ -287,11 +285,11 @@ export default function SalesReportsPage() {
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg bg-[#f9fafb] p-3">
                   <p className="text-[10px] font-bold text-[#666]">Total Orders</p>
-                  <p className="mt-1 text-xl font-bold text-[#1a1a1a]">{selectedEntry.orders.toLocaleString()}</p>
+                  <p className="mt-1 text-xl font-bold text-[#1a1a1a]">{selectedEntry.orders != null ? selectedEntry.orders.toLocaleString() : "0"}</p>
                 </div>
                 <div className="rounded-lg bg-[#f9fafb] p-3">
                   <p className="text-[10px] font-bold text-[#666]">Avg Order Value</p>
-                  <p className="mt-1 text-xl font-bold text-[#1a1a1a]">?{selectedEntry.avgOrderValue}</p>
+                  <p className="mt-1 text-xl font-bold text-[#1a1a1a]">₹{selectedEntry.avgOrderValue}</p>
                 </div>
 <div className="rounded-lg bg-[#f9fafb] p-3">
                    <p className="text-[10px] font-bold text-[#666]">Return Rate</p>

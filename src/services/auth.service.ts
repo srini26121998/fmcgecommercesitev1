@@ -68,12 +68,21 @@ class AuthService {
         sessionStorage.setItem("admin_token", token);
       }
       
+      const user = response.user || response.data?.user;
+      const role = user?.role || response.role || response.data?.role;
+      
+      if (role === "DELIVERY_BOY") {
+        apiClient.get("/api/v1/notifications/stream").catch((err) => {
+          console.warn("Failed to initialize notifications stream:", err);
+        });
+      }
+
       // Return normalized response. Adjust based on the actual API structure
       return {
         success: true,
         message: response.message || response.data?.message,
         token: token,
-        user: response.user || response.data?.user,
+        user: user,
         data: response.data || response,
       };
     } catch (error: any) {
@@ -159,11 +168,20 @@ class AuthService {
         sessionStorage.setItem("admin_token", token);
       }
       
+      const user = response.user || response.data?.user;
+      const role = user?.role || response.role || response.data?.role;
+      
+      if (role === "DELIVERY_BOY") {
+        apiClient.get("/api/v1/notifications/stream").catch((err) => {
+          console.warn("Failed to initialize notifications stream:", err);
+        });
+      }
+
       return {
         success: true,
         message: response.message || response.data?.message,
         token: token,
-        user: response.user || response.data?.user,
+        user: user,
         data: response.data || response,
       };
     } catch (error: any) {
