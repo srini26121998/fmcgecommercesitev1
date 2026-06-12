@@ -6,10 +6,20 @@ import { useProducts } from "@/hooks/use-products";
 import { ChevronRight } from "lucide-react";
 import { useMemo } from "react";
 import { useCategories } from "@/hooks/use-categories";
+import { usePromotionsStore } from "@/store/promotions-store";
+import { useEffect } from "react";
 
 export default function ProductGrid() {
   const { products } = useProducts(undefined, 100);
   const { data: apiCategories } = useCategories();
+  const fetchApplicableBadges = usePromotionsStore((s) => s.fetchApplicableBadges);
+
+  useEffect(() => {
+    if (products.length > 0) {
+      const productIds = products.map(p => p.id);
+      fetchApplicableBadges(productIds);
+    }
+  }, [products, fetchApplicableBadges]);
 
   // Memoize filtered products to avoid recalculations
   const filteredCategories = useMemo(() => {
@@ -68,13 +78,15 @@ export default function ProductGrid() {
             {items.map((product, index) => (
               <div
                 key={product.id}
-                className="w-full"
+                className="w-full flex flex-col h-full"
                 itemScope
                 itemType="https://schema.org/Product"
                 itemProp="itemListElement"
               >
                 <meta itemProp="position" content={String(index + 1)} />
-                <ProductCard product={product as any} />
+                <div className="flex-1 flex flex-col w-full">
+                  <ProductCard product={product as any} />
+                </div>
               </div>
             ))}
           </div>

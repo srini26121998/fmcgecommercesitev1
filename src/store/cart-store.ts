@@ -8,10 +8,20 @@ interface CartItem {
   image: string;
   quantity: number;
   weight?: string;
+  // New features:
+  subscription?: "one-time" | "weekly" | "bi-weekly" | "monthly";
+  shippingAddressId?: string; // For multi-address shipping
+  isGift?: boolean;
+  giftMessage?: string;
+  giftWrap?: boolean;
+  hidePrice?: boolean;
+  isBogoReward?: boolean;
+  bogoMrp?: number;
 }
 
 interface CartStore {
   cart: CartItem[];
+  savedForLater: CartItem[];
 
   addToCart: (product: CartItem) => void;
 
@@ -22,12 +32,19 @@ interface CartStore {
   decreaseQuantity: (id: number | string) => void;
 
   clearCart: () => void;
+
+  // New Actions
+  saveForLater: (id: number | string) => void;
+  moveToCart: (id: number | string) => void;
+  removeFromSaved: (id: number | string) => void;
+  updateItemOptions: (id: number | string, options: Partial<CartItem>) => void;
 }
 
 export const useCartStore = create<CartStore>()(
   persist(
     (set, get) => ({
       cart: [],
+      savedForLater: [],
 
       addToCart: (product) => {
         // Stock validation should be handled by the UI or API before calling this
@@ -93,6 +110,38 @@ export const useCartStore = create<CartStore>()(
         })),
 
       clearCart: () => set({ cart: [] }),
+
+      saveForLater: (id) =>
+        set((state) => {
+          const item = state.cart.find((i) => i.id === id);
+          if (!item) return state;
+          return {
+            cart: state.cart.filter((i) => i.id !== id),
+            savedForLater: [...state.savedForLater, item],
+          };
+        }),
+
+      moveToCart: (id) =>
+        set((state) => {
+          const item = state.savedForLater.find((i) => i.id === id);
+          if (!item) return state;
+          return {
+            savedForLater: state.savedForLater.filter((i) => i.id !== id),
+            cart: [...state.cart, item],
+          };
+        }),
+
+      removeFromSaved: (id) =>
+        set((state) => ({
+          savedForLater: state.savedForLater.filter((i) => i.id !== id),
+        })),
+
+      updateItemOptions: (id, options) =>
+        set((state) => ({
+          cart: state.cart.map((item) =>
+            item.id === id ? { ...item, ...options } : item
+          ),
+        })),
     }),
     {
       name: "fmcg-cart-storage",

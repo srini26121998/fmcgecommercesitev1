@@ -1,6 +1,6 @@
-﻿"use client";
+"use client";
 
-import { useState, useMemo, useRef, useCallback } from "react";
+import { useState, useMemo, useRef, useCallback, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import ProductCard from "@/components/ui/products/product-card";
 import Navbar from "@/components/ui/navbar";
@@ -19,6 +19,9 @@ import {
   RotateCcw,
   Scan,
   Sparkles,
+  Loader2,
+  Filter,
+  ArrowDownUp
 } from "lucide-react";
 import { toast } from "sonner";
 import { useDebounce } from "@/lib/hooks/useDebounce";
@@ -26,8 +29,7 @@ import ErrorBoundary from "@/components/ui/error-boundary";
 import EmptyState from "@/components/ui/empty-state";
 import type { ProductSortOption } from "@/lib/types";
 import { useProducts, useProductBarcode } from "@/hooks/use-products";
-import { useEffect } from "react";
-import { Loader2 } from "lucide-react";
+import { motion, AnimatePresence, type Variants } from "framer-motion";
 
 const filterCategories = [
   "All",
@@ -47,6 +49,20 @@ const SORT_OPTIONS = [
   { value: "rating", label: "Rating" },
 ] as const;
 
+// Framer Motion Variants
+const containerVariants: Variants = {
+  hidden: { opacity: 0 },
+  show: {
+    opacity: 1,
+    transition: { staggerChildren: 0.05 },
+  },
+};
+
+const itemVariants: Variants = {
+  hidden: { opacity: 0, y: 20 },
+  show: { opacity: 1, y: 0, transition: { type: "spring", stiffness: 300, damping: 24 } },
+};
+
 export default function SearchPage() {
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState("");
@@ -64,12 +80,6 @@ export default function SearchPage() {
     toast.success("Search refreshed! ✓", { duration: 1500 });
   }, []);
 
-  /**
-   * Barcode scan handler — wired to the real API.
-   * Flow: scan → GET /api/v1/products/barcode/:code
-   *   → Found: navigate directly to /product/:id
-   *   → Not found: fall back to text search for the scanned code
-   */
   const handleBarcodeScan = useCallback(async (barcode: string) => {
     setShowScanner(false);
     setIsScanningBarcode(true);
@@ -81,12 +91,10 @@ export default function SearchPage() {
         toast.success(`Found: ${product.name}`, { duration: 2500 });
         router.push(`/product/${product.id}`);
       } else {
-        // Barcode not in DB — fall back to text search
         setSearchQuery(barcode);
         toast.info(`No exact match — showing search results for "${barcode}"`, { duration: 3000 });
       }
     } catch {
-      // API error — silently fall back to text search
       setSearchQuery(barcode);
       toast.info(`Searching for "${barcode}"...`, { duration: 2000 });
     } finally {
@@ -128,6 +136,7 @@ export default function SearchPage() {
       setIsListening(false);
     }
   }, [addQuery]);
+
   const [selectedCategory, setSelectedCategory] = useState("All");
   const [sortBy, setSortBy] = useState<ProductSortOption>("relevance");
   const [showFilters, setShowFilters] = useState(false);
@@ -170,6 +179,20 @@ export default function SearchPage() {
     }));
   };
 
+  const removeArrayChip = (key: keyof FilterState, value: string | number) => {
+    setActiveFilters((prev) => ({
+      ...prev,
+      [key]: (prev[key] as any[]).filter((v) => v !== value),
+    }));
+  };
+
+  const removeBooleanChip = (key: keyof FilterState) => {
+    setActiveFilters((prev) => ({
+      ...prev,
+      [key]: false,
+    }));
+  };
+
   const { products: filteredProducts, loading, updateFilters } = useProducts({
     search: debouncedSearchQuery,
     category: activeFilters.category !== "All" ? activeFilters.category : (selectedCategory !== "All" ? selectedCategory : undefined),
@@ -177,7 +200,6 @@ export default function SearchPage() {
     sortOrder: sortBy.includes("-high") ? "desc" : "asc"
   });
   
-  // Sync filters whenever they change
   useEffect(() => {
     updateFilters({
       search: debouncedSearchQuery,
@@ -189,280 +211,412 @@ export default function SearchPage() {
 
   return (
     <ErrorBoundary>
-    <PullToRefresh onRefresh={handleRefresh}>
-    <main className="min-h-screen bg-[#f2f2f2] pb-20 md:pb-0">
-      <Navbar />
+      <PullToRefresh onRefresh={handleRefresh}>
+        <main className="min-h-screen bg-gradient-to-b from-[#f8f9fa] to-white pb-20 md:pb-0">
+          <Navbar />
 
-      <div className="pt-[72px] sm:pt-20">
-        {/* Search Bar */}
-        <div className="bg-white border-b border-[#e8e8e8] px-3 sm:px-4 md:px-6 py-3">
-          <div className="max-w-[1400px] mx-auto">
-            <form role="search" onSubmit={(e) => e.preventDefault()} className="relative">
-              <div className="h-11 sm:h-12 rounded-lg bg-[#f2f2f2] border border-[#e8e8e8] flex items-center px-4 gap-3 focus-within:border-[#0c831f] transition-colors">
-                <Search className="w-4 h-4 text-[#999] flex-shrink-0" aria-hidden="true" />
-                <button
-                  onClick={() => setShowScanner(true)}
-                  disabled={isScanningBarcode}
-                  className="p-1.5 hover:bg-[#e8e8e8] rounded-lg transition-colors mr-1 disabled:opacity-50 disabled:cursor-not-allowed"
-                  aria-label={isScanningBarcode ? "Looking up barcode..." : "Scan barcode"}
-                  title={isScanningBarcode ? "Looking up barcode..." : "Scan barcode"}
-                >
-                  {isScanningBarcode
-                    ? <Loader2 className="w-4 h-4 text-[#ff4f8b] animate-spin" />
-                    : <Scan className="w-4 h-4 text-[#999] hover:text-[#ff4f8b] transition-colors" />}
-                </button>
-                <input
-                  ref={searchInputRef}
-                  type="search"
-                  placeholder="Search for groceries, snacks, beverages..."
-                  className="flex-1 bg-transparent outline-none text-sm text-[#1a1a1a] placeholder:text-[#999]"
-                  autoFocus
-                  value={searchQuery}
-                  onChange={(e) => {
-                    setSearchQuery(e.target.value);
-                    setShowSuggestions(true);
-                  }}
-                  onFocus={() => setShowSuggestions(true)}
-                  onKeyDown={(e) => {
-                    if (e.key === "Enter" && searchQuery.trim()) {
-                      addQuery(searchQuery.trim());
-                      setShowSuggestions(false);
-                    }
-                    if (e.key === "Escape") setShowSuggestions(false);
-                  }}
-                  aria-label="Search products"
-                />
-                {searchQuery && (
-                  <button
-                    onClick={() => { setSearchQuery(""); setShowSuggestions(true); searchInputRef.current?.focus(); }}
-                    className="p-1 hover:bg-[#e8e8e8] rounded-full transition-colors"
-                    aria-label="Clear search"
-                  >
-                    <X className="w-3.5 h-3.5 text-[#999]" />
-                  </button>
-                )}
+          <div className="pt-[72px] sm:pt-20">
+            {/* Search Header Area */}
+            <div className="bg-white/90 backdrop-blur-xl sticky top-[72px] sm:top-20 z-40 shadow-[0_4px_20px_-10px_rgba(0,0,0,0.05)]">
+              {/* Search Bar */}
+              <div className="px-3 sm:px-4 md:px-6 py-4 border-b border-gray-100">
+                <div className="max-w-[1400px] mx-auto">
+                  <form role="search" onSubmit={(e) => e.preventDefault()} className="relative">
+                    <motion.div 
+                      initial={{ scale: 0.98, opacity: 0 }}
+                      animate={{ scale: 1, opacity: 1 }}
+                      transition={{ duration: 0.3 }}
+                      className="h-12 sm:h-14 rounded-2xl bg-white border border-gray-200/80 flex items-center px-4 gap-3 focus-within:border-pink focus-within:ring-4 focus-within:ring-pink/10 transition-all shadow-sm"
+                    >
+                      <Search className="w-5 h-5 text-gray-400 flex-shrink-0" aria-hidden="true" />
+                      <button
+                        onClick={() => setShowScanner(true)}
+                        disabled={isScanningBarcode}
+                        className="p-2 hover:bg-pink/5 rounded-xl transition-colors mr-1 disabled:opacity-50 disabled:cursor-not-allowed group"
+                        aria-label={isScanningBarcode ? "Looking up barcode..." : "Scan barcode"}
+                        title={isScanningBarcode ? "Looking up barcode..." : "Scan barcode"}
+                      >
+                        {isScanningBarcode
+                          ? <Loader2 className="w-5 h-5 text-pink animate-spin" />
+                          : <Scan className="w-5 h-5 text-gray-400 group-hover:text-pink transition-colors" />}
+                      </button>
+                      <input
+                        ref={searchInputRef}
+                        type="search"
+                        placeholder="Search for groceries, snacks, beverages..."
+                        className="flex-1 bg-transparent outline-none text-[15px] text-gray-800 placeholder:text-gray-400 font-medium w-full"
+                        autoFocus
+                        value={searchQuery}
+                        onChange={(e) => {
+                          setSearchQuery(e.target.value);
+                          setShowSuggestions(true);
+                        }}
+                        onFocus={() => setShowSuggestions(true)}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter" && searchQuery.trim()) {
+                            addQuery(searchQuery.trim());
+                            setShowSuggestions(false);
+                          }
+                          if (e.key === "Escape") setShowSuggestions(false);
+                        }}
+                        aria-label="Search products"
+                      />
+                      <AnimatePresence>
+                        {searchQuery && (
+                          <motion.button
+                            initial={{ scale: 0, opacity: 0, rotate: -90 }}
+                            animate={{ scale: 1, opacity: 1, rotate: 0 }}
+                            exit={{ scale: 0, opacity: 0, rotate: 90 }}
+                            transition={{ type: "spring", stiffness: 300, damping: 20 }}
+                            onClick={() => { setSearchQuery(""); setShowSuggestions(true); searchInputRef.current?.focus(); }}
+                            className="p-1.5 bg-gray-100 hover:bg-gray-200 rounded-full transition-colors"
+                            aria-label="Clear search"
+                          >
+                            <X className="w-4 h-4 text-gray-600" />
+                          </motion.button>
+                        )}
+                      </AnimatePresence>
+                    </motion.div>
+
+                    {/* Search Suggestions Dropdown */}
+                    <AnimatePresence>
+                      {showSuggestions && (
+                        <motion.div
+                          initial={{ opacity: 0, y: -10, scale: 0.98 }}
+                          animate={{ opacity: 1, y: 0, scale: 1 }}
+                          exit={{ opacity: 0, y: -10, scale: 0.98 }}
+                          transition={{ duration: 0.2 }}
+                          className="absolute top-full left-0 right-0 mt-3 z-50 bg-white rounded-2xl shadow-2xl shadow-gray-200/50 border border-gray-100 overflow-hidden"
+                        >
+                          <SearchSuggestionsEnhanced
+                            query={searchQuery}
+                            onSelect={(q) => {
+                              handleSelectSuggestion(q);
+                              searchInputRef.current?.blur();
+                            }}
+                            onVoiceSearch={handleVoiceSearch}
+                            onBarcodeScan={() => setShowScanner(true)}
+                            isListening={isListening}
+                          />
+                        </motion.div>
+                      )}
+                    </AnimatePresence>
+                  </form>
+                </div>
               </div>
 
-              {/* Search Suggestions Dropdown */}
-              {showSuggestions && (
-                <SearchSuggestionsEnhanced
-                  query={searchQuery}
-                  onSelect={(q) => {
-                    handleSelectSuggestion(q);
-                    searchInputRef.current?.blur();
-                  }}
-                  onVoiceSearch={handleVoiceSearch}
-                  onBarcodeScan={() => setShowScanner(true)}
-                  isListening={isListening}
-                />
-              )}
-            </form>
-          </div>
-        </div>
+              {/* Category Pills & Filter Button */}
+              <div className="px-3 sm:px-4 md:px-6 py-3 border-b border-gray-100">
+                <div className="max-w-[1400px] mx-auto flex items-center gap-3">
+                  <div className="relative flex-shrink-0">
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => setShowFilters(true)}
+                      className={`flex-shrink-0 h-10 px-4 rounded-xl border text-sm font-semibold flex items-center gap-2 transition-all shadow-sm ${
+                        activeFilterCount > 0
+                          ? "bg-gradient-to-r from-pink to-rose-500 text-white border-transparent shadow-pink/20"
+                          : "bg-white text-gray-700 border-gray-200 hover:border-pink hover:text-pink hover:bg-pink/5"
+                      }`}
+                    >
+                      <Filter className="w-4 h-4" />
+                      <span>Filters</span>
+                      {activeFilterCount > 0 && (
+                        <span className="inline-flex items-center justify-center min-w-[20px] h-[20px] px-1.5 rounded-full bg-white text-[11px] font-bold text-pink leading-none shadow-sm">
+                          {activeFilterCount}
+                        </span>
+                      )}
+                    </motion.button>
+                  </div>
+                  <div className="w-[1px] h-6 bg-gray-200 mx-1 flex-shrink-0" />
+                  <motion.div 
+                    className="flex-1 flex items-center gap-2.5 overflow-x-auto hide-scrollbar pb-1 -mb-1"
+                    variants={containerVariants}
+                    initial="hidden"
+                    animate="show"
+                  >
+                    {filterCategories.map((cat) => (
+                      <motion.button
+                        variants={itemVariants}
+                        key={cat}
+                        onClick={() => { setSelectedCategory(cat); if (activeFilters.category !== "All") setActiveFilters((prev) => ({ ...prev, category: "All" })); }}
+                        className={`flex-shrink-0 inline-flex items-center justify-center h-10 px-5 rounded-xl text-sm font-medium border transition-all ${
+                          cat === selectedCategory
+                            ? "bg-gray-900 text-white border-gray-900 shadow-md shadow-gray-900/10"
+                            : "bg-white text-gray-600 border-gray-200 hover:border-gray-900 hover:text-gray-900 hover:bg-gray-50"
+                        }`}
+                      >
+                        {cat}
+                      </motion.button>
+                    ))}
+                  </motion.div>
+                </div>
+              </div>
 
-        {/* Search History */}
-        {!searchQuery.trim() && (
-          <div className="px-3 sm:px-4 md:px-6 py-3">
-            <div className="max-w-[1400px] mx-auto">
-              <SearchHistory onSelect={handleSelectSuggestion} />
-            </div>
-          </div>
-        )}
-
-        {/* Category Pills & Filter Button */}
-        <div className="bg-white border-b border-[#e8e8e8] px-3 sm:px-4 md:px-6 py-2.5">
-          <div className="max-w-[1400px] mx-auto flex items-start gap-2">
-            <div className="flex-1 flex items-center gap-2 overflow-x-auto hide-scrollbar">
-              {filterCategories.map((cat) => (
-                <button
-                  key={cat}
-                  onClick={() => { setSelectedCategory(cat); if (activeFilters.category !== "All") setActiveFilters((prev) => ({ ...prev, category: "All" })); }}
-                  className={`flex-shrink-0 inline-flex items-center justify-center min-h-[44px] h-8 px-3 sm:px-4 rounded-full text-xs sm:text-sm font-semibold border transition-colors ${
-                    cat === selectedCategory
-                      ? "bg-[#ff4f8b] text-white border-[#ff4f8b]"
-                      : "bg-white text-[#666] border-[#e8e8e8] hover:border-pink hover:text-pink"
-                  }`}
-                >
-                  {cat}
-                </button>
-              ))}
-            </div>
-
-            <div className="relative flex-shrink-0">
-              <button
-                onClick={() => setShowFilters(true)}
-                className={`flex-shrink-0 min-h-[44px] h-8 px-3 rounded-full border text-xs font-semibold flex items-center gap-1.5 transition-colors ${
-                  activeFilterCount > 0
-                    ? "bg-[#ff4f8b] text-white border-[#ff4f8b]"
-                    : "bg-white text-[#666] border-[#e8e8e8] hover:border-pink hover:text-pink"
-                }`}
-              >
-                <SlidersHorizontal className="w-3 h-3" />
-                <span>Filters</span>
+              {/* Active Filter Chips */}
+              <AnimatePresence>
                 {activeFilterCount > 0 && (
-                  <span className="inline-flex items-center justify-center min-w-[18px] h-[18px] px-1 rounded-full bg-white text-[10px] font-bold text-[#ff4f8b] leading-none">
-                    {activeFilterCount}
-                  </span>
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: "auto", opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="bg-gray-50/80 border-b border-gray-100 px-3 sm:px-4 md:px-6 py-3 overflow-hidden"
+                  >
+                    <div className="max-w-[1400px] mx-auto flex items-center gap-2.5 flex-wrap">
+                      <span className="text-[11px] uppercase tracking-wider font-bold text-gray-400 flex items-center gap-1.5 mr-2">
+                        <Sparkles className="w-3.5 h-3.5 text-pink" />
+                        Active Filters:
+                      </span>
+                      {activeFilters.category !== "All" && (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-50 text-xs font-semibold text-green-700 border border-green-200/60 shadow-sm">
+                          {activeFilters.category}
+                          <button onClick={() => setActiveFilters((prev) => ({ ...prev, category: "All" }))} className="hover:bg-green-100 rounded-md p-0.5 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.span>
+                      )}
+                      {activeFilters.priceRanges.map((idx) => (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} key={`price-${idx}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink/10 text-xs font-semibold text-pink border border-pink/20 shadow-sm">
+                          {PRICE_RANGES[idx].label}
+                          <button onClick={() => removePriceRangeChip(idx)} className="hover:bg-pink/20 rounded-md p-0.5 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.span>
+                      ))}
+                      {activeFilters.discounts.map((idx) => (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} key={`discount-${idx}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink/10 text-xs font-semibold text-pink border border-pink/20 shadow-sm">
+                          {DISCOUNT_OPTIONS[idx].label}
+                          <button onClick={() => removeDiscountChip(idx)} className="hover:bg-pink/20 rounded-md p-0.5 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.span>
+                      ))}
+                      {activeFilters.ratings.map((idx) => (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} key={`rating-${idx}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink/10 text-xs font-semibold text-pink border border-pink/20 shadow-sm">
+                          {RATING_OPTIONS[idx].label}
+                          <button onClick={() => removeRatingChip(idx)} className="hover:bg-pink/20 rounded-md p-0.5 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.span>
+                      ))}
+                      {activeFilters.stock.map((status) => (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} key={`stock-${status}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink/10 text-xs font-semibold text-pink border border-pink/20 shadow-sm">
+                          {STOCK_OPTIONS.find((o) => o.value === status)?.label ?? status}
+                          <button onClick={() => removeStockChip(status)} className="hover:bg-pink/20 rounded-md p-0.5 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.span>
+                      ))}
+                      {(['deliveryDays', 'brands', 'groceryBrands', 'foodPreference', 'dealsAndDiscounts', 'sellers', 'specialty', 'cuisine'] as const).map(key => 
+                        activeFilters[key].map((item) => (
+                          <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} key={`${key}-${item}`} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink/10 text-xs font-semibold text-pink border border-pink/20 shadow-sm">
+                            {item}
+                            <button onClick={() => removeArrayChip(key, item)} className="hover:bg-pink/20 rounded-md p-0.5 transition-colors">
+                              <X className="w-3.5 h-3.5" />
+                            </button>
+                          </motion.span>
+                        ))
+                      )}
+                      {activeFilters.freeShipping && (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink/10 text-xs font-semibold text-pink border border-pink/20 shadow-sm">
+                          Free Shipping
+                          <button onClick={() => removeBooleanChip('freeShipping')} className="hover:bg-pink/20 rounded-md p-0.5 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.span>
+                      )}
+                      {activeFilters.localMarket && (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink/10 text-xs font-semibold text-pink border border-pink/20 shadow-sm">
+                          FMCG Fresh
+                          <button onClick={() => removeBooleanChip('localMarket')} className="hover:bg-pink/20 rounded-md p-0.5 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.span>
+                      )}
+                      {activeFilters.payOnDelivery && (
+                        <motion.span initial={{ scale: 0 }} animate={{ scale: 1 }} exit={{ scale: 0 }} className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-pink/10 text-xs font-semibold text-pink border border-pink/20 shadow-sm">
+                          Pay On Delivery
+                          <button onClick={() => removeBooleanChip('payOnDelivery')} className="hover:bg-pink/20 rounded-md p-0.5 transition-colors">
+                            <X className="w-3.5 h-3.5" />
+                          </button>
+                        </motion.span>
+                      )}
+                      <motion.button
+                        whileHover={{ scale: 1.05 }}
+                        whileTap={{ scale: 0.95 }}
+                        onClick={clearAllActiveFilters}
+                        className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-semibold text-gray-500 hover:text-gray-900 hover:bg-gray-200 transition-all ml-2"
+                      >
+                        <RotateCcw className="w-3.5 h-3.5" />
+                        Clear all
+                      </motion.button>
+                    </div>
+                  </motion.div>
                 )}
-              </button>
+              </AnimatePresence>
             </div>
-          </div>
-        </div>
 
-        {/* Active Filter Chips */}
-        {activeFilterCount > 0 && (
-          <div className="bg-white border-b border-[#e8e8e8] px-3 sm:px-4 md:px-6 py-2">
-            <div className="max-w-[1400px] mx-auto flex items-center gap-2 flex-wrap">
-              <span className="text-[10px] font-bold text-[#999] flex items-center gap-1 mr-1">
-                <Sparkles className="w-3 h-3" />
-                Active:
-              </span>
-              {activeFilters.category !== "All" && (
-                <span className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#0c831f]/10 text-xs font-semibold text-[#0c831f] border border-[#0c831f]/20">
-                  {activeFilters.category}
-                  <button onClick={() => setActiveFilters((prev) => ({ ...prev, category: "All" }))} className="hover:bg-[#0c831f]/20 rounded-full p-0.5 transition-colors">
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              )}
-              {activeFilters.priceRanges.map((idx) => (
-                <span key={`price-${idx}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ff4f8b]/10 text-xs font-semibold text-[#ff4f8b] border border-[#ff4f8b]/20">
-                  {PRICE_RANGES[idx].label}
-                  <button onClick={() => removePriceRangeChip(idx)} className="hover:bg-[#ff4f8b]/20 rounded-full p-0.5 transition-colors">
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-              {activeFilters.discounts.map((idx) => (
-                <span key={`discount-${idx}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ff4f8b]/10 text-xs font-semibold text-[#ff4f8b] border border-[#ff4f8b]/20">
-                  {DISCOUNT_OPTIONS[idx].label}
-                  <button onClick={() => removeDiscountChip(idx)} className="hover:bg-[#ff4f8b]/20 rounded-full p-0.5 transition-colors">
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-              {activeFilters.ratings.map((idx) => (
-                <span key={`rating-${idx}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ff4f8b]/10 text-xs font-semibold text-[#ff4f8b] border border-[#ff4f8b]/20">
-                  {RATING_OPTIONS[idx].label}
-                  <button onClick={() => removeRatingChip(idx)} className="hover:bg-[#ff4f8b]/20 rounded-full p-0.5 transition-colors">
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-              {activeFilters.stock.map((status) => (
-                <span key={`stock-${status}`} className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full bg-[#ff4f8b]/10 text-xs font-semibold text-[#ff4f8b] border border-[#ff4f8b]/20">
-                  {STOCK_OPTIONS.find((o) => o.value === status)?.label ?? status}
-                  <button onClick={() => removeStockChip(status)} className="hover:bg-[#ff4f8b]/20 rounded-full p-0.5 transition-colors">
-                    <X className="w-3 h-3" />
-                  </button>
-                </span>
-              ))}
-              <button
-                onClick={clearAllActiveFilters}
-                className="inline-flex items-center gap-1 px-2.5 py-1 rounded-full text-xs font-semibold text-[#999] hover:text-[#666] transition-colors"
-              >
-                <RotateCcw className="w-3 h-3" />
-                Clear all
-              </button>
-            </div>
-          </div>
-        )}
-
-        {/* Results */}
-        <div
-          className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-4"
-          itemScope
-          itemType="https://schema.org/ItemList"
-        >
-          <div className="flex items-center justify-between mb-3">
-            <p className="text-sm font-semibold text-[#666]">
-              {filteredProducts.length}{" "}
-              {filteredProducts.length === 1 ? "result" : "results"} found
-            </p>
-            <select
-              className="text-xs sm:text-sm border border-[#e8e8e8] rounded-lg px-2 py-1.5 bg-white text-[#1a1a1a] outline-none focus:border-pink"
-              value={sortBy}
-              onChange={(e) => setSortBy(e.target.value as ProductSortOption)}
-            >
-              {SORT_OPTIONS.map((opt) => (
-                <option key={opt.value} value={opt.value}>
-                  {opt.label}
-                </option>
-              ))}
-            </select>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-2 sm:gap-3">
-            {loading ? (
-               <div className="col-span-full py-10 flex justify-center">
-                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-[#ff4f8b]"></div>
-               </div>
-            ) : (
-              filteredProducts.map((product) => (
-                <ProductCard key={product.id} product={{
-                  ...product,
-                  oldPrice: product.mrp,
-                  rating: 4.5,
-                  image: product.media?.[0]?.url || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&h=400&q=80",
-                  stock: product.stock > 0 ? "in_stock" : "out_of_stock"
-                } as any} />
-              ))
+            {/* Search History */}
+            {!searchQuery.trim() && (
+              <div className="px-3 sm:px-4 md:px-6 py-6">
+                <div className="max-w-[1400px] mx-auto">
+                  <SearchHistory onSelect={handleSelectSuggestion} />
+                </div>
+              </div>
             )}
+
+            {/* Results Section */}
+            <div
+              className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-8"
+              itemScope
+              itemType="https://schema.org/ItemList"
+            >
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+                <div className="flex flex-col sm:flex-row sm:items-baseline gap-2 sm:gap-4">
+                  <h2 className="text-2xl font-bold text-gray-900 tracking-tight">
+                    {searchQuery ? (
+                      <span>Results for <span className="text-pink">"{searchQuery}"</span></span>
+                    ) : selectedCategory !== "All" ? (
+                      selectedCategory
+                    ) : (
+                      'All Products'
+                    )}
+                  </h2>
+                  <span className="text-sm font-semibold text-gray-500 bg-gray-100 px-3 py-1 rounded-full w-fit">
+                    {filteredProducts.length} items
+                  </span>
+                </div>
+                
+                <div className="flex items-center gap-3 self-end sm:self-auto bg-white border border-gray-200 rounded-xl px-1 shadow-sm">
+                  <div className="pl-3 py-2 flex items-center gap-1.5 text-gray-500">
+                    <ArrowDownUp className="w-4 h-4" />
+                    <label htmlFor="sort-by" className="text-sm font-semibold hidden md:inline">Sort:</label>
+                  </div>
+                  <div className="relative">
+                    <select
+                      id="sort-by"
+                      className="appearance-none text-sm font-semibold bg-transparent pl-2 pr-8 py-2.5 text-gray-800 outline-none cursor-pointer focus:ring-0 focus:outline-none"
+                      value={sortBy}
+                      onChange={(e) => setSortBy(e.target.value as ProductSortOption)}
+                    >
+                      {SORT_OPTIONS.map((opt) => (
+                        <option key={opt.value} value={opt.value} className="font-medium">
+                          {opt.label}
+                        </option>
+                      ))}
+                    </select>
+                    <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-400">
+                      <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {loading ? (
+                 <div className="py-24 flex flex-col items-center justify-center gap-5">
+                   <div className="relative w-16 h-16">
+                     <div className="absolute inset-0 rounded-full border-4 border-gray-100"></div>
+                     <div className="absolute inset-0 rounded-full border-4 border-pink border-t-transparent animate-spin"></div>
+                     <Sparkles className="absolute inset-0 m-auto w-5 h-5 text-pink/50 animate-pulse" />
+                   </div>
+                   <p className="text-gray-500 font-medium tracking-wide">Curating best matches...</p>
+                 </div>
+              ) : (
+                <motion.div 
+                  variants={containerVariants}
+                  initial="hidden"
+                  animate="show"
+                  className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-3 sm:gap-4 md:gap-5"
+                >
+                  {filteredProducts.map((product) => (
+                    <motion.div variants={itemVariants} key={product.id} className="h-full">
+                      <ProductCard product={{
+                        ...product,
+                        oldPrice: product.mrp,
+                        rating: 4.5,
+                        image: product.media?.[0]?.url || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&h=400&q=80",
+                        stock: product.stock > 0 ? "in_stock" : "out_of_stock"
+                      } as any} />
+                    </motion.div>
+                  ))}
+                </motion.div>
+              )}
+
+              {!loading && filteredProducts.length === 0 && (
+                <motion.div
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="py-16"
+                >
+                  <EmptyState
+                    variant={activeFilterCount > 0 ? "filtered" : "search"}
+                    actions={
+                      activeFilterCount > 0
+                        ? [
+                            {
+                              label: "Clear all filters",
+                              onClick: clearAllActiveFilters,
+                              icon: <RotateCcw className="w-4 h-4" />,
+                              variant: "secondary",
+                            },
+                          ]
+                        : undefined
+                    }
+                  />
+                </motion.div>
+              )}
+            </div>
           </div>
 
-          {!loading && filteredProducts.length === 0 && (
-            <EmptyState
-              variant={activeFilterCount > 0 ? "filtered" : "search"}
-              actions={
-                activeFilterCount > 0
-                  ? [
-                      {
-                        label: "Clear all filters",
-                        onClick: clearAllActiveFilters,
-                        icon: <RotateCcw className="w-4 h-4" />,
-                        variant: "secondary",
-                      },
-                    ]
-                  : undefined
-              }
+          <BottomNav />
+
+          {/* Advanced Filters */}
+          <AdvancedFilters
+            isOpen={showFilters}
+            onClose={() => setShowFilters(false)}
+            filters={activeFilters}
+            onApply={(f) => { setActiveFilters(f); setShowFilters(false); }}
+            onClear={() => { setActiveFilters({ ...defaultFilterState }); }}
+          />
+
+          {/* Barcode Lookup Overlay */}
+          <AnimatePresence>
+            {isScanningBarcode && (
+              <motion.div 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                exit={{ opacity: 0 }}
+                className="fixed inset-0 z-[100] flex items-center justify-center bg-gray-900/60 backdrop-blur-md"
+              >
+                <motion.div 
+                  initial={{ scale: 0.9, opacity: 0, y: 20 }}
+                  animate={{ scale: 1, opacity: 1, y: 0 }}
+                  exit={{ scale: 0.9, opacity: 0, y: 20 }}
+                  className="bg-white rounded-3xl shadow-2xl px-10 py-12 flex flex-col items-center gap-6 mx-4 max-w-sm w-full border border-white/20"
+                >
+                  <div className="relative w-24 h-24">
+                     <div className="absolute inset-0 rounded-full border-[6px] border-pink/10"></div>
+                     <div className="absolute inset-0 rounded-full border-[6px] border-pink border-t-transparent animate-spin"></div>
+                     <Scan className="absolute inset-0 m-auto w-10 h-10 text-pink" />
+                  </div>
+                  <div className="text-center space-y-2">
+                    <p className="text-xl font-bold text-gray-900">Scanning Product...</p>
+                    <p className="text-sm text-gray-500 font-medium">Checking barcode against our catalogue</p>
+                  </div>
+                </motion.div>
+              </motion.div>
+            )}
+          </AnimatePresence>
+
+           {/* Barcode Scanner Modal */}
+          {showScanner && (
+            <CameraScanner
+              onScan={handleBarcodeScan}
+              onClose={() => setShowScanner(false)}
             />
           )}
-        </div>
-      </div>
-
-      <BottomNav />
-
-      {/* ─── Advanced Filters ─── */}
-      <AdvancedFilters
-        isOpen={showFilters}
-        onClose={() => setShowFilters(false)}
-        filters={activeFilters}
-        onApply={(f) => { setActiveFilters(f); setShowFilters(false); }}
-        onClear={() => { setActiveFilters({ ...defaultFilterState }); }}
-      />
-
-      {/* ─── Barcode Lookup Overlay ─── */}
-      {isScanningBarcode && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm">
-          <div className="bg-white rounded-2xl shadow-2xl px-8 py-8 flex flex-col items-center gap-4 mx-4">
-            <div className="w-16 h-16 rounded-full bg-[#fff0f6] flex items-center justify-center">
-              <Loader2 className="w-8 h-8 text-[#ff4f8b] animate-spin" />
-            </div>
-            <p className="text-base font-bold text-[#1a1a1a]">Looking up product...</p>
-            <p className="text-xs text-[#999] text-center">Checking barcode against our catalogue</p>
-          </div>
-        </div>
-      )}
-
-       {/* ─── Barcode Scanner Modal ─── */}
-      {showScanner && (
-        <CameraScanner
-          onScan={handleBarcodeScan}
-          onClose={() => setShowScanner(false)}
-        />
-      )}
-    </main>
-    </PullToRefresh>
+        </main>
+      </PullToRefresh>
     </ErrorBoundary>
   );
 }

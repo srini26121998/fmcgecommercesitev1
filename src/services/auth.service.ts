@@ -26,6 +26,10 @@ export interface RegisterPayload {
   name: string;
   password?: string;
   mobile: string;
+  role?: string;
+  vehicleType?: string;
+  vehicleNumber?: string;
+  zone?: string;
 }
 
 export interface SendOtpPayload {

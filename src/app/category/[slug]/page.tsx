@@ -20,14 +20,14 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
   let categoryLabel = slug;
   try {
     const res = await categoriesService.getCategories();
-    const cat = res.categories.find(c => c.slug === slug || c.id === slug);
+    const cat = res.categories.find(c => c.slug === slug || c.id === slug || c.name.toLowerCase() === slug.toLowerCase());
     if (cat) {
       categoryLabel = cat.name;
     } else {
-      notFound();
+      categoryLabel = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
     }
   } catch (e) {
-    notFound();
+    categoryLabel = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   }
   
   return {
@@ -56,24 +56,21 @@ export async function generateMetadata({ params }: PageProps): Promise<Metadata>
 export default async function CategoryPage({ params }: PageProps) {
   const { slug } = await params;
   
-  let categoryName = slug;
+  let categoryName = slug.split('-').map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ');
   let categoryEmoji = "📦";
   let items: any[] = [];
 
   try {
     // 1. Fetch category metadata from API
     const catRes = await categoriesService.getCategories();
-    const cat = catRes.categories.find(c => c.slug === slug || c.id === slug);
+    const cat = catRes.categories.find(c => c.slug === slug || c.id === slug || c.name.toLowerCase() === slug.toLowerCase());
     
     if (cat) {
       categoryName = cat.name;
       categoryEmoji = cat.image || "📦";
-    } else {
-      notFound();
     }
   } catch (error) {
     console.error("Error fetching category metadata from API:", error);
-    notFound();
   }
 
   // 2. Fetch products for this category

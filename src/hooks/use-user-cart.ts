@@ -36,6 +36,7 @@ export function useUserCart() {
   const localIncreaseQuantity = useCartStore((s) => s.increaseQuantity);
   const localDecreaseQuantity = useCartStore((s) => s.decreaseQuantity);
   const localClearCart = useCartStore((s) => s.clearCart);
+  const localUpdateItemOptions = useCartStore((s) => s.updateItemOptions);
 
   // API cart state
   const apiCart = useApiCartStore((state) => state.apiCart);
@@ -119,22 +120,29 @@ export function useUserCart() {
     }
   };
 
-  const handleLocalAddToCart = async (productId: number | string) => {
+  const handleLocalAddToCart = async (productId: number | string, isBogo: boolean = false, bogoMrp: number = 0) => {
     try {
       const productInfo = await productService.getProductById(productId.toString());
       if (productInfo) {
         localAddToCart({
           id: Number(productInfo.id),
           name: productInfo.name,
-          price: productInfo.price,
+          price: isBogo ? 0 : productInfo.price,
           image: productInfo.media?.[0]?.url || "",
           quantity: 1,
-          weight: productInfo.weight
+          weight: productInfo.weight,
+          isBogoReward: isBogo,
+          bogoMrp: isBogo ? bogoMrp : undefined,
         });
       }
     } catch (err) {
       console.warn("Failed to fetch product for local cart fallback", err);
     }
+  };
+
+  const addBogoReward = async (productId: number | string, bogoMrp: number) => {
+    // For now we just add it to local store since API logic would need backend support
+    await handleLocalAddToCart(productId, true, bogoMrp);
   };
 
   const removeFromCart = async (productId: number | string) => {
@@ -235,6 +243,14 @@ export function useUserCart() {
     setApiCart(null);
   };
 
+  const updateItemOptions = async (productId: number | string, options: Partial<any>) => {
+    if (isLoggedIn && isApiAvailable) {
+      // Backend logic for updating options (e.g., subscription type) could go here
+      // For now, if we update options locally, it's a fallback.
+    }
+    localUpdateItemOptions(Number(productId), options);
+  };
+
   // Merge items logically for UI
   const unifiedItems = isApiAvailable && apiCart 
     ? apiCart.items.map(item => ({
@@ -243,7 +259,9 @@ export function useUserCart() {
         price: item.unitPrice ?? item.product?.price ?? 0,
         image: item.imageUrl || item.product?.image || "/placeholder.jpg",
         quantity: item.qty ?? item.quantity ?? 1,
-        weight: item.unit || item.product?.weight
+        weight: item.unit || item.product?.weight,
+        // Since API might not support these yet, we try to get them from localCart if they exist, or just use what's there
+        ...(localCart.find(i => i.id === Number(item.productId)) || {})
       }))
     : localCart;
 
@@ -265,6 +283,8 @@ export function useUserCart() {
     applyCoupon,
     removeCoupon,
     clearCart,
+    updateItemOptions,
+    addBogoReward,
     refresh: fetchApiCart
   };
 }

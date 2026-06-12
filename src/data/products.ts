@@ -35,6 +35,10 @@ export interface Product {
   readonly isFlashSale?: boolean;
   /** Explicit discount percentage override (0-100) */
   readonly discountPercent?: number;
+  /** Clip coupon value (e.g., "50" for ₹50 off) */
+  readonly clipCoupon?: number;
+  /** Volume pricing tiers (e.g., [{ qty: 3, price: 250 }]) */
+  readonly volumePricing?: { qty: number; price: number }[];
 }
 
 // Live products list (mock data is removed, so it is empty by default)

@@ -1,24 +1,28 @@
-﻿"use client";
+"use client";
 import { useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import {
   ChevronRight, ChevronLeft, User, Package, MapPin, CreditCard,
-  Heart, Gift, Settings,  HelpCircle, LogOut, Star,
-  ShoppingBag, TrendingUp, Clock
+  Heart, Gift, Settings, HelpCircle, LogOut, Star,
+  ShoppingBag, TrendingUp, Clock, Zap, Wallet, Crown, Bell
 } from "lucide-react";
 import { useAuthStore } from "@/store/auth-store";
-import { useOrderStore } from "@/store/order-store";
-import { useWishlistStore } from "@/store/wishlist-store";
+import { useUserOrders } from "@/hooks/use-user-orders";
+import { useMultiWishlistStore } from "@/store/multi-wishlist-store";
+import { useWalletStore } from "@/store/wallet-store";
+import { useMembershipStore, MEMBERSHIP_PLANS } from "@/store/membership-store";
 import { toast } from "sonner";
 import { authService } from "@/services/auth.service";
+import { OffersForYouWidget } from "@/components/ui/offers/offers-for-you-widget";
 
 const menuGroups = [
   {
     title: "Shopping",
     items: [
       { name: "Your Orders", href: "/account/orders", icon: Package, desc: "Track, return, or buy again", color: "text-[#0c831f]", bgColor: "bg-[#e8f5e9]" },
-      { name: "My Wishlist", href: "/account/wishlist", icon: Heart, desc: "Saved items — move to cart anytime", color: "text-[#e91e63]", bgColor: "bg-[#fce4ec]" },
+      { name: "Buy Again", href: "/account/buy-again", icon: Zap, desc: "Predictive restock dashboard", color: "text-[#ff4f8b]", bgColor: "bg-[#fff0f6]" },
+      { name: "My Wishlists", href: "/account/wishlist", icon: Heart, desc: "Named lists — move items between lists", color: "text-[#e91e63]", bgColor: "bg-[#fce4ec]" },
       { name: "Your Lists", href: "/account/lists", icon: Heart, desc: "Family & collaborative shopping lists", color: "text-[#e91e63]", bgColor: "bg-[#fce4ec]" },
     ],
   },
@@ -28,15 +32,15 @@ const menuGroups = [
       { name: "Your Profile", href: "/account/profile", icon: User, desc: "Personal info, email, phone", color: "text-[#1565c0]", bgColor: "bg-[#e3f2fd]" },
       { name: "Delivery Addresses", href: "/account/addresses", icon: MapPin, desc: "Edit, add or remove addresses", color: "text-[#7b1fa2]", bgColor: "bg-[#f3e5f5]" },
       { name: "Payment Methods", href: "/account/payment", icon: CreditCard, desc: "Manage saved cards & UPI", color: "text-[#e65100]", bgColor: "bg-[#fff3e0]" },
-      { name: "Account Settings", href: "/account/settings", icon: Settings, desc: "Notifications, language, privacy", color: "text-[#546e7a]", bgColor: "bg-[#eceff1]" },
+      { name: "Notification Preferences", href: "/account/settings/notifications", icon: Bell, desc: "Email, SMS & push notification controls", color: "text-[#7c3aed]", bgColor: "bg-[#f5f3ff]" },
+      { name: "Account Settings", href: "/account/settings", icon: Settings, desc: "Language, privacy & more", color: "text-[#546e7a]", bgColor: "bg-[#eceff1]" },
     ],
   },
   {
     title: "Support & Rewards",
     items: [
       { name: "Rewards & Referral", href: "/account/referral", icon: Gift, desc: "Loyalty tiers, referrals, cashback", color: "text-[#c62828]", bgColor: "bg-[#ffebee]" },
-      { name: "My Wishlist", href: "/account/wishlist", icon: Heart, desc: "Saved items you love", color: "text-[#e91e63]", bgColor: "bg-[#fce4ec]" },
-      { name: "Shared Lists", href: "/account/lists", icon: Heart, desc: "Family & collaborative shopping lists", color: "text-[#e91e63]", bgColor: "bg-[#fce4ec]" },
+      { name: "My Gift Cards", href: "/account/gift-cards", icon: Gift, desc: "Manage and redeem gift cards", color: "text-[#ff4f8b]", bgColor: "bg-[#fff0f6]" },
       { name: "Help & Support", href: "/account/help", icon: HelpCircle, desc: "FAQs, contact us, policies", color: "text-[#00838f]", bgColor: "bg-[#e0f7fa]" },
     ],
   },
@@ -45,8 +49,12 @@ const menuGroups = [
 export default function AccountPage() {
   const router = useRouter();
   const { user, logout } = useAuthStore();
-  const orders = useOrderStore((state) => state.orders);
-  const wishlistCount = useWishlistStore((state) => state.wishlist.length);
+  const { orders, loading: ordersLoading } = useUserOrders();
+  const wishlistCount = useMultiWishlistStore((s) =>
+    s.lists.reduce((total, list) => total + list.items.length, 0)
+  );
+  const walletBalance = useWalletStore((state) => state.balance);
+  const { plan: membershipPlan } = useMembershipStore();
   const [isLoggingOut, setIsLoggingOut] = useState(false);
 
   const totalOrders = orders.length;
@@ -54,7 +62,7 @@ export default function AccountPage() {
 
   const handleLogout = async () => {
     setIsLoggingOut(true);
-    
+
     try {
       if (user?.token) {
         await authService.logout({ refreshToken: user.token });
@@ -86,11 +94,13 @@ export default function AccountPage() {
               <User className="w-8 h-8 text-white" />
             </div>
             <div className="flex-1">
-              <h1 className="text-xl font-bold">Hello, {user?.name || "User"}! ðŸ‘‹</h1>
-              <p className="text-white/80 text-sm">{user?.email || "Member since Jan 2024"}</p>
+              <h1 className="text-xl font-bold">Hello, {user?.name || "Guest"}</h1>
+              <p className="text-white/80 text-sm">{user?.email || "No email provided"}</p>
               <div className="flex items-center gap-1.5 mt-1.5">
-                <Star className="w-3.5 h-3.5 fill-yellow-300 text-yellow-300" />
-                <span className="text-xs text-white/90 font-medium">Premium Member</span>
+                <Star className={`w-3.5 h-3.5 ${membershipPlan !== "free" ? "fill-yellow-300 text-yellow-300" : "fill-white/50 text-white/50"}`} />
+                <span className="text-xs text-white/90 font-medium">
+                  {membershipPlan !== "free" ? `${MEMBERSHIP_PLANS[membershipPlan].name} Member` : "Standard Member"}
+                </span>
               </div>
             </div>
             <Link
@@ -105,10 +115,10 @@ export default function AccountPage() {
       </div>
 
       {/* ── Quick Stats Cards ── */}
-      <div className="max-w-[1400px] mx-auto px-4 -mt-6 mb-6">
-        <div className="grid grid-cols-3 gap-3">
+      <div className="max-w-[1400px] mx-auto px-4 -mt-6 mb-4">
+        <div className="grid grid-cols-3 gap-3 mb-3">
           <div className="bg-white rounded-2xl shadow-sm border border-[#e8e8e8] p-4 text-center hover:shadow-md transition-shadow cursor-pointer"
-               onClick={() => router.push("/account/orders")}>
+            onClick={() => router.push("/account/orders")}>
             <div className="w-10 h-10 rounded-full bg-[#e8f5e9] flex items-center justify-center mx-auto mb-2">
               <ShoppingBag className="w-5 h-5 text-[#0c831f]" />
             </div>
@@ -123,7 +133,7 @@ export default function AccountPage() {
             <div className="text-[10px] text-[#666] font-medium uppercase tracking-wide">Delivered</div>
           </div>
           <div className="bg-white rounded-2xl shadow-sm border border-[#e8e8e8] p-4 text-center hover:shadow-md transition-shadow cursor-pointer"
-               onClick={() => router.push("/account/lists")}>
+            onClick={() => router.push("/account/wishlist")}>
             <div className="w-10 h-10 rounded-full bg-[#fce4ec] flex items-center justify-center mx-auto mb-2">
               <Heart className="w-5 h-5 text-[#e91e63]" />
             </div>
@@ -131,6 +141,39 @@ export default function AccountPage() {
             <div className="text-[10px] text-[#666] font-medium uppercase tracking-wide">Wishlist</div>
           </div>
         </div>
+
+        {/* Wallet + Membership quick cards */}
+        <div className="grid grid-cols-2 gap-3">
+          <button
+            id="account-wallet-card"
+            onClick={() => router.push("/account/wallet")}
+            className="bg-gradient-to-br from-[#ff4f8b] to-[#7c3aed] rounded-2xl p-4 text-left text-white hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Wallet className="w-4 h-4" />
+              <span className="text-xs font-bold opacity-80">FMCG Wallet</span>
+            </div>
+            <div className="text-2xl font-black">₹{walletBalance.toLocaleString("en-IN")}</div>
+            <div className="text-[10px] opacity-70 mt-0.5">Tap to add money →</div>
+          </button>
+          <button
+            id="account-membership-card"
+            onClick={() => router.push("/account/membership")}
+            className="bg-gradient-to-br from-[#1a1a2e] to-[#0f3460] rounded-2xl p-4 text-left text-white hover:shadow-lg transition-shadow"
+          >
+            <div className="flex items-center gap-2 mb-2">
+              <Crown className="w-4 h-4 text-[#fbbf24]" />
+              <span className="text-xs font-bold opacity-80">Membership</span>
+            </div>
+            <div className="text-lg font-black">{MEMBERSHIP_PLANS[membershipPlan].badge}</div>
+            <div className="text-[10px] opacity-70 mt-0.5">Tap to manage →</div>
+          </button>
+        </div>
+      </div>
+
+      {/* ── Offers For You Widget ── */}
+      <div className="max-w-[1400px] mx-auto px-4 mb-2">
+        <OffersForYouWidget placement="account_screen" />
       </div>
 
       {/* ── Account Sections ── */}
@@ -171,7 +214,15 @@ export default function AccountPage() {
             Recent Activity
           </h2>
           <div className="bg-white rounded-2xl shadow-sm border border-[#e8e8e8] p-4">
-            {orders.length > 0 ? (
+            {ordersLoading ? (
+              <div className="flex items-center gap-4 animate-pulse">
+                <div className="w-10 h-10 rounded-full bg-[#f5f5f5] flex-shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-4 bg-[#f5f5f5] rounded w-1/3" />
+                  <div className="h-3 bg-[#f5f5f5] rounded w-2/3" />
+                </div>
+              </div>
+            ) : orders.length > 0 ? (
               <div className="flex items-center gap-4">
                 <div className="w-10 h-10 rounded-full bg-[#e8f5e9] flex items-center justify-center flex-shrink-0">
                   <Clock className="w-5 h-5 text-[#0c831f]" />

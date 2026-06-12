@@ -11,8 +11,11 @@ import {
 import { User, Globe, Apple, Users, Loader2, Sparkles, Mail, Lock, Phone, User as UserIcon } from "lucide-react";
 import { useAuthStore, type SocialProvider } from "@/store/auth-store";
 import Link from "next/link";
+import { useRouter } from "next/navigation";
 import { toast } from "sonner";
 import { authService } from "@/services/auth.service";
+import { GoogleOAuthProvider, useGoogleLogin } from '@react-oauth/google';
+import FacebookLogin from 'react-facebook-login/dist/facebook-login-render-props';
 
 const SOCIAL_PROVIDERS: { provider: SocialProvider; icon: typeof Globe; label: string; color: string }[] = [
   { provider: "google", icon: Globe, label: "Google", color: "text-[#ea4335]" },
@@ -20,72 +23,132 @@ const SOCIAL_PROVIDERS: { provider: SocialProvider; icon: typeof Globe; label: s
   { provider: "facebook", icon: Users, label: "Facebook", color: "text-[#1877f2]" },
 ];
 
-export default function AuthModal() {
+export default function AuthModal({ trigger }: { trigger?: React.ReactNode }) {
+  const clientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "1234567890-mock.apps.googleusercontent.com";
+  return (
+    <GoogleOAuthProvider clientId={clientId}>
+      <AuthModalContent trigger={trigger} />
+    </GoogleOAuthProvider>
+  );
+}
+
+function AuthModalContent({ trigger }: { trigger?: React.ReactNode }) {
+  const router = useRouter();
   const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
-  
+
   // Registration states
   const [isLoginView, setIsLoginView] = useState(true);
   const [regName, setRegName] = useState("");
   const [regEmail, setRegEmail] = useState("");
   const [regMobile, setRegMobile] = useState("");
   const [regPassword, setRegPassword] = useState("");
-  
+
+  // Per-field validation errors
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [open, setOpen] = useState(false);
   const [isMounted, setIsMounted] = useState(false);
-  
+
   useEffect(() => {
     setIsMounted(true);
   }, []);
-  
+
   const [socialLoading, setSocialLoading] = useState<SocialProvider | null>(null);
   const [guestLoading, setGuestLoading] = useState(false);
   const { isLoggedIn, isGuest, login, socialLogin, guestLogin } = useAuthStore();
 
+  /** Detect whether an error is a network/server-offline error */
+  function isNetworkError(err: any): boolean {
+    return (
+      !err?.response ||
+      err?.code === "ERR_NETWORK" ||
+      err?.code === "ECONNREFUSED" ||
+      err?.message?.toLowerCase().includes("network") ||
+      err?.message?.toLowerCase().includes("failed to fetch")
+    );
+  }
+
+  /** Extract a human-readable message from an API error */
+  function extractErrorMessage(err: any, fallback: string): string {
+    if (isNetworkError(err)) {
+      return "Cannot reach the server. Please check your connection or try again later.";
+    }
+    const status = err?.response?.status;
+    if (status === 401) return "Incorrect email/phone or password. Please try again.";
+    if (status === 403) return "Your account is suspended. Please contact support.";
+    if (status === 409) return "An account with this email already exists. Please log in.";
+    if (status === 422) return err?.response?.data?.message || "Invalid input. Please check your details.";
+    if (status >= 500) return "Server error. Please try again in a moment.";
+    return err?.response?.data?.message || err?.message || fallback;
+  }
+
   const handleLogin = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    
-    if (!identifier || identifier.length < 3) {
-      setError("Please enter a valid email or phone number.");
+    const errs: Record<string, string> = {};
+
+    if (!identifier || identifier.trim().length < 3) {
+      errs.identifier = "Please enter a valid email or phone number.";
+    }
+    if (!password || password.length < 4) {
+      errs.password = "Please enter your password.";
+    }
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
-    if (!password) {
-      setError("Please enter your password.");
-      return;
-    }
-    
+    setFieldErrors({});
     setLoading(true);
     setError("");
-    
+
     try {
-      const res = await authService.login({ identifier, password });
-      
+      const res = await authService.login({ identifier: identifier.trim(), password });
+      const displayName = res.user?.name || identifier.split("@")[0];
       const userData = {
         id: res.user?.id || `user_${Date.now()}`,
-        name: res.user?.name || identifier.split("@")[0],
+        name: displayName,
         email: res.user?.email || identifier,
         role: (res.user?.role || "user") as any,
         token: res.token || "mock_token",
         expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       };
-      
       login(userData, identifier);
-      
-      // Reset form & close modal
       setIdentifier("");
       setPassword("");
       setOpen(false);
-      
-      toast.success(`Welcome back, ${userData.name}! 🎉`, {
-        description: "You have successfully logged in.",
+      toast.success(`Welcome back, ${displayName}! 🎉`, {
+        description: "You are now logged in.",
         duration: 3000,
         position: "top-center",
       });
+      router.push("/account");
     } catch (err: any) {
-      console.error("Login failed:", err);
-      setError(err?.response?.data?.message || err?.message || "Invalid credentials. Please try again.");
+      console.warn("Login API error:", err);
+      if (isNetworkError(err)) {
+        // ── Dev/offline fallback ── use mock login so you can test the full UI
+        const displayName = identifier.split("@")[0] || "User";
+        const userData = {
+          id: `user_${Date.now()}`,
+          name: displayName,
+          email: identifier.includes("@") ? identifier : `${identifier}@demo.com`,
+          role: "user" as any,
+          token: `mock_jwt_${Date.now()}`,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+        login(userData, identifier);
+        setIdentifier("");
+        setPassword("");
+        setOpen(false);
+        toast.success(`Welcome, ${displayName}! 👋`, {
+          description: "Signed in (demo mode — backend offline).",
+          duration: 4000,
+          position: "top-center",
+        });
+        router.push("/account");
+      } else {
+        setError(extractErrorMessage(err, "Invalid credentials. Please try again."));
+      }
     } finally {
       setLoading(false);
     }
@@ -93,60 +156,126 @@ export default function AuthModal() {
 
   const handleRegister = async (e?: React.FormEvent) => {
     e?.preventDefault();
-    
-    if (!regName || regName.trim().length < 2) {
-      setError("Please enter a valid name.");
+    const errs: Record<string, string> = {};
+
+    if (!regName || regName.trim().length < 2)
+      errs.regName = "Name must be at least 2 characters.";
+    if (!regEmail || !/^\S+@\S+\.\S+$/.test(regEmail))
+      errs.regEmail = "Please enter a valid email address.";
+    if (!regMobile || regMobile.replace(/\D/g, "").length < 10)
+      errs.regMobile = "Please enter a valid 10-digit mobile number.";
+    if (!regPassword || regPassword.length < 6)
+      errs.regPassword = "Password must be at least 6 characters.";
+
+    if (Object.keys(errs).length > 0) {
+      setFieldErrors(errs);
       return;
     }
-    if (!regEmail || !/^\S+@\S+\.\S+$/.test(regEmail)) {
-      setError("Please enter a valid email address.");
-      return;
-    }
-    if (!regMobile || regMobile.length < 10) {
-      setError("Please enter a valid mobile number.");
-      return;
-    }
-    if (!regPassword || regPassword.length < 6) {
-      setError("Password must be at least 6 characters.");
-      return;
-    }
-    
+    setFieldErrors({});
     setLoading(true);
     setError("");
-    
+
     try {
-      const res = await authService.register({ 
-        name: regName, 
-        email: regEmail, 
-        mobile: regMobile, 
-        password: regPassword 
+      const res = await authService.register({
+        name: regName.trim(),
+        email: regEmail.trim().toLowerCase(),
+        mobile: regMobile.trim(),
+        password: regPassword,
       });
-      
-      // Switch to login view instead of automatically logging in
-      setIdentifier(regEmail); // Prefill email for login
-      
-      // Reset registration form
-      setRegName("");
-      setRegEmail("");
-      setRegMobile("");
-      setRegPassword("");
-      
+      setIdentifier(regEmail);
+      setRegName(""); setRegEmail(""); setRegMobile(""); setRegPassword("");
       setIsLoginView(true);
-      
-      toast.success(res.message || "Registration successful! Welcome aboard.", {
+      toast.success(res.message || "Account created! 🎉", {
         description: "Please sign in with your new account.",
         duration: 4000,
         position: "top-center",
       });
     } catch (err: any) {
-      console.error("Registration failed:", err);
-      setError(err?.response?.data?.message || err?.message || "Registration failed. Please try again.");
+      console.warn("Register API error:", err);
+      if (isNetworkError(err)) {
+        // ── Dev/offline fallback ── treat as success, auto-login
+        const userData = {
+          id: `user_${Date.now()}`,
+          name: regName.trim(),
+          email: regEmail.trim().toLowerCase(),
+          role: "user" as any,
+          token: `mock_jwt_${Date.now()}`,
+          expiresAt: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+        };
+        login(userData, regMobile);
+        setRegName(""); setRegEmail(""); setRegMobile(""); setRegPassword("");
+        setOpen(false);
+        toast.success(`Account created, welcome ${regName.trim()}! 🎉`, {
+          description: "Registered & signed in (demo mode — backend offline).",
+          duration: 4000,
+          position: "top-center",
+        });
+        router.push("/account");
+      } else {
+        setError(extractErrorMessage(err, "Registration failed. Please try again."));
+      }
     } finally {
       setLoading(false);
     }
   };
 
+  const googleLogin = useGoogleLogin({
+    onSuccess: async (tokenResponse) => {
+      setSocialLoading("google");
+      try {
+        const userInfo = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+          headers: { Authorization: `Bearer ${tokenResponse.access_token}` },
+        }).then(res => res.json());
+        
+        socialLogin("google", { name: userInfo.name, email: userInfo.email, avatar: userInfo.picture });
+        setOpen(false);
+        toast.success(`Signed in with Google! 🎉`, {
+          description: "Your Google account is now linked.",
+          duration: 3000,
+          position: "top-center",
+          className: "bg-gradient-to-r from-[#0c831f] to-[#10b981] text-white border-none",
+        });
+        
+        // Redirect to account page
+        router.push("/account");
+      } catch (err) {
+        toast.error("Failed to sign in with Google.");
+      } finally {
+        setSocialLoading(null);
+      }
+    },
+    onError: () => {
+      toast.error("Google sign in failed.");
+    },
+    prompt: 'select_account',
+  });
+
+  const responseFacebook = (response: any) => {
+    if (response.error || response.status === "unknown") {
+      toast.error("Facebook sign in failed or cancelled.");
+      setSocialLoading(null);
+      return;
+    }
+    setSocialLoading("facebook");
+    socialLogin("facebook", { name: response.name, email: response.email, avatar: response.picture?.data?.url });
+    setOpen(false);
+    toast.success(`Signed in with Facebook! 🎉`, {
+      description: "Your Facebook account is now linked.",
+      duration: 3000,
+      position: "top-center",
+      className: "bg-gradient-to-r from-[#0c831f] to-[#10b981] text-white border-none",
+    });
+    setSocialLoading(null);
+    
+    // Redirect to account page
+    router.push("/account");
+  };
+
   const handleSocialLogin = (provider: SocialProvider) => {
+    if (provider === "google") {
+      googleLogin();
+      return;
+    }
     setSocialLoading(provider);
     // Simulate OAuth redirect / popup delay
     setTimeout(() => {
@@ -200,7 +329,7 @@ export default function AuthModal() {
   }
 
   if (!isMounted) {
-    return (
+    return trigger ? <>{trigger}</> : (
       <button className="flex min-h-[44px] h-11 items-center gap-2 rounded-xl border border-[#e8e8e8] bg-[#f8f9fa] px-4 text-sm font-semibold text-[#1a1a1a] transition-all duration-200 btn-press hover-border-pink hover-bg-pink-light hover:shadow-sm">
         <User className="w-5 h-5 text-[#ff4f8b]" />
         <span className="hidden sm:block">Login</span>
@@ -211,10 +340,12 @@ export default function AuthModal() {
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
       <DialogTrigger asChild>
-        <button className="flex min-h-[44px] h-11 items-center gap-2 rounded-xl border border-[#e8e8e8] bg-[#f8f9fa] px-4 text-sm font-semibold text-[#1a1a1a] transition-all duration-200 btn-press hover-border-pink hover-bg-pink-light hover:shadow-sm">
-          <User className="w-5 h-5 text-[#ff4f8b]" />
-          <span className="hidden sm:block">Login</span>
-        </button>
+        {trigger ? trigger : (
+          <button className="flex min-h-[44px] h-11 items-center gap-2 rounded-xl border border-[#e8e8e8] bg-[#f8f9fa] px-4 text-sm font-semibold text-[#1a1a1a] transition-all duration-200 btn-press hover-border-pink hover-bg-pink-light hover:shadow-sm">
+            <User className="w-5 h-5 text-[#ff4f8b]" />
+            <span className="hidden sm:block">Login</span>
+          </button>
+        )}
       </DialogTrigger>
 
       <DialogContent className="mx-auto max-w-[520px] w-[95vw] overflow-hidden rounded-[2rem] border border-gray-100 bg-white p-0 text-[#1a1a1a] shadow-2xl">
@@ -244,14 +375,14 @@ export default function AuthModal() {
           <div className="flex rounded-xl bg-gray-100/80 p-1">
             <button 
               type="button" 
-              onClick={() => { setIsLoginView(true); setError(""); }} 
+              onClick={() => { setIsLoginView(true); setError(""); setFieldErrors({}); }} 
               className={`flex-1 rounded-lg py-2.5 text-[13px] font-bold transition-all duration-300 ${isLoginView ? 'bg-white text-[#1a1a1a] shadow-sm ring-1 ring-black/5' : 'text-gray-500 hover:text-[#1a1a1a]'}`}
             >
               Login
             </button>
             <button 
               type="button" 
-              onClick={() => { setIsLoginView(false); setError(""); }} 
+              onClick={() => { setIsLoginView(false); setError(""); setFieldErrors({}); }} 
               className={`flex-1 rounded-lg py-2.5 text-[13px] font-bold transition-all duration-300 ${!isLoginView ? 'bg-white text-[#1a1a1a] shadow-sm ring-1 ring-black/5' : 'text-gray-500 hover:text-[#1a1a1a]'}`}
             >
               Register
@@ -273,32 +404,46 @@ export default function AuthModal() {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
                   Email or Phone
                 </label>
-                <div className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-4 focus-within:border-[#ff4f8b] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#ff4f8b]/10 h-12 transition-all shadow-sm">
-                  <Mail className="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-focus-within:text-[#ff4f8b]" />
+                <div className={`group flex items-center gap-3 rounded-xl border bg-gray-50/50 px-4 focus-within:bg-white focus-within:ring-4 h-12 transition-all shadow-sm ${
+                    fieldErrors.identifier
+                      ? "border-red-400 focus-within:border-red-400 focus-within:ring-red-100"
+                      : "border-gray-200 focus-within:border-[#ff4f8b] focus-within:ring-[#ff4f8b]/10"
+                  }`}>
+                  <Mail className={`h-4 w-4 flex-shrink-0 transition-colors group-focus-within:text-[#ff4f8b] ${fieldErrors.identifier ? "text-red-400" : "text-gray-400"}`} />
                   <input
                     type="text"
                     placeholder="Enter email or mobile number"
                     value={identifier}
-                    onChange={(e) => { setIdentifier(e.target.value); setError(""); }}
+                    onChange={(e) => { setIdentifier(e.target.value); setError(""); setFieldErrors((p) => ({ ...p, identifier: "" })); }}
                     className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#1a1a1a] outline-none placeholder:text-gray-400 placeholder:font-normal"
                   />
                 </div>
+                {fieldErrors.identifier && (
+                  <p className="text-[11px] font-semibold text-red-500 ml-1 mt-1">{fieldErrors.identifier}</p>
+                )}
               </div>
 
               <div className="space-y-2.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
                   Password
                 </label>
-                <div className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-4 focus-within:border-[#ff4f8b] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#ff4f8b]/10 h-12 transition-all shadow-sm">
-                  <Lock className="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-focus-within:text-[#ff4f8b]" />
+                <div className={`group flex items-center gap-3 rounded-xl border bg-gray-50/50 px-4 focus-within:bg-white focus-within:ring-4 h-12 transition-all shadow-sm ${
+                    fieldErrors.password
+                      ? "border-red-400 focus-within:border-red-400 focus-within:ring-red-100"
+                      : "border-gray-200 focus-within:border-[#ff4f8b] focus-within:ring-[#ff4f8b]/10"
+                  }`}>
+                  <Lock className={`h-4 w-4 flex-shrink-0 transition-colors group-focus-within:text-[#ff4f8b] ${fieldErrors.password ? "text-red-400" : "text-gray-400"}`} />
                   <input
                     type="password"
                     placeholder="Enter your password"
                     value={password}
-                    onChange={(e) => { setPassword(e.target.value); setError(""); }}
+                    onChange={(e) => { setPassword(e.target.value); setError(""); setFieldErrors((p) => ({ ...p, password: "" })); }}
                     className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#1a1a1a] outline-none placeholder:text-gray-400 placeholder:font-normal"
                   />
                 </div>
+                {fieldErrors.password && (
+                  <p className="text-[11px] font-semibold text-red-500 ml-1 mt-1">{fieldErrors.password}</p>
+                )}
                 <div className="flex justify-end pt-1">
                   <button type="button" className="text-[12px] font-bold text-[#ff4f8b] hover:text-[#e63872] transition-colors">
                     Forgot Password?
@@ -321,64 +466,92 @@ export default function AuthModal() {
                 <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
                   Full Name
                 </label>
-                <div className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-4 focus-within:border-[#ff4f8b] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#ff4f8b]/10 h-12 transition-all shadow-sm">
-                  <UserIcon className="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-focus-within:text-[#ff4f8b]" />
+                <div className={`group flex items-center gap-3 rounded-xl border bg-gray-50/50 px-4 focus-within:bg-white focus-within:ring-4 h-12 transition-all shadow-sm ${
+                    fieldErrors.regName
+                      ? "border-red-400 focus-within:border-red-400 focus-within:ring-red-100"
+                      : "border-gray-200 focus-within:border-[#ff4f8b] focus-within:ring-[#ff4f8b]/10"
+                  }`}>
+                  <UserIcon className={`h-4 w-4 flex-shrink-0 transition-colors group-focus-within:text-[#ff4f8b] ${fieldErrors.regName ? "text-red-400" : "text-gray-400"}`} />
                   <input
                     type="text"
                     placeholder="Enter your full name"
                     value={regName}
-                    onChange={(e) => { setRegName(e.target.value); setError(""); }}
+                    onChange={(e) => { setRegName(e.target.value); setFieldErrors((p) => ({ ...p, regName: "" })); }}
                     className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#1a1a1a] outline-none placeholder:text-gray-400 placeholder:font-normal"
                   />
                 </div>
+                {fieldErrors.regName && (
+                  <p className="text-[11px] font-semibold text-red-500 ml-1 mt-1">{fieldErrors.regName}</p>
+                )}
               </div>
               
               <div className="space-y-2.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
                   Email Address
                 </label>
-                <div className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-4 focus-within:border-[#ff4f8b] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#ff4f8b]/10 h-12 transition-all shadow-sm">
-                  <Mail className="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-focus-within:text-[#ff4f8b]" />
+                <div className={`group flex items-center gap-3 rounded-xl border bg-gray-50/50 px-4 focus-within:bg-white focus-within:ring-4 h-12 transition-all shadow-sm ${
+                    fieldErrors.regEmail
+                      ? "border-red-400 focus-within:border-red-400 focus-within:ring-red-100"
+                      : "border-gray-200 focus-within:border-[#ff4f8b] focus-within:ring-[#ff4f8b]/10"
+                  }`}>
+                  <Mail className={`h-4 w-4 flex-shrink-0 transition-colors group-focus-within:text-[#ff4f8b] ${fieldErrors.regEmail ? "text-red-400" : "text-gray-400"}`} />
                   <input
                     type="email"
                     placeholder="Enter email address"
                     value={regEmail}
-                    onChange={(e) => { setRegEmail(e.target.value); setError(""); }}
+                    onChange={(e) => { setRegEmail(e.target.value); setFieldErrors((p) => ({ ...p, regEmail: "" })); }}
                     className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#1a1a1a] outline-none placeholder:text-gray-400 placeholder:font-normal"
                   />
                 </div>
+                {fieldErrors.regEmail && (
+                  <p className="text-[11px] font-semibold text-red-500 ml-1 mt-1">{fieldErrors.regEmail}</p>
+                )}
               </div>
 
               <div className="space-y-2.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
                   Mobile Number
                 </label>
-                <div className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-4 focus-within:border-[#ff4f8b] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#ff4f8b]/10 h-12 transition-all shadow-sm">
-                  <Phone className="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-focus-within:text-[#ff4f8b]" />
+                <div className={`group flex items-center gap-3 rounded-xl border bg-gray-50/50 px-4 focus-within:bg-white focus-within:ring-4 h-12 transition-all shadow-sm ${
+                    fieldErrors.regMobile
+                      ? "border-red-400 focus-within:border-red-400 focus-within:ring-red-100"
+                      : "border-gray-200 focus-within:border-[#ff4f8b] focus-within:ring-[#ff4f8b]/10"
+                  }`}>
+                  <Phone className={`h-4 w-4 flex-shrink-0 transition-colors group-focus-within:text-[#ff4f8b] ${fieldErrors.regMobile ? "text-red-400" : "text-gray-400"}`} />
                   <input
                     type="tel"
-                    placeholder="Enter mobile number"
+                    placeholder="Enter 10-digit mobile number"
                     value={regMobile}
-                    onChange={(e) => { setRegMobile(e.target.value); setError(""); }}
+                    onChange={(e) => { setRegMobile(e.target.value); setFieldErrors((p) => ({ ...p, regMobile: "" })); }}
                     className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#1a1a1a] outline-none placeholder:text-gray-400 placeholder:font-normal"
                   />
                 </div>
+                {fieldErrors.regMobile && (
+                  <p className="text-[11px] font-semibold text-red-500 ml-1 mt-1">{fieldErrors.regMobile}</p>
+                )}
               </div>
 
               <div className="space-y-2.5">
                 <label className="text-[11px] font-bold uppercase tracking-wider text-gray-500 ml-1">
                   Password
                 </label>
-                <div className="group flex items-center gap-3 rounded-xl border border-gray-200 bg-gray-50/50 px-4 focus-within:border-[#ff4f8b] focus-within:bg-white focus-within:ring-4 focus-within:ring-[#ff4f8b]/10 h-12 transition-all shadow-sm">
-                  <Lock className="h-4 w-4 flex-shrink-0 text-gray-400 transition-colors group-focus-within:text-[#ff4f8b]" />
+                <div className={`group flex items-center gap-3 rounded-xl border bg-gray-50/50 px-4 focus-within:bg-white focus-within:ring-4 h-12 transition-all shadow-sm ${
+                    fieldErrors.regPassword
+                      ? "border-red-400 focus-within:border-red-400 focus-within:ring-red-100"
+                      : "border-gray-200 focus-within:border-[#ff4f8b] focus-within:ring-[#ff4f8b]/10"
+                  }`}>
+                  <Lock className={`h-4 w-4 flex-shrink-0 transition-colors group-focus-within:text-[#ff4f8b] ${fieldErrors.regPassword ? "text-red-400" : "text-gray-400"}`} />
                   <input
                     type="password"
-                    placeholder="Create a strong password"
+                    placeholder="Min. 6 characters"
                     value={regPassword}
-                    onChange={(e) => { setRegPassword(e.target.value); setError(""); }}
+                    onChange={(e) => { setRegPassword(e.target.value); setFieldErrors((p) => ({ ...p, regPassword: "" })); }}
                     className="h-full min-w-0 flex-1 bg-transparent text-[15px] font-medium text-[#1a1a1a] outline-none placeholder:text-gray-400 placeholder:font-normal"
                   />
                 </div>
+                {fieldErrors.regPassword && (
+                  <p className="text-[11px] font-semibold text-red-500 ml-1 mt-1">{fieldErrors.regPassword}</p>
+                )}
               </div>
 
               <button
@@ -399,22 +572,51 @@ export default function AuthModal() {
           </div>
 
           <div className="grid grid-cols-3 gap-3">
-            {SOCIAL_PROVIDERS.map(({ provider, icon: Icon, label, color }) => (
-              <button
-                key={provider}
-                type="button"
-                onClick={() => handleSocialLogin(provider)}
-                disabled={socialLoading !== null}
-                className="flex flex-col items-center justify-center gap-2 py-3.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all group disabled:opacity-60 shadow-sm hover:shadow-md"
-              >
-                {socialLoading === provider ? (
-                  <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
-                ) : (
-                  <Icon className={`w-5 h-5 ${color} group-hover:scale-110 transition-transform duration-300`} />
-                )}
-                <span className="text-[11px] font-bold text-gray-500 group-hover:text-gray-700">{label}</span>
-              </button>
-            ))}
+            {SOCIAL_PROVIDERS.map(({ provider, icon: Icon, label, color }) => {
+              if (provider === 'facebook') {
+                return (
+                  <FacebookLogin
+                    key={provider}
+                    appId={process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || "1234567890"}
+                    autoLoad={false}
+                    fields="name,email,picture"
+                    callback={responseFacebook}
+                    render={(renderProps: any) => (
+                      <button
+                        type="button"
+                        onClick={renderProps.onClick}
+                        disabled={socialLoading !== null}
+                        className="flex flex-col items-center justify-center gap-2 py-3.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all group disabled:opacity-60 shadow-sm hover:shadow-md w-full"
+                      >
+                        {socialLoading === provider ? (
+                          <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                        ) : (
+                          <Icon className={`w-5 h-5 ${color} group-hover:scale-110 transition-transform duration-300`} />
+                        )}
+                        <span className="text-[11px] font-bold text-gray-500 group-hover:text-gray-700">{label}</span>
+                      </button>
+                    )}
+                  />
+                );
+              }
+
+              return (
+                <button
+                  key={provider}
+                  type="button"
+                  onClick={() => handleSocialLogin(provider)}
+                  disabled={socialLoading !== null}
+                  className="flex flex-col items-center justify-center gap-2 py-3.5 rounded-xl border border-gray-200 bg-white hover:bg-gray-50 hover:border-gray-300 transition-all group disabled:opacity-60 shadow-sm hover:shadow-md w-full"
+                >
+                  {socialLoading === provider ? (
+                    <Loader2 className="w-5 h-5 text-gray-400 animate-spin" />
+                  ) : (
+                    <Icon className={`w-5 h-5 ${color} group-hover:scale-110 transition-transform duration-300`} />
+                  )}
+                  <span className="text-[11px] font-bold text-gray-500 group-hover:text-gray-700">{label}</span>
+                </button>
+              );
+            })}
           </div>
 
           <button

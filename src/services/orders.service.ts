@@ -395,6 +395,24 @@ const MOCK_DELIVERY_PARTNERS: DeliveryPartner[] = [
 
 export const orderService = {
 
+  async resolveOrderId(orderId: string | number): Promise<string | number> {
+    const idStr = String(orderId);
+    if (!idStr.startsWith("ORD-") && !isNaN(Number(idStr))) {
+      return orderId;
+    }
+    try {
+      const res = await this.getMyOrders({ limit: 50 });
+      const ordersList = res.orders || res.data?.orders || [];
+      const match = ordersList.find((o: any) => o.orderNumber === idStr || String(o.id) === idStr);
+      if (match && match.id && !isNaN(Number(match.id))) {
+        return match.id;
+      }
+    } catch (e) {
+      console.warn(`[OrderService] resolveOrderId failed for ${idStr}`, e);
+    }
+    throw new Error(`Skipping API call: Backend requires numeric ID for /orders/{id}, got: ${idStr}`);
+  },
+
   // ──────────────────────────────────────────────────────
   // ── USER-FACING ORDER APIS ──────────────────────────
   // ──────────────────────────────────────────────────────
@@ -462,14 +480,18 @@ export const orderService = {
    * GET /api/v1/orders/:id
    */
   async getOrderById_API(orderId: string): Promise<GetOrderByIdResponse> {
+    if (!orderId || String(orderId).trim() === "") {
+      throw new Error("Order ID is required");
+    }
+
     try {
-      const isOrderNumber = orderId.startsWith("ORD-") || isNaN(Number(orderId));
-      const endpoint = isOrderNumber ? `${ORDERS_PREFIX}/number/${orderId}` : `${ORDERS_PREFIX}/${orderId}`;
+      const numericId = await this.resolveOrderId(orderId);
+      const endpoint = `${ORDERS_PREFIX}/${numericId}`;
       const raw = await apiClient.get<any>(endpoint);
       const order = extractOrder(raw) ?? undefined;
       return { success: true, message: raw.message, data: order, order };
     } catch (err) {
-      console.error(`[OrderService] getOrderById_API failed for ${orderId}:`, err);
+      console.warn(`[OrderService] getOrderById_API failed for ${orderId}:`, err);
       throw err;
     }
   },
@@ -480,8 +502,8 @@ export const orderService = {
    */
   async trackOrder(orderId: string): Promise<TrackOrderResponse> {
     try {
-      const isOrderNumber = orderId.startsWith("ORD-") || isNaN(Number(orderId));
-      const endpoint = isOrderNumber ? `${ORDERS_PREFIX}/number/${orderId}/track` : `${ORDERS_PREFIX}/${orderId}/track`;
+      const numericId = await this.resolveOrderId(orderId);
+      const endpoint = `${ORDERS_PREFIX}/${numericId}/track`;
       const raw = await apiClient.get<any>(endpoint);
       return {
         success: true,
@@ -503,8 +525,9 @@ export const orderService = {
     payload?: CancelOrderRequest
   ): Promise<CancelOrderResponse> {
     try {
+      const numericId = await this.resolveOrderId(orderId);
       const raw = await apiClient.post<any>(
-        `${ORDERS_PREFIX}/${orderId}/cancel`,
+        `${ORDERS_PREFIX}/${numericId}/cancel`,
         payload ?? {}
       );
       return {
@@ -528,8 +551,9 @@ export const orderService = {
     payload: ReturnOrderRequest
   ): Promise<ReturnOrderResponse> {
     try {
+      const numericId = await this.resolveOrderId(orderId);
       const raw = await apiClient.post<any>(
-        `${ORDERS_PREFIX}/${orderId}/return`,
+        `${ORDERS_PREFIX}/${numericId}/return`,
         payload
       );
       return {
@@ -553,8 +577,9 @@ export const orderService = {
     payload?: Partial<ReorderRequest>
   ): Promise<ReorderResponse> {
     try {
+      const numericId = await this.resolveOrderId(orderId);
       const raw = await apiClient.post<any>(
-        `${ORDERS_PREFIX}/${orderId}/reorder`,
+        `${ORDERS_PREFIX}/${numericId}/reorder`,
         payload ?? {}
       );
       return {
@@ -619,9 +644,10 @@ export const orderService = {
   async getOrderById(id: string): Promise<Order | undefined> {
     const isOrderNumber = id.startsWith("ORD-") || isNaN(Number(id));
     if (isOrderNumber) {
-      // Look up user-facing endpoint directly since admin endpoint for order number does not exist
+      // String ID, try standard endpoint
       try {
-        const raw = await apiClient.get<any>(`${ORDERS_PREFIX}/number/${id}`);
+        const numericId = await this.resolveOrderId(id);
+        const raw = await apiClient.get<any>(`${ORDERS_PREFIX}/${numericId}`);
         const apiOrder = extractOrder(raw);
         if (apiOrder) {
           return normalizeApiOrderToAdminOrder(apiOrder);
@@ -670,7 +696,7 @@ export const orderService = {
       const isOrderNumber = String(apiId).startsWith("ORD-") || isNaN(Number(apiId));
       if (isOrderNumber) {
         try {
-          const detail = await apiClient.get<any>(`${ORDERS_PREFIX}/number/${apiId}`);
+          const detail = await apiClient.get<any>(`${ORDERS_PREFIX}/${apiId}`);
           const apiOrder = extractOrder(detail);
           if (apiOrder?.id) {
             apiId = apiOrder.id;
@@ -708,7 +734,7 @@ export const orderService = {
       const isOrderNumber = String(apiId).startsWith("ORD-") || isNaN(Number(apiId));
       if (isOrderNumber) {
         try {
-          const detail = await apiClient.get<any>(`${ORDERS_PREFIX}/number/${apiId}`);
+          const detail = await apiClient.get<any>(`${ORDERS_PREFIX}/${apiId}`);
           const apiOrder = extractOrder(detail);
           if (apiOrder?.id) {
             apiId = apiOrder.id;
@@ -772,7 +798,7 @@ export const orderService = {
       const isOrderNumber = String(apiId).startsWith("ORD-") || isNaN(Number(apiId));
       if (isOrderNumber) {
         try {
-          const detail = await apiClient.get<any>(`${ORDERS_PREFIX}/number/${apiId}`);
+          const detail = await apiClient.get<any>(`${ORDERS_PREFIX}/${apiId}`);
           const apiOrder = extractOrder(detail);
           if (apiOrder?.id) {
             apiId = apiOrder.id;
@@ -814,7 +840,7 @@ export const orderService = {
           const isOrderNumber = idStr.startsWith("ORD-") || isNaN(Number(idStr));
           if (!isOrderNumber) return Number(idStr);
           try {
-            const raw = await apiClient.get<any>(`${ORDERS_PREFIX}/number/${idStr}`);
+            const raw = await apiClient.get<any>(`${ORDERS_PREFIX}/${idStr}`);
             const apiOrder = extractOrder(raw);
             if (apiOrder?.id) return apiOrder.id;
           } catch { }
@@ -873,8 +899,8 @@ export const orderService = {
         
         return {
           id: String(r.id || r.publicId),
-          name: r.name || "Unknown",
-          phone: r.phone || "",
+          name: r.fullName || r.name || "Unknown",
+          phone: r.phoneNumber || r.phone || "",
           email: r.email || "",
           vehicleType: r.vehicleType?.toLowerCase() || "bike",
           vehicleNumber: r.vehicleNumber || "",
@@ -925,8 +951,8 @@ export const orderService = {
         
         return {
           id: String(r.id || r.publicId),
-          name: r.name || "Unknown",
-          phone: r.phone || "",
+          name: r.fullName || r.name || "Unknown",
+          phone: r.phoneNumber || r.phone || "",
           email: r.email || "",
           vehicleType: r.vehicleType?.toLowerCase() || "bike",
           vehicleNumber: r.vehicleNumber || "",

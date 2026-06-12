@@ -39,7 +39,7 @@ interface AuthState {
   guestLogin: () => void;
 
   /** Social login — authenticate via a social provider */
-  socialLogin: (provider: SocialProvider) => void;
+  socialLogin: (provider: SocialProvider, data?: { name: string; email: string; avatar?: string }) => void;
 
   /** Link a social account to existing user */
   linkSocial: (profile: SocialProfile) => void;
@@ -140,20 +140,24 @@ export const useAuthStore = create<AuthState>()(
         });
       },
 
-      /** Social login — mock OAuth flow for Google / Apple / Facebook */
-      socialLogin: (provider) => {
+      /** Social login — OAuth flow for Google / Apple / Facebook */
+      socialLogin: (provider, data) => {
         const mock = MOCK_SOCIAL_USERS[provider];
+        const profileName = data?.name || mock.name;
+        const profileEmail = data?.email || mock.email;
+
         const profile: SocialProfile = {
           provider,
           id: `${provider}_${Date.now()}`,
-          name: mock.name,
-          email: mock.email,
+          name: profileName,
+          email: profileEmail,
+          avatar: data?.avatar,
         };
 
         const user: UserProfile = {
           id: generateUserId(),
-          name: mock.name,
-          email: mock.email,
+          name: profileName,
+          email: profileEmail,
           role: "user",
           token: generateToken(),
           expiresAt: createExpiry(30), // 30 days

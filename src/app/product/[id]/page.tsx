@@ -14,6 +14,12 @@ import RecentlyViewedTracker from "@/components/ui/products/recently-viewed-trac
 import PriceAlertButton from "@/components/ui/products/price-alert-button";
 import StickyAddToCart from "@/components/ui/products/sticky-add-to-cart";
 import CommunityListsSection from "@/components/ui/products/community-lists-section";
+import FrequentlyBoughtTogether from "@/components/ui/products/frequently-bought-together";
+import AplusContent from "@/components/ui/products/aplus-content";
+import ProductPromoBanner from "@/components/ui/products/product-promo-banner";
+import ProductImageGallery from "@/components/ui/products/product-image-gallery";
+import AmazonProductDetails from "@/components/ui/products/amazon-product-details";
+import AmazonBuyBox from "@/components/ui/products/amazon-buy-box";
 
 interface ProductPageProps {
   params: Promise<{ id: string }>;
@@ -115,6 +121,26 @@ export default async function ProductPage({ params }: ProductPageProps) {
     { id: 4, name: "Rahul Verma", date: "3 weeks ago", rating: 4, comment: "Good quality and timely delivery. Would appreciate better packaging though.", likes: 6, verified: false },
   ];
 
+  const suggestedForBundle = relatedProducts.slice(0, 2).map(p => ({
+    id: p.id,
+    name: p.name,
+    price: p.price,
+    mrp: p.mrp,
+    image: p.media?.[0]?.url || "https://images.unsplash.com/photo-1542838132-92c53300491e?auto=format&fit=crop&w=400&h=400&q=80",
+    stock: p.stock > 0 ? "in_stock" : "out_of_stock",
+    category: p.category
+  }));
+
+  const bundleMain = {
+    id: product.id,
+    name: product.name,
+    price: product.price,
+    mrp: product.mrp,
+    image: productImage,
+    stock: product.stock > 0 ? "in_stock" : "out_of_stock",
+    category: product.category
+  };
+
   return (
     <main className="min-h-screen bg-[#f2f2f2] pb-20 md:pb-0">
       <Navbar />
@@ -133,106 +159,46 @@ export default async function ProductPage({ params }: ProductPageProps) {
           </div>
         </div>
 
-        <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
-          <div className="bg-white rounded-xl border border-[#e8e8e8] overflow-hidden">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-0">
+        <div className="max-w-[1500px] mx-auto px-3 sm:px-4 md:px-6 py-4 sm:py-6">
+          <div className="bg-white rounded-xl border border-[#e8e8e8] p-4 sm:p-6 mb-6">
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 lg:gap-6 xl:gap-10">
 
-              {/* Image */}
-              <div className="relative bg-[#f9f9f9] aspect-square md:aspect-auto md:min-h-[400px] flex items-center justify-center p-6 sm:p-10">
-                {discount > 0 && (
-                  <span className="absolute top-4 left-4 text-xs font-black text-white bg-[#ff4f8b] px-2 py-1 rounded-lg z-10">
-                    {discount}% OFF
-                  </span>
-                )}
-                 <div className="relative w-full max-w-xs sm:max-w-sm h-80">
-                     <SafeProductImage
-                     src={productImage}
-                     alt={product.name}
-                     fill
-                     className="w-full object-contain"
-                     sizes="(max-width: 640px) 320px, 400px"
-                   />
+              {/* Left: Image Gallery */}
+              <div className="lg:col-span-5 relative z-20">
+                <ProductImageGallery 
+                  media={product.media} 
+                  productName={product.name} 
+                  discount={discount} 
+                  fallbackImage={productImage} 
+                />
+              </div>
+
+              {/* Middle: Product Details */}
+              <div className="lg:col-span-4 flex flex-col gap-4">
+                <AmazonProductDetails 
+                  product={product} 
+                  discount={discount} 
+                  rating={productRating} 
+                  reviewCount={Math.floor(Math.random() * 500) + 50} 
+                />
+              </div>
+
+              {/* Right: Buy Box */}
+              <div className="lg:col-span-3 relative">
+                <div className="sticky top-24">
+                  <AmazonBuyBox product={{...product, image: productImage}} />
                 </div>
               </div>
 
-              {/* Details */}
-              <div className="p-4 sm:p-6 md:p-8 border-t md:border-t-0 md:border-l border-[#e8e8e8]">
-
-                {/* Category + rating */}
-                <div className="flex items-center justify-between mb-3">
-                  <span className="text-xs font-bold text-[#0c831f] bg-[#e8f5e9] px-2.5 py-1 rounded-full">
-                    {product.category}
-                  </span>
-                  <div className="flex items-center gap-1 bg-[#0c831f] text-white text-xs font-bold px-2 py-1 rounded-lg">
-                    <Star className="w-3 h-3 fill-white" />
-                    {productRating}
-                  </div>
-                </div>
-
-                <h1 className="text-xl sm:text-2xl md:text-3xl font-black text-[#1a1a1a] leading-tight">
-                  {product.name}
-                </h1>
-
-                {/* Delivery badge */}
-                <div className="flex items-center gap-2 mt-3 mb-4">
-                  <div className="flex items-center gap-1.5 bg-[#fff0f6] border border-[#ff4f8b] rounded-lg px-3 py-1.5">
-                    <Clock className="w-3.5 h-3.5 text-[#ff4f8b]" />
-                    <span className="text-xs font-bold text-[#1a1a1a]">Delivery in 10 mins</span>
-                  </div>
-                </div>
-
-                {/* Price */}
-                <div className="flex items-baseline gap-3 mb-4">
-                  <p className="text-2xl sm:text-3xl font-black text-[#1a1a1a]">
-                    ₹{product.price}
-                  </p>
-                  <p className="text-base text-[#999] line-through">
-                    ₹{product.mrp}
-                  </p>
-                  {discount > 0 && (
-                    <span className="text-sm font-bold text-[#ff4f8b]">
-                      {discount}% off
-                    </span>
-                  )}
-                </div>
-
-                <p className="text-sm text-[#666] leading-relaxed mb-6">
-                  {product.name} is a premium quality {product.category.toLowerCase()} item carefully sourced to ensure maximum freshness and value. Delivered straight to your door in 10 minutes, making it perfect for your everyday grocery needs.
-                </p>
-
-                {/* Trust badges */}
-                <div className="grid grid-cols-3 gap-2 mb-6">
-                  {[
-                    { icon: Clock, label: "10 min delivery" },
-                    { icon: ShieldCheck, label: "Quality assured" },
-                    { icon: RotateCcw, label: "Easy returns" },
-                  ].map(({ icon: Icon, label }) => (
-                    <div key={label} className="flex flex-col items-center justify-center gap-1 bg-[#f9f9f9] rounded-lg p-2 text-center">
-                      <Icon className="w-4 h-4 text-[#0c831f]" />
-                      <span className="text-[10px] font-semibold text-[#666]">{label}</span>
-                    </div>
-                  ))}
-                </div>
-
-                {/* Add to cart + wishlist */}
-                <div className="flex items-center gap-3">
-                  <div className="flex-1">
-                    <ProductDetailActions product={{ id: product.id, name: product.name, price: product.price, image: productImage, stock: product.stock > 0 ? "in_stock" : "out_of_stock" } as any} />
-                  </div>
-                  <ProductDetailWishlist product={{ ...product, image: productImage, oldPrice: product.mrp, rating: productRating } as any} />
-                </div>
-
-                {/* Price alert */}
-                <div className="mt-3">
-                  <PriceAlertButton product={{ ...product, image: productImage, oldPrice: product.mrp, rating: productRating } as any} />
-                </div>
-
-              </div>
             </div>
           </div>
 
           <div className="max-w-[1400px] mx-auto px-3 sm:px-4 md:px-6 py-2 sm:py-4">
-            <div className="grid gap-3 md:grid-cols-3">
+            {suggestedForBundle.length > 0 && (
+              <FrequentlyBoughtTogether mainProduct={bundleMain} suggestedProducts={suggestedForBundle} />
+            )}
+            
+            <div className="grid gap-3 md:grid-cols-3 mt-6">
               {featureHighlights.map(({ title, description, icon: Icon, tone }) => (
                 <div
                   key={title}
@@ -248,6 +214,8 @@ export default async function ProductPage({ params }: ProductPageProps) {
                 </div>
               ))}
             </div>
+
+            <AplusContent productName={product.name} category={product.category} />
 
             <div className="mt-6">
               <ReviewsQA productRating={productRating} />

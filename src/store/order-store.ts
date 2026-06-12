@@ -38,6 +38,7 @@ export interface Order {
   estimatedTime: string;
   deliveryPartner: string;
   trackingSteps: TrackingStep[];
+  cashback?: number;
 }
 
 interface OrderStore {
@@ -104,3 +105,7 @@ export const useOrderStore = create<OrderStore>()(
 );
 
 export { generateOrderId, buildTrackingSteps };
+
+if (typeof window !== "undefined") {
+  (window as any).useOrderStore = useOrderStore;
+}

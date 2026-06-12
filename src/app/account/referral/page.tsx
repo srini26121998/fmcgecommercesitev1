@@ -1,14 +1,15 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { ChevronLeft, Gift, Copy, CheckCircle, Users, TrendingUp, Loader2 } from "lucide-react";
 import { LoyaltyCard, ReferralCard } from "@/components/ui/loyality-cashback-card";
 import { useUserLoyalty } from "@/hooks/use-user-loyalty";
-import { useReferralStore } from "@/store/referral-store";
+import { useReferralStore, selectTotalEarned } from "@/store/referral-store";
 
 export default function ReferralPage() {
   const { points, tier, loading } = useUserLoyalty();
-  const { totalEarned, referrals } = useReferralStore();
+  const { referrals } = useReferralStore();
+  const totalEarned = selectTotalEarned(referrals);
 
   return (
     <main className="min-h-screen bg-[#f2f2f2] pb-24">

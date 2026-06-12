@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 
 interface BillRowProps {
-  label: string;
+  label: string | ReactNode;
   value: ReactNode;
   valueClassName?: string;
 }

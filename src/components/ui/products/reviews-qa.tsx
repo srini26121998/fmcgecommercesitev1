@@ -37,6 +37,7 @@ interface QAItem {
   answer: string;
   askedBy: string;
   answeredBy: string;
+  answeredByType: "seller" | "verified_buyer" | "user";
   date: string;
   likes: number;
 }
@@ -101,6 +102,7 @@ const mockQA: QAItem[] = [
     answer: "Yes, this product is certified organic by FSSAI. You can check the organic logo on the packaging.",
     askedBy: "Ravi K.",
     answeredBy: "FMCG Team",
+    answeredByType: "seller",
     date: "1 week ago",
     likes: 5,
   },
@@ -109,7 +111,8 @@ const mockQA: QAItem[] = [
     question: "What's the shelf life after opening?",
     answer: "We recommend consuming within 30 days of opening for best freshness. Store in a cool, dry place.",
     askedBy: "Anita S.",
-    answeredBy: "FMCG Team",
+    answeredBy: "Megha V.",
+    answeredByType: "verified_buyer",
     date: "2 weeks ago",
     likes: 3,
   },
@@ -119,6 +122,7 @@ const mockQA: QAItem[] = [
     answer: "Currently this variant is available in the shown pack size. Check similar products for bulk options.",
     askedBy: "Vikram M.",
     answeredBy: "FMCG Team",
+    answeredByType: "seller",
     date: "3 weeks ago",
     likes: 7,
   },
@@ -169,6 +173,7 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
       answer: "Pending response...",
       askedBy: "You",
       answeredBy: "Pending",
+      answeredByType: "user",
       date: "Just now",
       likes: 0,
     };
@@ -466,8 +471,14 @@ export default function ReviewsQA({ productRating = 4.5 }: ReviewsQAProps) {
                       <span className="text-[10px] text-[#999]">{qa.date}</span>
                     </div>
                     <div className="bg-[#f9f9f9] rounded-xl p-3 border border-[#e8e8e8]">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className="text-[10px] font-bold text-[#0c831f]">{qa.answeredBy}</span>
+                      <div className="flex items-center gap-2 mb-2 flex-wrap">
+                        <span className="text-xs font-bold text-[#1a1a1a]">{qa.answeredBy}</span>
+                        {qa.answeredByType === "seller" && (
+                          <span className="text-[10px] font-bold text-white bg-[#1a1a1a] px-2 py-0.5 rounded-full">Seller</span>
+                        )}
+                        {qa.answeredByType === "verified_buyer" && (
+                          <span className="text-[10px] font-bold text-[#0c831f] bg-[#e8f5e9] px-2 py-0.5 rounded-full">✓ Verified Buyer</span>
+                        )}
                         <span className="text-[10px] text-[#999]">•</span>
                         <span className="text-[10px] text-[#999]">{qa.date}</span>
                       </div>

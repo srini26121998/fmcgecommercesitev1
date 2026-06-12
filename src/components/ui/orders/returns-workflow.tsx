@@ -43,16 +43,18 @@ interface ReturnsWorkflowProps {
     quantity: number;
     reason: string;
     details: string;
+    resolution: string;
   }) => void;
 }
 
-type Step = "select_item" | "select_reason" | "details" | "confirm" | "submitted";
+type Step = "select_item" | "select_reason" | "details" | "resolution" | "confirm" | "submitted";
 
 export default function ReturnsWorkflow({ isOpen, onClose, orderId, items, onSubmitReturn }: ReturnsWorkflowProps) {
   const [step, setStep] = useState<Step>("select_item");
   const [selectedItem, setSelectedItem] = useState<ReturnItem | null>(null);
   const [selectedReason, setSelectedReason] = useState<string>("");
   const [details, setDetails] = useState("");
+  const [resolution, setResolution] = useState<"wallet" | "replacement">("wallet");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [returnId, setReturnId] = useState("");
 
@@ -63,6 +65,7 @@ export default function ReturnsWorkflow({ isOpen, onClose, orderId, items, onSub
     setSelectedItem(null);
     setSelectedReason("");
     setDetails("");
+    setResolution("wallet");
     setIsSubmitting(false);
   }
 
@@ -86,14 +89,15 @@ export default function ReturnsWorkflow({ isOpen, onClose, orderId, items, onSub
         quantity: selectedItem.quantity,
         reason: selectedReason,
         details,
+        resolution,
       });
       setStep("submitted");
       setIsSubmitting(false);
     }, 2000);
   }
 
-  const progressSteps = ["Select Item", "Reason", "Details", "Confirm"];
-  const stepIndex = ["select_item", "select_reason", "details", "confirm"].indexOf(step as string);
+  const progressSteps = ["Select Item", "Reason", "Details", "Resolution", "Confirm"];
+  const stepIndex = ["select_item", "select_reason", "details", "resolution", "confirm"].indexOf(step as string);
 
   return (
     <>
@@ -176,7 +180,7 @@ export default function ReturnsWorkflow({ isOpen, onClose, orderId, items, onSub
                       </div>
                       <div className="flex-1 min-w-0">
                         <p className="text-sm font-semibold text-[#1a1a1a] truncate">{item.name}</p>
-                        <p className="text-xs text-[#999]">Qty: {item.quantity} · ₹{item.price * item.quantity}</p>
+                        <p className="text-xs text-[#999]">Qty: {item.quantity} · {item.price * item.quantity}</p>
                       </div>
                       <ChevronRight className="w-4 h-4 text-[#999]" />
                     </button>
@@ -241,9 +245,58 @@ export default function ReturnsWorkflow({ isOpen, onClose, orderId, items, onSub
                       Back
                     </button>
                     <button
-                      onClick={() => setStep("confirm")}
+                      onClick={() => setStep("resolution")}
                       disabled={!details.trim()}
                       className="flex-1 h-11 rounded-xl bg-[#ff4f8b] text-white text-xs font-bold disabled:bg-[#ccc] disabled:cursor-not-allowed hover:bg-[#e63872] transition-colors"
+                    >
+                      Continue
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {/* Step 3.5: Resolution */}
+              {step === "resolution" && (
+                <div className="space-y-4">
+                  <p className="text-sm font-bold text-[#1a1a1a] mb-3">How would you like this resolved?</p>
+                  
+                  <button
+                    onClick={() => setResolution("wallet")}
+                    className={`w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-colors ${
+                      resolution === "wallet" ? "border-[#ff4f8b] bg-[#fff0f6]" : "border-[#e8e8e8] hover:border-[#ff4f8b]"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${resolution === "wallet" ? "border-[#ff4f8b]" : "border-[#ccc]"}`}>
+                      {resolution === "wallet" && <div className="w-2.5 h-2.5 rounded-full bg-[#ff4f8b]" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#1a1a1a]">Refund to Wallet</p>
+                      <p className="text-xs text-[#666] mt-1">Get refund instantly to your wallet once pickup is complete.</p>
+                    </div>
+                  </button>
+
+                  <button
+                    onClick={() => setResolution("replacement")}
+                    className={`w-full flex items-start gap-3 p-4 rounded-xl border text-left transition-colors ${
+                      resolution === "replacement" ? "border-[#ff4f8b] bg-[#fff0f6]" : "border-[#e8e8e8] hover:border-[#ff4f8b]"
+                    }`}
+                  >
+                    <div className={`w-5 h-5 mt-0.5 rounded-full border-2 flex items-center justify-center flex-shrink-0 ${resolution === "replacement" ? "border-[#ff4f8b]" : "border-[#ccc]"}`}>
+                      {resolution === "replacement" && <div className="w-2.5 h-2.5 rounded-full bg-[#ff4f8b]" />}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold text-[#1a1a1a]">Replacement</p>
+                      <p className="text-xs text-[#666] mt-1">We will send a new item when we pick up the return.</p>
+                    </div>
+                  </button>
+
+                  <div className="flex gap-3 pt-4">
+                    <button onClick={() => setStep("details")} className="flex-1 h-11 rounded-xl border-2 border-[#e8e8e8] text-xs font-bold text-[#666] hover:border-[#ff4f8b] hover:text-[#ff4f8b] transition-colors">
+                      Back
+                    </button>
+                    <button
+                      onClick={() => setStep("confirm")}
+                      className="flex-1 h-11 rounded-xl bg-[#ff4f8b] text-white text-xs font-bold hover:bg-[#e63872] transition-colors"
                     >
                       Continue
                     </button>
@@ -273,8 +326,8 @@ export default function ReturnsWorkflow({ isOpen, onClose, orderId, items, onSub
                         <p className="text-xs font-semibold text-[#1a1a1a]">{RETURN_REASONS.find((r) => r.id === selectedReason)?.label}</p>
                       </div>
                       <div>
-                        <p className="text-[10px] text-[#999]">Order</p>
-                        <p className="text-xs font-semibold text-[#1a1a1a]">{orderId}</p>
+                        <p className="text-[10px] text-[#999]">Resolution</p>
+                        <p className="text-xs font-semibold text-[#1a1a1a] capitalize">{resolution}</p>
                       </div>
                     </div>
 
@@ -294,7 +347,7 @@ export default function ReturnsWorkflow({ isOpen, onClose, orderId, items, onSub
                   </div>
 
                   <div className="flex gap-3 pt-2">
-                    <button onClick={() => setStep("details")} className="flex-1 h-11 rounded-xl border-2 border-[#e8e8e8] text-xs font-bold text-[#666] hover:border-[#ff4f8b] hover:text-[#ff4f8b] transition-colors">
+                    <button onClick={() => setStep("resolution")} className="flex-1 h-11 rounded-xl border-2 border-[#e8e8e8] text-xs font-bold text-[#666] hover:border-[#ff4f8b] hover:text-[#ff4f8b] transition-colors">
                       Edit
                     </button>
                     <button

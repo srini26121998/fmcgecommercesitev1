@@ -1,9 +1,9 @@
 "use client";
 
 import { useUserCart } from "@/hooks/use-user-cart";
+import { useMultiWishlistStore } from "@/store/multi-wishlist-store";
 import { Plus, Minus } from "lucide-react";
 import { toast } from "sonner";
-import { useState, useEffect } from "react";
 
 interface AddToCartButtonProps {
   productId: number | string;
@@ -16,13 +16,13 @@ interface AddToCartButtonProps {
 
 const colorPresets = {
   pink: {
-    text: "text-[#ff4f8b]",
+    text: "text-white",
     border: "border-[#ff4f8b]",
-    bgHover: "hover:bg-[#ff4f8b] hover:text-white",
+    bgHover: "hover:bg-[#e63872]",
     bgActive: "bg-[#ff4f8b]",
     bgActiveDark: "hover:bg-[#e63872]",
-    glow: "hover:shadow-[0_0_12px_rgba(255,79,139,0.35)]",
-    lightBg: "bg-[#fff0f6]",
+    glow: "hover:shadow-[0_4px_14px_rgba(255,79,139,0.39)]",
+    lightBg: "bg-[#ff4f8b]",
   },
   green: {
     text: "text-[#0c831f]",
@@ -74,14 +74,10 @@ export default function AddToCartButton({
   size = "md",
 }: AddToCartButtonProps) {
   const { cartItems, addToCart, increaseQuantity, decreaseQuantity } = useUserCart();
-  const [isMounted, setIsMounted] = useState(false);
-
-  useEffect(() => {
-    setIsMounted(true);
-  }, []);
+  const isHydrated = useMultiWishlistStore((s) => s._hasHydrated);
 
   const cartItem = cartItems.find((item) => Number(item.id) === Number(productId));
-  const quantity = isMounted ? (cartItem?.quantity ?? 0) : 0;
+  const quantity = isHydrated ? (cartItem?.quantity ?? 0) : 0;
 
   const preset = colorPresets[themeColor];
   const sizePreset = sizeClasses[size];
@@ -115,7 +111,7 @@ export default function AddToCartButton({
       <button
         type="button"
         onClick={handleAdd}
-        className={`w-full ${sizePreset.container} rounded-lg bg-white border ${preset.border} ${preset.text} font-black uppercase tracking-wider ${sizePreset.addText} transition-all duration-200 cursor-pointer shadow-sm ${preset.bgHover} ${preset.glow} active:scale-95 flex items-center justify-center gap-1`}
+        className={`w-full ${sizePreset.container} rounded-lg ${preset.bgActive} border ${preset.border} ${preset.text} font-black uppercase tracking-wider ${sizePreset.addText} transition-all duration-200 cursor-pointer shadow-sm ${preset.bgHover} ${preset.glow} active:scale-95 flex items-center justify-center gap-1`}
       >
         <Plus className={sizePreset.icon} />
         ADD

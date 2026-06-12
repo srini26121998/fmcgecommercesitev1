@@ -19,6 +19,15 @@ import ProductGrid from "@/components/ui/products/product-grid";
 import ProductView360 from "@/components/ui/home/product-view-360";
 import BottomNav from "@/components/ui/mobile/bottom-nav";
 import Footer from "@/components/ui/footer";
+import AmazonWelcomeStrip from "@/components/ui/home/amazon-welcome-strip";
+import AmazonQuadGrids from "@/components/ui/home/amazon-quad-grids";
+import AmazonHistoryCarousels from "@/components/ui/home/amazon-history-carousels";
+import AmazonBrowsingFooter from "@/components/ui/home/amazon-browsing-footer";
+import ShopByCategory from "@/components/ui/home/shop-by-category";
+import BrandsYouLove from "@/components/ui/home/brands-you-love";
+import { usePromotionsStore } from "@/store/promotions-store";
+import { useEffect } from "react";
+import { OffersForYouWidget } from "@/components/ui/offers/offers-for-you-widget";
 
 const DEMO_360_PRODUCT = {
   id: 1,
@@ -31,8 +40,13 @@ export default function HomeClient() {
   const [show360, setShow360] = useState(false);
   const handleRefresh = useCallback(async () => {
     // Simulate refresh
+    await usePromotionsStore.getState().fetchHomeFeed("premium");
     await new Promise((resolve) => setTimeout(resolve, 800));
     toast.success("Homepage refreshed! ✨", { duration: 1500 });
+  }, []);
+
+  useEffect(() => {
+    usePromotionsStore.getState().fetchHomeFeed("premium");
   }, []);
 
   return (
@@ -145,8 +159,16 @@ export default function HomeClient() {
         {/* Offset for fixed navbar */}
         <div className="pt-[72px] sm:pt-20">
           <Hero />
+          <ShopByCategory />
+          <BrandsYouLove />
+          <AmazonQuadGrids />
           <CategoryPills />
           <PromoBanner />
+          
+          <div className="max-w-[1400px] mx-auto px-4 mt-2">
+            <OffersForYouWidget placement="home_screen" />
+          </div>
+
           <FlashSaleSection />
           <FeaturedProducts />
           <RecentlyViewed />
@@ -154,6 +176,10 @@ export default function HomeClient() {
           <NearbyTrends />
           <RecommendationSection />
           <ProductGrid />
+
+          <AmazonHistoryCarousels />
+          <AmazonWelcomeStrip />
+          <AmazonBrowsingFooter />
         </div>
 
         <Footer />

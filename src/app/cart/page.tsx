@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useMemo, useEffect, useCallback } from "react";
 import Link from "next/link";
@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { useUserCart } from "@/hooks/use-user-cart";
 import { useSavedItemsStore } from "@/store/saved-items-store";
 import { useShareCartStore } from "@/store/share-cart-store";
+import { usePromotionsStore } from "@/store/promotions-store";
 import Navbar from "@/components/ui/navbar";
 import PullToRefresh from "@/components/ui/mobile/pull-to-refresh";
 import Container from "@/components/ui/layout/container";
@@ -32,9 +33,11 @@ import BillRow from "@/components/ui/a11y/bill-row";
 import { SafeProductImage } from "@/components/ui/safe-image";
 
 export default function CartPage() {
-  const { cartItems: cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, applyCoupon, removeCoupon, cartDetails } =
+  const { cartItems: cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, applyCoupon, removeCoupon, cartDetails, updateItemOptions, addBogoReward } =
     useUserCart();
   const [isHydrated, setIsHydrated] = useState(false);
+  const [isGiftOrder, setIsGiftOrder] = useState(false);
+  const [giftOptions, setGiftOptions] = useState({ message: '', wrap: false, hidePrice: true });
   
   useEffect(() => {
     setIsHydrated(true);
@@ -46,10 +49,36 @@ export default function CartPage() {
   const [localCouponCode, setLocalCouponCode] = useState("");
   const [localAppliedCoupon, setLocalAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
+  const [couponsList, setCouponsList] = useState<any[]>([]);
+  const [showCoupons, setShowCoupons] = useState(false);
+  const [loadingCoupons, setLoadingCoupons] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
   const [showShareModal, setShowShareModal] = useState(false);
   const { addItem } = useSavedItemsStore();
   const { shareCart } = useShareCartStore();
+  
+  const { validatePromotions, estimatedCashback, bogoRules } = usePromotionsStore();
+
+  // BOGO Sync Effect
+  useEffect(() => {
+    if (!isHydrated || cart.length === 0) return;
+
+    const triggerItemIds = cart.filter(i => !i.isBogoReward).map(i => String(i.id));
+    const bogoItemIds = cart.filter(i => i.isBogoReward).map(i => String(i.id));
+
+    bogoRules.forEach(rule => {
+      const hasTrigger = triggerItemIds.includes(rule.triggerProductId);
+      const hasReward = bogoItemIds.includes(rule.rewardProductId);
+
+      if (hasTrigger && !hasReward && rule.isRewardInStock) {
+        addBogoReward(rule.rewardProductId, rule.rewardProductMrp);
+        toast.success(`BOGO offer applied! ${rule.rewardProductName} added for free.`, { duration: 3000 });
+      } else if (!hasTrigger && hasReward) {
+        removeFromCart(rule.rewardProductId);
+        toast("BOGO offer removed as the qualifying item was removed.");
+      }
+    });
+  }, [cart, bogoRules, addBogoReward, removeFromCart, isHydrated]);
 
   // ALL hooks must be declared before any early return (Rules of Hooks)
   const handleRefresh = useCallback(async () => {
@@ -58,6 +87,38 @@ export default function CartPage() {
     setRefreshing(false);
     toast.success("Cart refreshed! ✓", { duration: 1500 });
   }, []);
+
+  useEffect(() => {
+    if (showCoupons && couponsList.length === 0) {
+      setLoadingCoupons(true);
+      import("@/services/cart.service").then(({ cartService }) => {
+        cartService.getCoupons().then(res => {
+          if (res && res.length > 0) {
+            setCouponsList(res);
+          } else {
+            setCouponsList([
+              {
+                "code": "SAVE200",
+                "type": "FIXED",
+                "discountValue": 200.00,
+                "discountType": "FIXED",
+                "minOrder": 999.00,
+                "description": "This coupon requires minimum order ₹999.00 for this coupon SAVE200"
+              },
+              {
+                "code": "WELCOME10",
+                "type": "PERCENTAGE",
+                "discountValue": 10.00,
+                "discountType": "PERCENTAGE",
+                "minOrder": 0.00,
+                "description": "Apply WELCOME10 for a discount!"
+              }
+            ]);
+          }
+        }).finally(() => setLoadingCoupons(false));
+      });
+    }
+  }, [showCoupons, couponsList.length]);
 
   const itemTotal = useMemo(
     () => cart.reduce((acc, item) => acc + item.price * item.quantity, 0),
@@ -83,13 +144,25 @@ export default function CartPage() {
     return Math.round((itemTotal * localAppliedCoupon.discount) / 100);
   }, [itemTotal, localAppliedCoupon, cartDetails]);
 
+  const taxAmount = useMemo(() => {
+    if (cartDetails?.tax !== undefined) return cartDetails.tax;
+    return itemTotal > 0 ? Number(((itemTotal - discountAmount) * 0.05).toFixed(2)) : 0;
+  }, [itemTotal, discountAmount, cartDetails]);
+
   const total = useMemo(
     () => {
       if (cartDetails?.total) return cartDetails.total;
-      return Math.max(0, itemTotal + deliveryFee + handlingFee - discountAmount);
+      return Math.max(0, itemTotal + deliveryFee + handlingFee + taxAmount - discountAmount);
     },
-    [itemTotal, deliveryFee, handlingFee, discountAmount, cartDetails]
+    [itemTotal, deliveryFee, handlingFee, discountAmount, taxAmount, cartDetails]
   );
+
+  useEffect(() => {
+    const timeoutId = setTimeout(() => {
+      validatePromotions(total, cart, null);
+    }, 500); // debounce 500ms
+    return () => clearTimeout(timeoutId);
+  }, [total, cart, validatePromotions]);
 
   // Early return when not hydrated — safe because all hooks are declared above
   if (!isHydrated) {
@@ -277,8 +350,13 @@ export default function CartPage() {
                           <div className="flex min-w-0 flex-1 flex-col justify-between gap-3">
                             <div className="flex items-start justify-between gap-3">
                               <div className="min-w-0">
-                                <h3 className="line-clamp-2 text-sm font-bold leading-5 text-[#1a1a1a] sm:text-base">
+                                <h3 className="line-clamp-2 text-sm font-bold leading-5 text-[#1a1a1a] sm:text-base flex items-center gap-2">
                                   {item.name}
+                                  {item.isBogoReward && (
+                                    <span className="text-[10px] font-black text-white bg-[#7c3aed] px-1.5 py-0.5 rounded shadow-sm whitespace-nowrap">
+                                      FREE (BOGO)
+                                    </span>
+                                  )}
                                 </h3>
                                 <p className="mt-1 text-xs font-semibold text-[#999]">
                                   {item.weight || "500 g"}
@@ -309,17 +387,30 @@ export default function CartPage() {
 
                             <div className="flex items-end justify-between gap-3">
                               <div>
-                                <p className="text-base font-black text-[#1a1a1a]">
-                                  &#8377;{(item.price * item.quantity).toFixed(0)}
-                                </p>
-                                <p className="text-xs text-[#999]">
-                                  &#8377;{item.price} each
-                                </p>
+                                {item.isBogoReward ? (
+                                  <div className="flex items-center gap-1">
+                                    <p className="text-base font-black text-[#1a1a1a]">₹0</p>
+                                    <p className="text-sm text-[#999] line-through">₹{item.bogoMrp}</p>
+                                  </div>
+                                ) : (
+                                  <>
+                                    <p className="text-base font-black text-[#1a1a1a]">
+                                      &#8377;{(item.price * item.quantity).toFixed(0)}
+                                    </p>
+                                    <p className="text-xs text-[#999]">
+                                      &#8377;{item.price} each
+                                    </p>
+                                  </>
+                                )}
                               </div>
 
                               <div className="flex min-h-[44px] h-9 items-center overflow-hidden rounded-lg border-2 border-[#0c831f] bg-[#0c831f] text-white">
                                 <button
                                   onClick={() => {
+                                    if (item.isBogoReward) {
+                                      toast("Remove the main item to remove this free offer.");
+                                      return;
+                                    }
                                     decreaseQuantity(item.id);
                                     if (item.quantity > 1) toast.success(`Decreased ${item.name} quantity`, { duration: 1000 });
                                   }}
@@ -333,6 +424,10 @@ export default function CartPage() {
                                 </span>
                                 <button
                                   onClick={() => {
+                                    if (item.isBogoReward) {
+                                      toast("Cannot increase quantity of free BOGO item.");
+                                      return;
+                                    }
                                     increaseQuantity(item.id);
                                     toast.success(`Increased ${item.name} quantity`, { duration: 1000 });
                                   }}
@@ -343,10 +438,88 @@ export default function CartPage() {
                                 </button>
                               </div>
                             </div>
+                            
+                            {/* Subscribe & Save Option */}
+                            <div className="mt-2 pt-2 border-t border-[#f0f0f0]">
+                              <label className="text-xs font-semibold text-[#1a1a1a] flex flex-col gap-1">
+                                Purchase type:
+                                <select
+                                  value={item.subscription || "one-time"}
+                                  onChange={(e) => {
+                                    updateItemOptions(item.id, { subscription: e.target.value as any });
+                                    toast.success(e.target.value === "one-time" ? "Changed to one-time purchase" : `Subscribed for ${e.target.value} delivery (10% off)`);
+                                  }}
+                                  className="mt-1 w-full max-w-[200px] rounded-md border border-[#e8e8e8] p-1.5 text-xs outline-none focus:border-[#0c831f]"
+                                >
+                                  <option value="one-time">One-time purchase</option>
+                                  <option value="weekly">Subscribe & Save (Weekly - 10% off)</option>
+                                  <option value="bi-weekly">Subscribe & Save (Bi-weekly - 10% off)</option>
+                                  <option value="monthly">Subscribe & Save (Monthly - 10% off)</option>
+                                </select>
+                              </label>
+                            </div>
                           </div>
                         </article>
                         </SwipeActions>
                       ))}
+                    </div>
+                  </div>
+
+                  {/* Gift Options Section */}
+                  <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+                    <label className="flex items-center gap-3 cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="w-4 h-4 text-[#0c831f] rounded border-gray-300 focus:ring-[#0c831f]"
+                        checked={isGiftOrder}
+                        onChange={(e) => setIsGiftOrder(e.target.checked)}
+                      />
+                      <span className="text-sm font-bold text-[#1a1a1a]">This order contains a gift</span>
+                    </label>
+                    
+                    {isGiftOrder && (
+                      <div className="mt-4 pl-7 space-y-3">
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 text-[#0c831f] rounded border-gray-300 focus:ring-[#0c831f]"
+                            checked={giftOptions.hidePrice}
+                            onChange={(e) => setGiftOptions({...giftOptions, hidePrice: e.target.checked})}
+                          />
+                          <span className="text-sm text-[#666]">Hide price on invoice</span>
+                        </label>
+                        <label className="flex items-center gap-2 cursor-pointer">
+                          <input 
+                            type="checkbox" 
+                            className="w-4 h-4 text-[#0c831f] rounded border-gray-300 focus:ring-[#0c831f]"
+                            checked={giftOptions.wrap}
+                            onChange={(e) => setGiftOptions({...giftOptions, wrap: e.target.checked})}
+                          />
+                          <span className="text-sm text-[#666]">Add gift wrap (₹50)</span>
+                        </label>
+                        <div className="pt-2">
+                          <label className="text-xs font-semibold text-[#1a1a1a] block mb-1">Gift Message (Printed on card):</label>
+                          <textarea 
+                            value={giftOptions.message}
+                            onChange={(e) => setGiftOptions({...giftOptions, message: e.target.value})}
+                            placeholder="Happy Birthday! ..."
+                            className="w-full rounded-md border border-[#e8e8e8] p-2 text-sm outline-none focus:border-[#0c831f] resize-none h-20"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Multi-Address Shipping */}
+                  <div className="rounded-xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h3 className="text-sm font-bold text-[#1a1a1a]">Shipping to multiple addresses?</h3>
+                        <p className="text-xs text-[#666] mt-1">Send items to different locations in one checkout.</p>
+                      </div>
+                      <Link href="/checkout?multiAddress=true" className="text-xs font-bold text-[#0c831f] hover:underline px-3 py-1.5 rounded-full bg-[#e8f5e9]">
+                        Split Cart
+                      </Link>
                     </div>
                   </div>
 
@@ -378,13 +551,14 @@ export default function CartPage() {
                        </button>
                      </div>
                    ) : (
-                     <div className="flex flex-col gap-2">
+                     <div className="flex flex-col gap-2 relative">
                        <div className="flex gap-2">
                         <div className="relative flex-1">
                           <input
                             type="text"
                             placeholder="Enter coupon code"
                             value={localCouponCode}
+                            onFocus={() => setShowCoupons(true)}
                             onChange={(e) => {
                               setLocalCouponCode(e.target.value);
                               setCouponMessage(null);
@@ -402,14 +576,13 @@ export default function CartPage() {
                              
                              if (res && res.success === false && res.message?.includes("login")) {
                                // Fallback to local coupon logic
-                               const coupons: Record<string, { discount: number; type: "percent" | "fixed"; minAmount: number }> = {
-                                 "SAVE20":   { discount: 20,  type: "percent", minAmount: 0 },
-                                 "FIRST50":  { discount: 50,  type: "fixed",   minAmount: 299 },
-                                 "WELCOME10":{ discount: 10,  type: "percent", minAmount: 0 },
-                                 "FMCG100":  { discount: 100, type: "fixed",   minAmount: 499 },
-                                 "SUPER15":  { discount: 15,  type: "percent", minAmount: 199 },
-                               };
-                               const coupon = coupons[code];
+                               const matchedCoupon = couponsList.find(c => c.code === code);
+                               const coupon = matchedCoupon ? {
+                                 discount: matchedCoupon.discountValue,
+                                 type: matchedCoupon.discountType === "PERCENTAGE" ? "percent" : "fixed",
+                                 minAmount: matchedCoupon.minOrder
+                               } : { discount: 10, type: "percent", minAmount: 0 }; // Default fallback
+                               
                                if (coupon) {
                                  if (itemTotal < coupon.minAmount) {
                                    setCouponMessage(`Min order ₹${coupon.minAmount} required`);
@@ -419,6 +592,7 @@ export default function CartPage() {
                                  setLocalAppliedCoupon({ code, discount: coupon.type === "percent" ? coupon.discount : Math.round((coupon.discount / itemTotal) * 100) });
                                  setCouponMessage("Coupon applied!");
                                  toast.success(`Coupon ${code} applied!`);
+                                 setShowCoupons(false);
                                } else {
                                  setCouponMessage("Invalid code");
                                  toast.error("Invalid coupon code");
@@ -426,6 +600,7 @@ export default function CartPage() {
                              } else if (res && res.success) {
                                setCouponMessage("Coupon applied!");
                                toast.success(`Coupon ${code} applied successfully!`);
+                               setShowCoupons(false);
                              } else if (res) {
                                setCouponMessage(res.message || "Invalid code");
                                toast.error(res.message || "Invalid coupon code");
@@ -436,7 +611,46 @@ export default function CartPage() {
                           Apply
                         </button>
                        </div>
-                       {couponMessage && (
+
+                       {/* Coupons Dropdown */}
+                       {showCoupons && (
+                         <div className="absolute top-full left-0 right-0 z-50 mt-1 max-h-60 overflow-y-auto rounded-xl border border-[#e8e8e8] bg-white p-2 shadow-lg">
+                           <div className="flex items-center justify-between px-2 pb-2 border-b border-[#e8e8e8] mb-2">
+                             <h4 className="text-xs font-bold text-[#1a1a1a]">Available Coupons</h4>
+                             <button onClick={() => setShowCoupons(false)} className="text-xs text-[#ff4f8b] font-bold">Close</button>
+                           </div>
+                           {loadingCoupons ? (
+                             <div className="p-4 text-center text-xs text-[#999]">Loading coupons...</div>
+                           ) : couponsList.length > 0 ? (
+                             <div className="flex flex-col gap-2">
+                               {couponsList.map((coupon, idx) => (
+                                 <button
+                                   key={idx}
+                                   onClick={() => {
+                                     setLocalCouponCode(coupon.code);
+                                     setShowCoupons(false);
+                                   }}
+                                   className="flex flex-col items-start gap-1 rounded-lg border border-[#f2f2f2] p-3 text-left transition hover:border-[#ff4f8b] hover:bg-pink-50"
+                                 >
+                                   <div className="flex w-full items-center justify-between">
+                                     <span className="font-bold text-[#1a1a1a]">{coupon.code}</span>
+                                     <span className="text-[10px] font-bold text-[#0c831f] bg-[#e8f5e9] px-2 py-0.5 rounded border border-[#0c831f]">
+                                       {coupon.discountType === "PERCENTAGE" ? `${coupon.discountValue}% OFF` : `₹${coupon.discountValue} OFF`}
+                                     </span>
+                                   </div>
+                                   <span className="text-[10px] font-medium text-[#666]">
+                                     {coupon.description || `Save on orders above ₹${coupon.minOrder}`}
+                                   </span>
+                                 </button>
+                               ))}
+                             </div>
+                           ) : (
+                             <div className="p-4 text-center text-xs text-[#999]">No coupons available</div>
+                           )}
+                         </div>
+                       )}
+
+                       {couponMessage && !showCoupons && (
                          <p className={`text-[10px] font-bold ${(cartDetails?.couponCode || localAppliedCoupon) ? "text-[#0c831f]" : "text-[#ff4f8b]"}`}>
                            {couponMessage}
                          </p>
@@ -494,6 +708,32 @@ export default function CartPage() {
                           </>
                         }
                       />
+                      {taxAmount > 0 && (
+                        <BillRow
+                          label="Taxes (5%)"
+                          value={
+                            <>
+                              &#8377;{taxAmount}
+                            </>
+                          }
+                        />
+                      )}
+                      {estimatedCashback > 0 && (
+                        <BillRow
+                          label={
+                            <span className="flex items-center gap-1 text-[#0c831f] font-bold">
+                              <Tag className="w-3 h-3" />
+                              Estimated Cashback
+                            </span>
+                          }
+                          value={
+                            <div className="text-right">
+                              <span className="text-[#0c831f] font-bold">&#8377;{estimatedCashback}</span>
+                              <p className="text-[9px] text-[#0c831f]/70">(credited after payment)</p>
+                            </div>
+                          }
+                        />
+                      )}
                       <div className="flex items-center justify-between border-t border-[#e8e8e8] pt-3 text-base font-black text-[#1a1a1a]">
                         <span>To pay</span>
                         <span>&#8377;{total}</span>

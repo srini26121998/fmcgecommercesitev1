@@ -97,7 +97,7 @@ export const useLoyaltyStore = create<LoyaltyStore>()(
                 : state.cashbackBalance,
             transactions: [
               {
-                id: `txn_${Date.now()}`,
+                id: `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
                 type,
                 points,
                 description,
@@ -115,7 +115,7 @@ export const useLoyaltyStore = create<LoyaltyStore>()(
           points: state.points - points,
           transactions: [
             {
-              id: `txn_${Date.now()}`,
+              id: `txn_${Date.now()}_${Math.random().toString(36).substring(2, 9)}`,
               type: "redeemed",
               points: -points,
               description,
@@ -161,3 +161,7 @@ export const useLoyaltyStore = create<LoyaltyStore>()(
     { name: "loyalty-storage" }
   )
 );
+
+if (typeof window !== "undefined") {
+  (window as any).useLoyaltyStore = useLoyaltyStore;
+}

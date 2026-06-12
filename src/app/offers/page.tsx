@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import Link from "next/link";
 import { ChevronRight, Tag, Clock, Sparkles } from "lucide-react";
@@ -8,6 +8,8 @@ import BottomNav from "@/components/ui/mobile/bottom-nav";
 import PullToRefresh from "@/components/ui/mobile/pull-to-refresh";
 import { useState, useCallback, useMemo } from "react";
 import { toast } from "sonner";
+import { BrandThemedCard } from "@/components/ui/gift-cards/brand-themed-card";
+import { useGiftCardStore } from "@/stores/gift-card-store";
 
 const offerCategories = [
   { name: "Deal of the Day", icon: Sparkles, color: "bg-gradient-to-r from-[#ff4f8b] to-[#ff6b9d]", count: 24 },
@@ -19,6 +21,7 @@ const offerCategories = [
 export default function OffersPage() {
   const { products } = useProducts(undefined, 50);
   const [activeCategory, setActiveCategory] = useState<string | null>(null);
+  const partnerCards = useGiftCardStore(state => state.partnerGiftCards);
 
   const handleRefresh = useCallback(async () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -62,6 +65,23 @@ export default function OffersPage() {
                 <p className="text-xs opacity-90">{category.count} items</p>
               </button>
             ))}
+          </div>
+
+          {/* Brand Vouchers Section (Discovery) */}
+          <div className="mb-8">
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-lg font-bold text-[#1a1a1a]">Vouchers from your favourite brands</h2>
+              <Link href="/gift-cards" className="text-[#ff4f8b] text-sm font-semibold flex items-center gap-1">
+                View Gift Cards <ChevronRight className="w-4 h-4" />
+              </Link>
+            </div>
+            <div className="flex gap-4 overflow-x-auto pb-4 scrollbar-hide snap-x">
+               {partnerCards.map(partner => (
+                 <div key={partner.id} className="w-64 flex-shrink-0 snap-start">
+                   <BrandThemedCard partner={partner} />
+                 </div>
+               ))}
+            </div>
           </div>
 
           <div className="mb-8">

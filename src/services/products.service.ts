@@ -159,12 +159,17 @@ export const productService = {
   // GET /api/v1/products/{id} — Get single product by ID
   async getProductById(id: string): Promise<Product | undefined> {
     try {
+      // The Java backend expects a Long. Prevent API calls with non-numeric IDs (like mock strings).
+      if (!/^\d+$/.test(id)) {
+        console.warn(`[productService] Invalid numeric ID format for backend: ${id}. Returning undefined.`);
+        return undefined;
+      }
       const response = await apiClient.get<any>(`/api/v1/products/${id}`);
       const p = response?.data?.product || response?.product || response?.data || undefined;
       return p ? mapApiProductToProduct(p) : undefined;
     } catch (error) {
       console.warn(`[productService] Failed to fetch product ${id}:`, error);
-      throw error;
+      return undefined; // Return undefined to trigger a 404 page instead of crashing the server
     }
   },
 

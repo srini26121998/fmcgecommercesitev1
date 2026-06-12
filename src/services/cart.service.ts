@@ -116,6 +116,19 @@ class CartService {
       throw error;
     }
   }
+
+  /**
+   * Get all available coupons
+   */
+  async getCoupons(): Promise<any[]> {
+    try {
+      const response = await apiClient.get<any>("/api/v1/cart/coupons");
+      return Array.isArray(response.data) ? response.data : Array.isArray(response) ? response : [];
+    } catch (error: any) {
+      console.warn("Failed to fetch coupons:", error);
+      return [];
+    }
+  }
 }
 
 export const cartService = new CartService();

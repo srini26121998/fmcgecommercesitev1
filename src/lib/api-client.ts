@@ -24,7 +24,7 @@ class ApiClient {
   constructor(baseURL: string) {
     this.client = axios.create({
       baseURL,
-      timeout: 60_000,
+      timeout: 15_000, // Reduced to 15s so it fails faster if Render is sleeping
       headers: {
         "Content-Type": "application/json",
         Accept: "application/json",
@@ -55,6 +55,8 @@ class ApiClient {
         if (typeof window !== "undefined") {
           useGlobalLoaderStore.getState().startLoading();
         }
+        
+        console.log(`[API Client] Starting request to ${config.url}... If this hangs, the backend is likely asleep.`);
         
         return config;
       },
