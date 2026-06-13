@@ -262,25 +262,7 @@ export const settingsService = {
   // GST / TAX SETTINGS
   // ═══════════════════════════════════════════════════════
 
-  async getTaxRates(): Promise<SettingsApiResponse<TaxRate[]>> {
-    try {
-      const response = await apiClient.get<any>("/api/v1/admin/settings/taxes");
-      return { success: true, data: response.data || response };
-    } catch (error) {
-      console.error("[settingsService] Failed to fetch tax rates:", error);
-      throw error;
-    }
-  },
 
-  async getGstReturns(): Promise<SettingsApiResponse<GstReturn[]>> {
-    try {
-      const response = await apiClient.get<any>("/api/v1/admin/settings/gst-returns");
-      return { success: true, data: response.data || response };
-    } catch (error) {
-      console.error("[settingsService] Failed to fetch GST returns:", error);
-      throw error;
-    }
-  },
 
   // ═══════════════════════════════════════════════════════
   // NOTIFICATION SETTINGS

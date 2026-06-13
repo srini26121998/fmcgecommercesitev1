@@ -4,8 +4,9 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import DashboardLayout from "../../dashboard-layout";
 import { useProductForm } from "@/hooks/use-products";
+import { useCategories } from "@/hooks/use-categories";
 import type { ProductFormData, ProductMedia } from "@/types/products";
-import { ArrowLeft, Save, Loader2 } from "lucide-react";
+import { ArrowLeft, Save, Loader2, ChevronDown } from "lucide-react";
 import FileUpload from "@/components/ui/file-upload";
 import type { UploadedFile } from "@/components/ui/file-upload";
 import { validateForm } from "@/validation/admin";
@@ -15,21 +16,13 @@ import { adminToast } from "@/lib/admin-toast";
 export default function NewProductPage() {
   const router = useRouter();
   const { createProduct, submitting } = useProductForm();
-  
+  const { data: categories = [] } = useCategories();
+
   const [form, setForm] = useState<Partial<ProductFormData>>({});
   const [files, setFiles] = useState<UploadedFile[]>([]);
+  const [tagsInput, setTagsInput] = useState("");
 
-  function filesToMedia(files: UploadedFile[], productName: string): ProductMedia[] {
-    return files.map((f, i) => ({
-      id: f.id,
-      productId: "", // will be set by the service after ID generation
-      type: f.type === "image" ? "image" : "document" as const,
-      url: f.preview || "",
-      alt: productName,
-      isPrimary: i === 0,
-      uploadedAt: new Date().toISOString(),
-    }));
-  }
+
 
   const handleSave = async () => {
     const validation = validateForm(productSchema, form);
@@ -38,8 +31,42 @@ export default function NewProductPage() {
       return;
     }
 
-    const media = filesToMedia(files, form.name || "Product");
-    const result = await createProduct({ ...form, media: media.length > 0 ? media : undefined });
+    // Upload files to local server first
+    const uploadedMediaUrls: string[] = [];
+    for (const f of files) {
+      const formData = new FormData();
+      formData.append("file", f.file);
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.url) {
+          uploadedMediaUrls.push(data.url);
+        }
+      } catch (err) {
+        console.error("Failed to upload file locally", err);
+      }
+    }
+
+    const media: ProductMedia[] = uploadedMediaUrls.map((url, i) => ({
+      id: `media-${Date.now()}-${i}`,
+      productId: "",
+      type: "image",
+      url,
+      alt: form.name || "Product",
+      isPrimary: i === 0,
+      uploadedAt: new Date().toISOString(),
+    }));
+
+    const parsedTags = tagsInput.split(",").map(t => t.trim()).filter(Boolean);
+
+    const result = await createProduct({ 
+      ...form, 
+      tags: parsedTags,
+      media: media.length > 0 ? media : undefined 
+    });
     if (result) {
       adminToast.success(`"${form.name}" created successfully`);
       router.push("/admin/products");
@@ -50,7 +77,7 @@ export default function NewProductPage() {
 
   return (
     <DashboardLayout>
-      <div className="mx-auto max-w-5xl space-y-4 sm:space-y-6 p-4 sm:p-6 lg:p-8">
+      <div className="w-full space-y-3 p-2 sm:p-3">
         {/* Header */}
         <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
           <div>
@@ -61,7 +88,7 @@ export default function NewProductPage() {
               <ArrowLeft className="h-4 w-4 transition-transform group-hover:-translate-x-1" />
               Back to Products
             </button>
-            <h1 className="text-2xl font-black tracking-tight text-[#1a1a1a] sm:text-3xl">
+            <h1 className="text-xl font-black tracking-tight text-[#1a1a1a] sm:text-2xl">
               Add New Product
             </h1>
             <p className="mt-1.5 text-sm text-[#666]">
@@ -87,12 +114,12 @@ export default function NewProductPage() {
         </div>
 
         {/* Form Content */}
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-3">
+          <div className="lg:col-span-2 space-y-3">
             {/* General Info */}
-            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-6 shadow-sm">
-              <h2 className="text-base font-black text-[#1a1a1a] mb-4">General Information</h2>
-              <div className="space-y-4">
+            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+              <h2 className="text-base font-black text-[#1a1a1a] mb-3">General Information</h2>
+              <div className="space-y-3">
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-[#666]">Product Name <span className="text-[#dc2626]">*</span></label>
                   <input
@@ -103,20 +130,32 @@ export default function NewProductPage() {
                     className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
                   />
                 </div>
-                
+
                 {/* ADDED ITEM CODE INPUT HERE */}
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Item Code</label>
-                  <input
-                    type="text"
-                    placeholder="Enter item code"
-                    value={form.itemCode ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, itemCode: e.target.value }))}
-                    className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
-                  />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-[#666]">Item Code</label>
+                    <input
+                      type="text"
+                      placeholder="Enter item code"
+                      value={form.itemCode ?? ""}
+                      onChange={(e) => setForm((f) => ({ ...f, itemCode: e.target.value }))}
+                      className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
+                    />
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-[#666]">Barcode</label>
+                    <input
+                      type="text"
+                      placeholder="Enter barcode"
+                      value={form.barcode ?? ""}
+                      onChange={(e) => setForm((f) => ({ ...f, barcode: e.target.value }))}
+                      className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
+                    />
+                  </div>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                   <div>
                     <label className="mb-1.5 block text-xs font-bold text-[#666]">SKU <span className="text-[#dc2626]">*</span></label>
                     <input
@@ -140,6 +179,16 @@ export default function NewProductPage() {
                 </div>
 
                 <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Short Description</label>
+                  <textarea
+                    rows={2}
+                    placeholder="Brief summary..."
+                    value={form.shortDescription ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, shortDescription: e.target.value }))}
+                    className="w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 py-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 resize-none"
+                  />
+                </div>
+                <div>
                   <label className="mb-1.5 block text-xs font-bold text-[#666]">Description</label>
                   <textarea
                     rows={4}
@@ -149,13 +198,23 @@ export default function NewProductPage() {
                     className="w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 py-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 resize-none"
                   />
                 </div>
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Tags</label>
+                  <input
+                    type="text"
+                    placeholder="e.g. organic, fresh, dairy (comma separated)"
+                    value={tagsInput}
+                    onChange={(e) => setTagsInput(e.target.value)}
+                    className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
+                  />
+                </div>
               </div>
             </section>
 
             {/* Pricing & Inventory */}
-            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-6 shadow-sm">
-              <h2 className="text-base font-black text-[#1a1a1a] mb-4">Pricing & Inventory</h2>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+              <h2 className="text-base font-black text-[#1a1a1a] mb-3">Pricing & Inventory</h2>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-[#666]">Price (₹) <span className="text-[#dc2626]">*</span></label>
                   <input
@@ -177,6 +236,16 @@ export default function NewProductPage() {
                   />
                 </div>
                 <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Cost Price (₹)</label>
+                  <input
+                    type="number"
+                    placeholder="0"
+                    value={form.costPrice ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, costPrice: Number(e.target.value) }))}
+                    className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
+                  />
+                </div>
+                <div>
                   <label className="mb-1.5 block text-xs font-bold text-[#666]">Stock <span className="text-[#dc2626]">*</span></label>
                   <input
                     type="number"
@@ -188,66 +257,127 @@ export default function NewProductPage() {
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-[#666]">Tax Rate (%)</label>
-                  <input
-                    type="number"
-                    placeholder="5"
-                    value={form.taxRate ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, taxRate: Number(e.target.value) }))}
-                    className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
-                  />
+                  <div className="relative">
+                    <select
+                      value={form.taxRate ?? ""}
+                      onChange={(e) => setForm((f) => ({ ...f, taxRate: Number(e.target.value) }))}
+                      className="h-11 w-full appearance-none rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-4 pr-10 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:border-[#d1d5db] hover:bg-gray-50 focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 cursor-pointer shadow-sm"
+                    >
+                      <option value="">Select Tax Rate</option>
+                      {[0, 5, 12, 18, 28].map((rate) => (
+                        <option key={rate} value={rate}>GST {rate}%</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                  </div>
                 </div>
               </div>
             </section>
           </div>
 
-          <div className="space-y-6">
+          <div className="space-y-3">
             {/* Organization */}
-            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-6 shadow-sm">
-              <h2 className="text-base font-black text-[#1a1a1a] mb-4">Organization</h2>
-              <div className="space-y-4">
+            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+              <h2 className="text-base font-black text-[#1a1a1a] mb-3">Organization</h2>
+              <div className="space-y-3">
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-[#666]">Category <span className="text-[#dc2626]">*</span></label>
-                  <select
-                    value={form.category ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
-                    className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
-                  >
-                    <option value="">Select Category</option>
-                    {["Groceries", "Fruits", "Vegetables", "Dairy", "Beverages", "Snacks", "Health", "Personal Care", "Home Care", "Baby Care"].map((c) => (
-                      <option key={c} value={c}>{c}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={form.category ?? ""}
+                      onChange={(e) => setForm((f) => ({ ...f, category: e.target.value }))}
+                      className="h-11 w-full appearance-none rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-4 pr-10 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:border-[#d1d5db] hover:bg-gray-50 focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 cursor-pointer shadow-sm"
+                    >
+                      <option value="">Select Category</option>
+                      {categories.map((c: any) => (
+                        <option key={c.id} value={c.id}>{c.name}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                  </div>
                 </div>
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-[#666]">Warehouse</label>
-                  <select
-                    value={form.warehouse ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, warehouse: e.target.value }))}
-                    className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
-                  >
-                    <option value="">Select Warehouse</option>
-                    {["Mumbai Hub", "Delhi Central", "Pune Cold Storage", "Bangalore Cold Room", "Hyderabad Depot"].map((w) => (
-                      <option key={w} value={w}>{w}</option>
-                    ))}
-                  </select>
+                  <div className="relative">
+                    <select
+                      value={form.warehouse ?? ""}
+                      onChange={(e) => setForm((f) => ({ ...f, warehouse: e.target.value }))}
+                      className="h-11 w-full appearance-none rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-4 pr-10 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:border-[#d1d5db] hover:bg-gray-50 focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 cursor-pointer shadow-sm"
+                    >
+                      <option value="">Select Warehouse</option>
+                      {["Mumbai Hub", "Delhi Central", "Pune Cold Storage", "Bangalore Cold Room", "Hyderabad Depot"].map((w) => (
+                        <option key={w} value={w}>{w}</option>
+                      ))}
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                  </div>
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Weight</label>
+                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Supplier</label>
                   <input
                     type="text"
-                    placeholder="e.g. 1 kg, 500 ml"
-                    value={form.weight ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
+                    placeholder="Supplier name"
+                    value={form.supplier ?? ""}
+                    onChange={(e) => setForm((f) => ({ ...f, supplier: e.target.value }))}
                     className="h-11 w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10"
                   />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-[#666]">Weight</label>
+                    <div className="relative">
+                      <select
+                        value={form.weight ?? ""}
+                        onChange={(e) => setForm((f) => ({ ...f, weight: e.target.value }))}
+                        className="h-11 w-full appearance-none rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-4 pr-10 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:border-[#d1d5db] hover:bg-gray-50 focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 cursor-pointer shadow-sm"
+                      >
+                        <option value="">Select Weight</option>
+                        {["50 g", "100 g", "200 g", "250 g", "500 g", "1 kg", "2 kg", "5 kg", "10 kg", "25 kg", "50 ml", "100 ml", "200 ml", "250 ml", "500 ml", "1 L", "2 L", "5 L"].map((w) => (
+                          <option key={w} value={w}>{w}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="mb-1.5 block text-xs font-bold text-[#666]">Unit</label>
+                    <div className="relative">
+                      <select
+                        value={form.unit ?? ""}
+                        onChange={(e) => setForm((f) => ({ ...f, unit: e.target.value }))}
+                        className="h-11 w-full appearance-none rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-4 pr-10 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:border-[#d1d5db] hover:bg-gray-50 focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 cursor-pointer shadow-sm"
+                      >
+                        <option value="">Select Unit</option>
+                        {["piece", "pack", "box", "bottle", "can", "jar", "kg", "g", "L", "ml"].map((u) => (
+                          <option key={u} value={u}>{u}</option>
+                        ))}
+                      </select>
+                      <ChevronDown className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                    </div>
+                  </div>
                 </div>
               </div>
             </section>
 
             {/* Status & Options */}
-            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-6 shadow-sm">
-              <h2 className="text-base font-black text-[#1a1a1a] mb-4">Status & Options</h2>
-              <div className="space-y-4">
+            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+              <h2 className="text-base font-black text-[#1a1a1a] mb-3">Status & Options</h2>
+              <div className="space-y-3">
+                <div>
+                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Status</label>
+                  <div className="relative">
+                    <select
+                      value={form.status ?? "draft"}
+                      onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as any }))}
+                      className="h-11 w-full appearance-none rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-4 pr-10 text-sm font-medium text-[#1a1a1a] outline-none transition-all hover:border-[#d1d5db] hover:bg-gray-50 focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 cursor-pointer shadow-sm"
+                    >
+                      <option value="draft">Draft</option>
+                      <option value="active">Active</option>
+                      <option value="inactive">Inactive</option>
+                    </select>
+                    <ChevronDown className="absolute right-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-gray-500 pointer-events-none" />
+                  </div>
+                </div>
                 <label className="flex items-center justify-between rounded-xl border border-[#e8e8e8] bg-white px-4 py-3 cursor-pointer hover:border-[#0c831f] transition-colors">
                   <div>
                     <p className="text-xs font-bold text-[#1a1a1a]">Featured</p>
@@ -288,8 +418,8 @@ export default function NewProductPage() {
             </section>
 
             {/* Media */}
-            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-6 shadow-sm">
-              <h2 className="text-base font-black text-[#1a1a1a] mb-4">Product Images</h2>
+            <section className="rounded-2xl border border-[#e8e8e8] bg-white p-4 shadow-sm">
+              <h2 className="text-base font-black text-[#1a1a1a] mb-3">Product Images</h2>
               <FileUpload
                 files={files}
                 onFilesChange={setFiles}

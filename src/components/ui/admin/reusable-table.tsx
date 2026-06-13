@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState, useCallback, useEffect } from "react";
+import { useMemo, useState, useCallback, useEffect, Fragment } from "react";
 import type { ReactNode } from "react";
 import { ChevronUp, ChevronDown, ChevronsUpDown, ChevronLeft, ChevronRight } from "lucide-react";
 import { AnimatedLoader } from "@/components/ui/animated-loader";
@@ -50,6 +50,7 @@ interface ReusableTableProps<T> {
   sortKey?: string | null;
   sortDir?: "asc" | "desc";
   onSortChange?: (key: string, dir: "asc" | "desc") => void;
+  expandedRowRender?: (item: T) => ReactNode;
 }
 
 export function ReusableTable<T>({
@@ -72,8 +73,10 @@ export function ReusableTable<T>({
   sortKey: externalSortKey,
   sortDir: externalSortDir,
   onSortChange,
+  expandedRowRender,
 }: ReusableTableProps<T>) {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
   const [internalSortKey, setInternalSortKey] = useState<string | null>(null);
   const [internalSortDir, setInternalSortDir] = useState<"asc" | "desc">("asc");
 
@@ -144,6 +147,15 @@ export function ReusableTable<T>({
 
   const toggleSelect = useCallback((id: string) => {
     setSelectedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  }, []);
+
+  const toggleExpand = useCallback((id: string) => {
+    setExpandedIds((prev) => {
       const next = new Set(prev);
       if (next.has(id)) next.delete(id);
       else next.add(id);
@@ -273,14 +285,18 @@ export function ReusableTable<T>({
             {sortedData.map((item) => {
               const id = keyExtractor(item);
               const isSelected = selectedIds.has(id);
+              const isExpanded = expandedIds.has(id);
               return (
-                <tr
-                  key={id}
-                  className={`group text-xs font-normal text-[#334155] transition-all duration-150 ${onRowClick ? "cursor-pointer" : ""
-                    } ${isSelected ? "bg-[#e8f5e9]/40" : "hover:bg-[#f9fafb]"
-                    }`}
-                  onClick={() => onRowClick?.(item)}
-                >
+                <Fragment key={id}>
+                  <tr
+                    className={`group text-xs font-normal text-[#334155] transition-all duration-150 ${onRowClick || expandedRowRender ? "cursor-pointer" : ""
+                      } ${isSelected ? "bg-[#e8f5e9]/40" : "hover:bg-[#f9fafb]"
+                      } ${isExpanded ? "bg-[#f9fafb]" : ""}`}
+                    onClick={() => {
+                      if (expandedRowRender) toggleExpand(id);
+                      if (onRowClick && !expandedRowRender) onRowClick(item);
+                    }}
+                  >
                   {enableSelection && (
                     <td className="px-3 py-2 whitespace-nowrap">
                       <input
@@ -331,6 +347,16 @@ export function ReusableTable<T>({
                     </td>
                   )}
                 </tr>
+                {expandedRowRender && isExpanded && (
+                  <tr>
+                    <td colSpan={orderedColumns.length + (enableSelection ? 1 : 0) + (actions ? 1 : 0)} className="p-0 border-b border-[#e8e8e8]">
+                      <div className="bg-[#fcfcfc] overflow-hidden">
+                        {expandedRowRender(item)}
+                      </div>
+                    </td>
+                  </tr>
+                )}
+                </Fragment>
               );
             })}
           </tbody>

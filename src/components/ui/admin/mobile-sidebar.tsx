@@ -98,8 +98,8 @@ export default function MobileSidebar() {
                           href={item.href}
                           onClick={close}
                           className={`flex flex-1 items-center gap-2.5 rounded-l-xl px-3 py-2.5 transition-all duration-150 ${
-                            isParentExactActive
-                              ? "bg-[#e8f5e9] text-[#0c831f]"
+                            isActiveSection
+                              ? "text-[#1a1a1a] font-semibold"
                               : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
                           }`}
                         >
@@ -123,7 +123,7 @@ export default function MobileSidebar() {
                           }}
                           className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-r-xl transition-all duration-150 ${
                             isActiveSection
-                              ? "bg-[#e8f5e9] text-[#0c831f]"
+                              ? "text-[#1a1a1a] hover:bg-[#f6f7f6]"
                               : "text-[#999] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
                           }`}
                           aria-label={isExpanded ? `Collapse ${item.label}` : `Expand ${item.label}`}

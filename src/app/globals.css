@@ -402,6 +402,24 @@ html {
   scrollbar-width: none;
 }
 
+.scrollbar-very-thin::-webkit-scrollbar {
+  width: 3px;
+  height: 3px;
+}
+.scrollbar-very-thin::-webkit-scrollbar-track {
+  background: transparent;
+}
+.scrollbar-very-thin::-webkit-scrollbar-thumb {
+  background-color: #cbd5e1;
+  border-radius: 10px;
+}
+.scrollbar-very-thin::-webkit-scrollbar-thumb:hover {
+  background-color: #94a3b8;
+}
+.scrollbar-very-thin {
+  scrollbar-width: thin; /* Firefox doesn't support < 'thin' directly but this helps */
+}
+
 /* ── PRODUCT CARD ── */
 
 /* Pulse animation for stock dot */

@@ -219,8 +219,42 @@ class AuthService {
     }
   }
 
-  // Future auth methods can be added here
-  // async forgotPassword() {}
+  /**
+   * Request password reset
+   * @param email User's email
+   */
+  async forgotPassword(email: string): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<any>("/api/v1/auth/forgot-password", { email });
+      return {
+        success: true,
+        message: response.message || response.data?.message,
+        data: response.data || response,
+      };
+    } catch (error: any) {
+      console.warn("Forgot password failed:", error);
+      throw error;
+    }
+  }
+
+  /**
+   * Reset password using token
+   * @param password New password
+   * @param token Reset token
+   */
+  async resetPassword(password: string, token: string): Promise<AuthResponse> {
+    try {
+      const response = await apiClient.post<any>("/api/v1/auth/reset-password", { password, token });
+      return {
+        success: true,
+        message: response.message || response.data?.message,
+        data: response.data || response,
+      };
+    } catch (error: any) {
+      console.warn("Reset password failed:", error);
+      throw error;
+    }
+  }
 
   /**
    * Admin-specific login.

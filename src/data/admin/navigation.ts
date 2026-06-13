@@ -84,7 +84,7 @@ export const menuItems: MenuItem[] = [
       { icon: Package, label: "Product Management", href: "/admin/products" },
       { icon: Tags, label: "Category Management", href: "/admin/products/categories" },
       { icon: DollarSign, label: "Pricing Management", href: "/admin/products/pricing" },
-      { icon: Image, label: "Product Media", href: "/admin/products/media" },
+      // { icon: Image, label: "Product Media", href: "/admin/products/media" },
       { icon: Hash, label: "SEO Management", href: "/admin/products/seo" },
       { icon: Upload, label: "Bulk Import", href: "/admin/products/bulk-import" },
       { icon: History, label: "Audit Logs", href: "/admin/products/audit-logs" },

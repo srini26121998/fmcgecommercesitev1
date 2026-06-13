@@ -413,35 +413,6 @@ export function usePaymentSettings() {
   return { methods, loading, error, enabledCount, toggleMethod, refresh: fetchMethods };
 }
 
-// ── GST / Tax Settings Hook ──────────────────────────────
-
-export function useGstSettings() {
-  const [taxRates, setTaxRates] = useState<TaxRate[]>([]);
-  const [gstReturns, setGstReturns] = useState<GstReturn[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-
-  const fetchData = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [taxRes, gstRes] = await Promise.all([
-        settingsService.getTaxRates(),
-        settingsService.getGstReturns(),
-      ]);
-      if (taxRes.success) setTaxRates(taxRes.data);
-      if (gstRes.success) setGstReturns(gstRes.data);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : "Failed to load tax data");
-    } finally {
-      setLoading(false);
-    }
-  }, []);
-
-  useEffect(() => { fetchData(); }, [fetchData]);
-
-  return { taxRates, gstReturns, loading, error, refresh: fetchData };
-}
 
 // ── Notification Settings Hook ────────────────────────────
 

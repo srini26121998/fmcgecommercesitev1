@@ -1,7 +1,7 @@
 "use client";
 
-import { useState } from "react";
-import { useRouter, useParams } from "next/navigation";
+import { useState, useEffect } from "react";
+import { useRouter, useParams, useSearchParams } from "next/navigation";
 import DashboardLayout from "../../dashboard-layout";
 import { useProduct, useProductForm } from "@/hooks/use-products";
 import { useConfirm } from "@/components/ui/admin/confirm-dialog";
@@ -46,21 +46,12 @@ function InfoCard({ icon, label, value, accent }: { icon: React.ReactNode; label
   );
 }
 
-function filesToMedia(files: UploadedFile[], productName: string): ProductMedia[] {
-  return files.map((f, i) => ({
-    id: f.id,
-    productId: "",
-    type: f.type === "image" ? "image" : "document" as const,
-    url: f.preview || "",
-    alt: productName,
-    isPrimary: i === 0,
-    uploadedAt: new Date().toISOString(),
-  }));
-}
+
 
 export default function ProductDetailPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params?.id as string;
 
   const { product, loading, error } = useProduct(id);
@@ -85,7 +76,20 @@ export default function ProductDetailPage() {
     setIsEditing(true);
   };
 
-  const cancelEdit = () => { setIsEditing(false); setEditForm({}); setErrors({}); };
+  useEffect(() => {
+    if (searchParams?.get("edit") === "true" && product && !isEditing && Object.keys(editForm).length === 0) {
+      startEdit();
+    }
+  }, [searchParams, product, isEditing, editForm]);
+
+  const cancelEdit = () => { 
+    setIsEditing(false); 
+    setEditForm({}); 
+    setErrors({}); 
+    if (searchParams?.get("edit") === "true") {
+      router.replace(`/admin/products/${product?.id}`);
+    }
+  };
 
   const handleSave = async () => {
     if (!product) return;
@@ -96,7 +100,36 @@ export default function ProductDetailPage() {
       return; 
     }
     setErrors({});
-    const newMedia = filesToMedia(editFiles, (editForm.name as string) || product.name);
+    
+    // Upload files to local server first
+    const uploadedMediaUrls: string[] = [];
+    for (const f of editFiles) {
+      const formData = new FormData();
+      formData.append("file", f.file);
+      try {
+        const res = await fetch("/api/upload", {
+          method: "POST",
+          body: formData,
+        });
+        const data = await res.json();
+        if (data.url) {
+          uploadedMediaUrls.push(data.url);
+        }
+      } catch (err) {
+        console.error("Failed to upload file locally", err);
+      }
+    }
+
+    const newMedia: ProductMedia[] = uploadedMediaUrls.map((url, i) => ({
+      id: `media-${Date.now()}-${i}`,
+      productId: product.id,
+      type: "image",
+      url,
+      alt: (editForm.name as string) || product.name,
+      isPrimary: i === 0 && (!product.media || product.media.length === 0),
+      uploadedAt: new Date().toISOString(),
+    }));
+
     const mergedMedia = newMedia.length > 0 ? [...(product.media || []), ...newMedia] : undefined;
     const result = await updateProduct(product.id, { ...editForm, ...(mergedMedia ? { media: mergedMedia } : {}) });
     if (result) {
@@ -307,10 +340,28 @@ export default function ProductDetailPage() {
               <div><label className="mb-1.5 block text-xs font-bold text-[#666]">Price (₹) <span className="text-red-500">*</span></label><input type="number" className={inp} value={(f.price as number) ?? ""} onChange={e => setEditForm(p => ({ ...p, price: Number(e.target.value) }))} />{errors.price && <p className="mt-1.5 text-[11px] font-bold text-red-500">{errors.price}</p>}</div>
               <div><label className="mb-1.5 block text-xs font-bold text-[#666]">MRP (₹)</label><input type="number" className={inp} value={(f.mrp as number) ?? ""} onChange={e => setEditForm(p => ({ ...p, mrp: Number(e.target.value) }))} /></div>
               <div><label className="mb-1.5 block text-xs font-bold text-[#666]">Cost Price (₹)</label><input type="number" className={inp} value={(f.costPrice as number) ?? ""} onChange={e => setEditForm(p => ({ ...p, costPrice: Number(e.target.value) }))} /></div>
-              <div><label className="mb-1.5 block text-xs font-bold text-[#666]">Tax Rate (%)</label><input type="number" className={inp} value={(f.taxRate as number) ?? ""} onChange={e => setEditForm(p => ({ ...p, taxRate: Number(e.target.value) }))} /></div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Tax Rate (%)</label>
+                <select className={inp + " appearance-none cursor-pointer"} value={(f.taxRate as number) ?? ""} onChange={e => setEditForm(p => ({ ...p, taxRate: Number(e.target.value) }))}>
+                  <option value="">Select Tax Rate</option>
+                  {[0, 5, 12, 18, 28].map((rate) => <option key={rate} value={rate}>GST {rate}%</option>)}
+                </select>
+              </div>
               <div><label className="mb-1.5 block text-xs font-bold text-[#666]">Stock Qty <span className="text-red-500">*</span></label><input type="number" className={inp} value={(f.stock as number) ?? ""} onChange={e => setEditForm(p => ({ ...p, stock: Number(e.target.value) }))} />{errors.stock && <p className="mt-1.5 text-[11px] font-bold text-red-500">{errors.stock}</p>}</div>
-              <div><label className="mb-1.5 block text-xs font-bold text-[#666]">Unit</label><input className={inp} value={(f.unit as string) ?? ""} onChange={e => setEditForm(p => ({ ...p, unit: e.target.value }))} /></div>
-              <div><label className="mb-1.5 block text-xs font-bold text-[#666]">Weight</label><input className={inp} value={(f.weight as string) ?? ""} onChange={e => setEditForm(p => ({ ...p, weight: e.target.value }))} /></div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Unit</label>
+                <select className={inp + " appearance-none cursor-pointer"} value={(f.unit as string) ?? ""} onChange={e => setEditForm(p => ({ ...p, unit: e.target.value }))}>
+                  <option value="">Select Unit</option>
+                  {["piece", "pack", "box", "bottle", "can", "jar", "kg", "g", "L", "ml"].map((u) => <option key={u} value={u}>{u}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Weight</label>
+                <select className={inp + " appearance-none cursor-pointer"} value={(f.weight as string) ?? ""} onChange={e => setEditForm(p => ({ ...p, weight: e.target.value }))}>
+                  <option value="">Select Weight</option>
+                  {["50 g", "100 g", "200 g", "250 g", "500 g", "1 kg", "2 kg", "5 kg", "10 kg", "25 kg", "50 ml", "100 ml", "200 ml", "250 ml", "500 ml", "1 L", "2 L", "5 L"].map((w) => <option key={w} value={w}>{w}</option>)}
+                </select>
+              </div>
               <div>
                 <label className="mb-1.5 block text-xs font-bold text-[#666]">Warehouse</label>
                 <select className={inp} value={(f.warehouse as string) ?? ""} onChange={e => setEditForm(p => ({ ...p, warehouse: e.target.value }))}>

@@ -23,8 +23,11 @@ function mapApiProductToProduct(p: any): Product {
     id: p.id?.toString() || p._id || "",
     name: p.name || p.title || "",
     category: p.category || p.categoryName || "",
+    categoryId: p.categoryId || (typeof p.category === 'object' ? p.category?.id : undefined) || "",
     status: (p.status?.toLowerCase() || "draft") as ProductStatus,
     stock: typeof p.stock === 'object' && p.stock !== null ? p.stock.qtyAvailable || 0 : (p.stock || 0),
+    quantityReserved: typeof p.stock === 'object' && p.stock !== null ? p.stock.qtyReserved || 0 : (p.quantityReserved || p.qtyReserved || 0),
+    stockStatus: typeof p.stock === 'object' && p.stock !== null ? p.stock.stockStatus : p.stockStatus,
     oldPrice: p.oldPrice || p.mrp || p.price || 0,
     rating: p.rating || 4.5,
     image: p.image || p.images?.[0]?.url || p.media?.[0]?.url || "",
@@ -81,8 +84,9 @@ export const productService = {
         if (pagination.pageSize) params.append("limit", pagination.pageSize.toString());
 
       let endpoint = "/api/v1/products";
-      if (filters.search) {
-        // Fetch more items to perform a comprehensive client-side search across all columns
+      const needsClientFilter = filters.search || filters.stockStatus || filters.minPrice !== undefined || filters.maxPrice !== undefined || filters.sortBy;
+      if (needsClientFilter) {
+        // Fetch more items to perform comprehensive client-side filtering
         params.set("limit", "1000");
         params.set("page", "1");
         // We do NOT use /api/v1/products/search because it might not search all columns
@@ -106,27 +110,58 @@ export const productService = {
 
       let products = (Array.isArray(rawProducts) ? rawProducts : []).map(mapApiProductToProduct);
 
-      // Apply client-side filtering to support searching across all columns
-      if (filters.search) {
-        const q = filters.search.toLowerCase();
-        products = products.filter(p => {
-          const matchesSearch = Object.values(p).some(val => {
-            if (val === null || val === undefined) return false;
-            if (typeof val === 'object') {
-              if (Array.isArray(val)) {
-                return val.some(v => v !== null && v !== undefined && String(v).toLowerCase().includes(q));
+      // Apply client-side filtering to support searching across all columns and custom filters
+      if (needsClientFilter) {
+        if (filters.search) {
+          const q = filters.search.toLowerCase();
+          products = products.filter(p => {
+            const matchesSearch = Object.values(p).some(val => {
+              if (val === null || val === undefined) return false;
+              if (typeof val === 'object') {
+                if (Array.isArray(val)) {
+                  return val.some(v => v !== null && v !== undefined && String(v).toLowerCase().includes(q));
+                }
+                return false;
               }
-              return false;
-            }
-            return String(val).toLowerCase().includes(q);
+              return String(val).toLowerCase().includes(q);
+            });
+            return matchesSearch;
           });
-          if (!matchesSearch) return false;
-
+        }
+        
+        products = products.filter(p => {
           if (filters.category && p.category !== filters.category) return false;
           if (filters.brand && p.brand !== filters.brand) return false;
           if (filters.status && p.status !== filters.status) return false;
+          
+          if (filters.minPrice !== undefined && p.price < filters.minPrice) return false;
+          if (filters.maxPrice !== undefined && p.price > filters.maxPrice) return false;
+          
+          if (filters.stockStatus) {
+            const threshold = p.lowStockThreshold || 10;
+            if (filters.stockStatus === "low_stock" && (p.stock <= 0 || p.stock > threshold)) return false;
+            if (filters.stockStatus === "high_stock" && p.stock <= threshold) return false;
+            if (filters.stockStatus === "out_of_stock" && p.stock > 0) return false;
+          }
           return true;
         });
+
+        if (filters.sortBy) {
+          products.sort((a, b) => {
+            let valA = a[filters.sortBy as keyof Product] as any;
+            let valB = b[filters.sortBy as keyof Product] as any;
+            
+            if (filters.sortBy === "price") {
+              valA = a.price ?? 0;
+              valB = b.price ?? 0;
+            }
+
+            if (valA < valB) return filters.sortOrder === "desc" ? 1 : -1;
+            if (valA > valB) return filters.sortOrder === "desc" ? -1 : 1;
+            return 0;
+          });
+        }
+
         total = products.length;
 
         const page = pagination.page || 1;
@@ -214,9 +249,19 @@ export const productService = {
   },
 
   // POST /api/v1/admin/products — Admin: Create product
-  async createProduct(data: Partial<ProductFormData>): Promise<Product> {
+  async createProduct(data: Partial<ProductFormData> & { categoryId?: string | number }): Promise<Product> {
     try {
-      const response = await apiClient.post<any>("/api/v1/admin/products", data);
+      const payload: any = { ...data };
+      if (data.name !== undefined) {
+        payload.title = data.name;
+        // Optionally delete payload.name if backend doesn't like it
+      }
+      if (data.categoryId !== undefined) {
+        payload.categoryId = data.categoryId;
+      } else if (data.category !== undefined) {
+        payload.categoryId = data.category;
+      }
+      const response = await apiClient.post<any>("/api/v1/admin/products", payload);
       const p = response?.data?.product || response?.product || response?.data || response;
       return mapApiProductToProduct(p);
     } catch (error) {
@@ -226,9 +271,18 @@ export const productService = {
   },
 
   // PUT /api/v1/admin/products/{id} — Admin: Update product
-  async updateProduct(id: string, data: Partial<Product>): Promise<Product | undefined> {
+  async updateProduct(id: string, data: Partial<Product> & { categoryId?: string | number }): Promise<Product | undefined> {
     try {
-      const response = await apiClient.put<any>(`/api/v1/admin/products/${id}`, data);
+      const payload: any = { ...data };
+      if (data.name !== undefined) {
+        payload.title = data.name;
+      }
+      if (data.categoryId !== undefined) {
+        payload.categoryId = data.categoryId;
+      } else if (data.category !== undefined) {
+        payload.categoryId = data.category;
+      }
+      const response = await apiClient.put<any>(`/api/v1/admin/products/${id}`, payload);
       const p = response?.data?.product || response?.product || response?.data || response;
       return p ? mapApiProductToProduct(p) : undefined;
     } catch (error) {

@@ -148,7 +148,6 @@ export function useProduct(id: string) {
 
   return { product, loading, error };
 }
-
 // ── Search Hook ──────────────────────────────────────────
 
 export function useProductSearch() {

@@ -87,15 +87,13 @@ export default function SidebarEnterprise({
 
   return (
     <aside
-      className={`fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-[#e8e8e8] bg-white transition-all duration-300 ease-in-out ${
-        collapsed ? "w-16 shadow-sm" : "w-64 max-md:hidden"
-      }`}
+      className={`fixed left-0 top-0 z-30 flex h-screen flex-col border-r border-[#e8e8e8] bg-white transition-all duration-300 ease-in-out ${collapsed ? "w-16 shadow-sm" : "w-64 max-md:hidden"
+        }`}
     >
       {/* ── Logo area ── */}
       <div
-        className={`flex w-full items-center border-b border-[#e8e8e8] transition-all duration-300 ${
-          collapsed ? "justify-center px-0 py-4" : "justify-between px-4 py-4"
-        }`}
+        className={`flex w-full items-center border-b border-[#e8e8e8] transition-all duration-300 ${collapsed ? "justify-center px-0 py-4" : "justify-between px-4 py-4"
+          }`}
       >
         <Link href="/admin" className="flex items-center gap-2.5">
           <div className="flex h-9 w-9 flex-shrink-0 items-center justify-center rounded-xl bg-[#ff4f8b]">
@@ -103,9 +101,8 @@ export default function SidebarEnterprise({
           </div>
           {/* Logo label — hidden when collapsed */}
           <div
-            className={`overflow-hidden transition-all duration-300 ${
-              collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-            }`}
+            className={`overflow-hidden transition-all duration-300 ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+              }`}
           >
             <div className="whitespace-nowrap">
               <p className="text-[10px] font-black uppercase tracking-wide text-[#0c831f]">Admin Panel</p>
@@ -118,9 +115,8 @@ export default function SidebarEnterprise({
 
       {/* ── Navigation ── */}
       <nav
-        className={`w-full flex-1 overflow-y-auto space-y-0.5 transition-all duration-300 ${
-          collapsed ? "px-2 py-3" : "px-3 py-3"
-        }`}
+        className={`w-full flex-1 overflow-y-auto space-y-0.5 transition-all duration-300 ${collapsed ? "px-2 py-3" : "px-3 py-3"
+          }`}
         style={{ scrollbarWidth: "thin", scrollbarColor: "#ccc transparent" }}
       >
         {navItems.map((item) => {
@@ -145,18 +141,15 @@ export default function SidebarEnterprise({
                       onClick={(e) => e.stopPropagation()}
                       className={`
                         flex items-center transition-all duration-150
-                        ${
-                          collapsed
-                            ? `h-10 w-10 justify-center rounded-xl ${
-                                isParentExactActive
-                                  ? "bg-[#e8f5e9] text-[#0c831f]"
-                                  : "text-[#999] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
-                              }`
-                            : `flex-1 rounded-l-xl px-3 py-2.5 gap-2.5 ${
-                                isParentExactActive
-                                  ? "bg-[#e8f5e9] text-[#0c831f]"
-                                  : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
-                              }`
+                        ${collapsed
+                          ? `h-10 w-10 justify-center rounded-xl ${isActiveSection
+                            ? "bg-[#e8f5e9] text-[#0c831f]"
+                            : "text-[#999] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
+                          }`
+                          : `flex-1 rounded-l-xl px-3 py-2.5 gap-2.5 ${isActiveSection
+                            ? "text-[#1a1a1a] font-semibold"
+                            : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
+                          }`
                         }
                       `}
                       title={collapsed ? item.label : undefined}
@@ -164,9 +157,8 @@ export default function SidebarEnterprise({
                       <item.icon className="h-6 w-6 flex-shrink-0" />
                       {/* Label — hidden when collapsed */}
                       <div
-                        className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
-                          collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-                        }`}
+                        className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                          }`}
                       >
                         <div className="min-w-0">
                           <span className="block text-sm font-medium leading-tight">{item.label}</span>
@@ -185,18 +177,16 @@ export default function SidebarEnterprise({
                           e.preventDefault();
                           toggleSection(item.label);
                         }}
-                        className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-r-xl transition-all duration-150 ${
-                          isActiveSection
-                            ? "bg-[#e8f5e9] text-[#0c831f]"
+                        className={`flex h-10 w-10 flex-shrink-0 items-center justify-center rounded-r-xl transition-all duration-150 ${isActiveSection
+                            ? "text-[#1a1a1a] hover:bg-[#f6f7f6]"
                             : "text-[#999] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
-                        }`}
+                          }`}
                         aria-label={isExpanded ? `Collapse ${item.label}` : `Expand ${item.label}`}
                         type="button"
                       >
                         <ChevronDown
-                          className={`h-4 w-4 transition-transform duration-300 ease-in-out ${
-                            isExpanded ? "rotate-0" : "-rotate-90"
-                          }`}
+                          className={`h-4 w-4 transition-transform duration-300 ease-in-out ${isExpanded ? "rotate-0" : "-rotate-90"
+                            }`}
                         />
                       </button>
                     )}
@@ -214,32 +204,29 @@ export default function SidebarEnterprise({
 
                   {/* ── Submenu — CSS-animated, always in DOM ── */}
                   <div
-                    className={`overflow-hidden transition-all duration-300 ease-in-out ${
-                      collapsed || !isExpanded ? "max-h-0 opacity-0" : "max-h-96 opacity-100"
-                    }`}
+                    className={`overflow-hidden transition-all duration-300 ease-in-out ${collapsed || !isExpanded ? "max-h-0 opacity-0" : "max-h-96 opacity-100"
+                      }`}
                   >
-                      <div className="ml-3 mt-0.5 border-l-2 border-[#e8e8e8] pl-3 space-y-0.5">
-                        {item.submenu!.map((sub) => {
-                          const isSubActive = pathname === sub.href;
-                          return (
-                            <Link
-                              key={sub.href}
-                              href={sub.href}
-                              onClick={(e) => e.stopPropagation()}
-                              className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${
-                                isSubActive
-                                  ? "bg-[#e8f5e9] text-[#0c831f] font-bold"
-                                  : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
+                    <div className="ml-3 mt-0.5 border-l-2 border-[#e8e8e8] pl-3 space-y-0.5">
+                      {item.submenu!.map((sub) => {
+                        const isSubActive = pathname === sub.href;
+                        return (
+                          <Link
+                            key={sub.href}
+                            href={sub.href}
+                            onClick={(e) => e.stopPropagation()}
+                            className={`group flex items-center gap-2.5 rounded-lg px-3 py-2 text-sm font-medium transition-all duration-150 ${isSubActive
+                                ? "bg-[#e8f5e9] text-[#0c831f] font-bold"
+                                : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
                               }`}
-                            >
-                              <sub.icon className={`h-5 w-5 flex-shrink-0 transition-colors ${
-                                isSubActive ? "text-[#0c831f]" : "text-[#999] group-hover:text-[#666]"
+                          >
+                            <sub.icon className={`h-5 w-5 flex-shrink-0 transition-colors ${isSubActive ? "text-[#0c831f]" : "text-[#999] group-hover:text-[#666]"
                               }`} />
-                              <span>{sub.label}</span>
-                            </Link>
-                          );
-                        })}
-                      </div>
+                            <span>{sub.label}</span>
+                          </Link>
+                        );
+                      })}
+                    </div>
                   </div>
                 </>
               ) : (
@@ -254,18 +241,15 @@ export default function SidebarEnterprise({
                     onClick={(e) => e.stopPropagation()}
                     className={`
                       flex items-center transition-all duration-150
-                      ${
-                        collapsed
-                          ? `h-10 w-10 justify-center rounded-xl ${
-                              isActiveSection
-                                ? "bg-[#e8f5e9] text-[#0c831f]"
-                                : "text-[#999] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
-                            }`
-                          : `w-full rounded-xl px-3 py-2.5 gap-2.5 ${
-                              isActiveSection
-                                ? "bg-[#e8f5e9] text-[#0c831f]"
-                                : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
-                            }`
+                      ${collapsed
+                        ? `h-10 w-10 justify-center rounded-xl ${isActiveSection
+                          ? "bg-[#e8f5e9] text-[#0c831f]"
+                          : "text-[#999] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
+                        }`
+                        : `w-full rounded-xl px-3 py-2.5 gap-2.5 ${isActiveSection
+                          ? "bg-[#e8f5e9] text-[#0c831f]"
+                          : "text-[#666] hover:bg-[#f6f7f6] hover:text-[#1a1a1a]"
+                        }`
                       }
                     `}
                     title={collapsed ? item.label : undefined}
@@ -273,9 +257,8 @@ export default function SidebarEnterprise({
                     <item.icon className="h-6 w-6 flex-shrink-0" />
                     {/* Label — hidden when collapsed */}
                     <div
-                      className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
-                        collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-                      }`}
+                      className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                        }`}
                     >
                       <div className="min-w-0">
                         <span className="block text-sm font-medium leading-tight">{item.label}</span>
@@ -304,45 +287,39 @@ export default function SidebarEnterprise({
 
       {/* ── Bottom section ── */}
       <div
-        className={`w-full border-t border-[#e8e8e8] transition-all duration-300 ${
-          collapsed ? "px-2 py-3" : "px-4 py-3"
-        }`}
+        className={`w-full border-t border-[#e8e8e8] transition-all duration-300 ${collapsed ? "px-2 py-3" : "px-4 py-3"
+          }`}
       >
         <div
-          className={`rounded-xl bg-[#f6f7f6] px-3 py-2 transition-all ${
-            collapsed ? "flex items-center justify-center" : "flex items-center justify-between"
-          }`}
+          className={`rounded-xl bg-[#f6f7f6] px-3 py-2 transition-all ${collapsed ? "flex items-center justify-center" : "flex items-center justify-between"
+            }`}
         >
           <div className="flex items-center gap-2">
             <div className="h-2 w-2 rounded-full bg-[#0c831f] animate-pulse" />
             <span
-              className={`overflow-hidden whitespace-nowrap text-xs font-bold text-[#666] transition-all duration-300 ${
-                collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-              }`}
+              className={`overflow-hidden whitespace-nowrap text-xs font-bold text-[#666] transition-all duration-300 ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+                }`}
             >
               System Online
             </span>
           </div>
           <span
-            className={`overflow-hidden whitespace-nowrap text-xs font-bold text-[#0c831f] transition-all duration-300 ${
-              collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-            }`}
+            className={`overflow-hidden whitespace-nowrap text-xs font-bold text-[#0c831f] transition-all duration-300 ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+              }`}
           >
             99.9%
           </span>
         </div>
         <div
-          className={`mt-2 flex items-center gap-2.5 transition-all ${
-            collapsed ? "justify-center px-0" : "px-1"
-          }`}
+          className={`mt-2 flex items-center gap-2.5 transition-all ${collapsed ? "justify-center px-0" : "px-1"
+            }`}
         >
           <div className="flex h-8 w-8 flex-shrink-0 items-center justify-center rounded-lg bg-[#0c831f] text-xs font-bold text-white">
             {adminInitials}
           </div>
           <div
-            className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${
-              collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
-            }`}
+            className={`overflow-hidden whitespace-nowrap transition-all duration-300 ${collapsed ? "w-0 opacity-0" : "w-auto opacity-100"
+              }`}
           >
             <div className="min-w-0">
               <p className="truncate text-xs font-bold text-[#1a1a1a]">{adminName}</p>
@@ -354,4 +331,3 @@ export default function SidebarEnterprise({
     </aside>
   );
 }
-
