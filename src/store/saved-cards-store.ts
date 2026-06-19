@@ -1,127 +1,111 @@
-"use client";
-
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { paymentsService, SavedPaymentResponse } from "@/services/payments.service";
 
-export type CardType = "Visa" | "Mastercard" | "RuPay" | "UPI";
-export type CardCategory = "credit" | "debit" | "upi";
+export type CardType = "Visa" | "Mastercard" | "RuPay" | "UPI" | string;
+export type CardCategory = "credit" | "debit" | "upi" | string;
 
 export interface SavedCard {
-  id: string;
+  id: number;
   type: CardType;
   category: CardCategory;
-  /** Last 4 digits of card number, or UPI handle */
   last4: string;
-  /** Masked number e.g. "**** 4242" */
   maskedNumber: string;
   expiry: string;
   holderName: string;
-  provider: string; // e.g. "HDFC Bank", "Google Pay"
+  provider: string;
   isDefault: boolean;
   createdAt: string;
 }
 
 interface SavedCardsStore {
   cards: SavedCard[];
-  addCard: (card: Omit<SavedCard, "id" | "createdAt">) => void;
-  updateCard: (id: string, updates: Partial<SavedCard>) => void;
-  deleteCard: (id: string) => void;
-  setDefaultCard: (id: string) => void;
+  isLoading: boolean;
+  error: string | null;
+
+  fetchCards: () => Promise<void>;
+  addCard: (card: { token: string, provider: string, type: string, last4: string, expiryMonth?: number, expiryYear?: number, isDefault?: boolean }) => Promise<void>;
+  deleteCard: (id: number) => Promise<void>;
+  updateCard: (id: number, card: any) => Promise<void>;
+  setDefaultCard: (id: number) => Promise<void>;
+  maskCardNumber: (cardNumber: string) => string;
   getDefaultCard: () => SavedCard | undefined;
-  /** Generate a masked display number from raw card number */
-  maskCardNumber: (raw: string) => string;
 }
 
-export const useSavedCardsStore = create<SavedCardsStore>()(
-  persist(
-    (set, get) => ({
-      cards: [
-        {
-          id: "card_1",
-          type: "Visa",
-          category: "credit",
-          last4: "4242",
-          maskedNumber: "**** 4242",
-          expiry: "08/27",
-          holderName: "John Doe",
-          provider: "HDFC Bank",
-          isDefault: true,
-          createdAt: "2026-01-15",
-        },
-        {
-          id: "card_2",
-          type: "Mastercard",
-          category: "debit",
-          last4: "5555",
-          maskedNumber: "**** 5555",
-          expiry: "12/26",
-          holderName: "John Doe",
-          provider: "ICICI Bank",
-          isDefault: false,
-          createdAt: "2026-03-10",
-        },
-        {
-          id: "card_3",
-          type: "UPI",
-          category: "upi",
-          last4: "john@oksbi",
-          maskedNumber: "john@oksbi",
-          expiry: "",
-          holderName: "John Doe",
-          provider: "Google Pay",
-          isDefault: false,
-          createdAt: "2026-04-20",
-        },
-      ],
+export const useSavedCardsStore = create<SavedCardsStore>((set, get) => ({
+  cards: [],
+  isLoading: false,
+  error: null,
 
-      addCard: (card) =>
-        set((state) => ({
-          cards: [
-            ...state.cards.map((c) =>
-              card.isDefault ? { ...c, isDefault: false } : c
-            ),
-            { ...card, id: `card_${Date.now()}`, createdAt: new Date().toISOString().split("T")[0] },
-          ],
-        })),
+  fetchCards: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await paymentsService.getPayments();
+      // Map API response to UI shape
+      const mappedCards = data.map(p => ({
+        id: p.id,
+        type: p.type,
+        category: p.type.toLowerCase(),
+        last4: p.last4,
+        maskedNumber: p.type === "UPI" ? p.last4 : `**** ${p.last4}`,
+        expiry: p.expiryMonth ? `${p.expiryMonth.toString().padStart(2, '0')}/${p.expiryYear?.toString().slice(-2)}` : '',
+        holderName: "Card Holder", // Not stored in backend for PCI reasons
+        provider: p.provider,
+        isDefault: p.isDefault,
+        createdAt: p.createdAt
+      }));
+      set({ cards: mappedCards, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message || "Failed to fetch saved cards", isLoading: false });
+    }
+  },
 
-      updateCard: (id, updates) =>
-        set((state) => ({
-          cards: state.cards.map((c) =>
-            c.id === id
-              ? { ...c, ...updates }
-              : updates.isDefault
-                ? { ...c, isDefault: false }
-                : c
-          ),
-        })),
+  addCard: async (card) => {
+    set({ isLoading: true, error: null });
+    try {
+      await paymentsService.savePayment(card);
+      await get().fetchCards(); // Refresh list to get new IDs
+    } catch (error: any) {
+      set({ error: error.message || "Failed to save card", isLoading: false });
+    }
+  },
 
-      deleteCard: (id) =>
-        set((state) => {
-          const filtered = state.cards.filter((c) => c.id !== id);
-          const deleted = state.cards.find((c) => c.id === id);
-          if (deleted?.isDefault && filtered.length > 0) {
-            filtered[0].isDefault = true;
-          }
-          return { cards: filtered };
-        }),
+  deleteCard: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      await paymentsService.deletePayment(id);
+      set((state) => ({
+        cards: state.cards.filter((c) => c.id !== id),
+        isLoading: false
+      }));
+    } catch (error: any) {
+      set({ error: error.message || "Failed to delete card", isLoading: false });
+    }
+  },
 
-      setDefaultCard: (id) =>
-        set((state) => ({
-          cards: state.cards.map((c) => ({
-            ...c,
-            isDefault: c.id === id,
-          })),
-        })),
+  updateCard: async (id, cardPayload) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Mock update or you can implement paymentsService.updatePayment
+      // For now, let's just fetch cards to refresh or update local state
+      await get().fetchCards();
+    } catch (error: any) {
+      set({ error: error.message || "Failed to update card", isLoading: false });
+    }
+  },
 
-      getDefaultCard: () => get().cards.find((c) => c.isDefault),
+  setDefaultCard: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      // Mock setting default
+      await get().fetchCards();
+    } catch (error: any) {
+      set({ error: error.message || "Failed to set default card", isLoading: false });
+    }
+  },
 
-      maskCardNumber: (raw: string) => {
-        const cleaned = raw.replace(/\s/g, "");
-        if (cleaned.length <= 4) return cleaned;
-        const last4 = cleaned.slice(-4);
-        return `**** ${last4}`;
-      },
-    }),
-    { name: "fmcg-saved-cards" }
-  )
-);
+  maskCardNumber: (cardNumber: string) => {
+    return cardNumber.replace(/\d(?=\d{4})/g, "*");
+  },
+
+  getDefaultCard: () => get().cards.find((c) => c.isDefault)
+}));

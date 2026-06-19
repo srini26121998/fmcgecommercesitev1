@@ -1,73 +1,62 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { wishlistService, WishlistResponse } from "@/services/wishlist.service";
 
 export interface WishlistItem {
   id: number;
+  productId: number;
   name: string;
   image: string;
   price: number;
 }
 
 interface WishlistStore {
-  wishlist: WishlistItem[];
-  _hasHydrated: boolean;
+  wishlist: WishlistResponse[];
+  isLoading: boolean;
+  error: string | null;
 
-  addToWishlist: (
-    item: WishlistItem
-  ) => void;
-
-  removeFromWishlist: (
-    id: number
-  ) => void;
-
-  moveToCart: (id: number) => WishlistItem | undefined;
-
-  setHasHydrated: (value: boolean) => void;
+  fetchWishlist: () => Promise<void>;
+  addToWishlist: (productId: number) => Promise<void>;
+  removeFromWishlist: (id: number) => Promise<void>;
 }
 
-export const useWishlistStore =
-  create<WishlistStore>()(
-    persist(
-      (set, get) => ({
-        wishlist: [],
-        _hasHydrated: false,
+export const useWishlistStore = create<WishlistStore>((set, get) => ({
+  wishlist: [],
+  isLoading: false,
+  error: null,
 
-        addToWishlist: (item) =>
-          set((state) => ({
-            wishlist: [...state.wishlist, item],
-          })),
+  fetchWishlist: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await wishlistService.getWishlist();
+      set({ wishlist: data, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message || "Failed to fetch wishlist", isLoading: false });
+    }
+  },
 
-        removeFromWishlist: (id) =>
-          set((state) => ({
-            wishlist: state.wishlist.filter(
-              (item) => item.id !== id
-            ),
-          })),
+  addToWishlist: async (productId) => {
+    set({ isLoading: true, error: null });
+    try {
+      const newItem = await wishlistService.addToWishlist(productId);
+      set((state) => ({
+        wishlist: [...state.wishlist, newItem],
+        isLoading: false
+      }));
+    } catch (error: any) {
+      set({ error: error.message || "Failed to add to wishlist", isLoading: false });
+    }
+  },
 
-        moveToCart: (id) => {
-          const item = get().wishlist.find((i) => i.id === id);
-          if (item) {
-            set((state) => ({
-              wishlist: state.wishlist.filter((i) => i.id !== id),
-            }));
-            return item;
-          }
-          return undefined;
-        },
-
-        setHasHydrated: (value) => set({ _hasHydrated: value }),
-      }),
-      {
-        name: "wishlist-storage",
-        onRehydrateStorage: () => {
-          return (state, error) => {
-            if (error) {
-              console.warn("wishlist rehydration error", error);
-            } else if (state) {
-              state.setHasHydrated(true);
-            }
-          };
-        },
-      }
-    )
-  );
+  removeFromWishlist: async (id) => {
+    set({ isLoading: true, error: null });
+    try {
+      await wishlistService.removeFromWishlist(id);
+      set((state) => ({
+        wishlist: state.wishlist.filter((item) => item.id !== id),
+        isLoading: false
+      }));
+    } catch (error: any) {
+      set({ error: error.message || "Failed to remove from wishlist", isLoading: false });
+    }
+  }
+}));

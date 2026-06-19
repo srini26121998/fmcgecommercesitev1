@@ -1,6 +1,7 @@
 "use client";
 
 import { create } from "zustand";
+import { returnsService, ReturnResponse } from "@/services/returns.service";
 
 export type ReturnReason =
   | "defective"
@@ -9,7 +10,8 @@ export type ReturnReason =
   | "size_issue"
   | "damaged"
   | "expired"
-  | "other";
+  | "other"
+  | string;
 
 export interface ReturnRequest {
   id: string;
@@ -20,7 +22,7 @@ export interface ReturnRequest {
   quantity: number;
   reason: ReturnReason;
   details: string;
-  status: "pending" | "approved" | "rejected" | "picked_up" | "refunded";
+  status: "pending" | "approved" | "rejected" | "picked_up" | "refunded" | string;
   createdAt: string;
   updatedAt: string;
   refundAmount: number;
@@ -29,49 +31,57 @@ export interface ReturnRequest {
 
 interface ReturnsStore {
   returns: ReturnRequest[];
-  createReturn: (request: Omit<ReturnRequest, "id" | "status" | "createdAt" | "updatedAt">) => void;
-  updateReturnStatus: (id: string, status: ReturnRequest["status"]) => void;
+  isLoading: boolean;
+  error: string | null;
+
+  fetchReturns: () => Promise<void>;
+  createReturn: (orderId: number, reason: string, items: { orderItemId: number, qty: number }[]) => Promise<void>;
   getReturnsByOrder: (orderId: string) => ReturnRequest[];
 }
 
 export const useReturnsStore = create<ReturnsStore>((set, get) => ({
-  returns: [
-    {
-      id: "RET-001",
-      orderId: "ORD-1004",
-      productId: "PROD-009",
-      productName: "Organic Whole Wheat Atta",
-      productImage: "/placeholder.svg?text=Atta",
-      quantity: 1,
-      reason: "defective",
-      details: "Package was torn on arrival",
-      status: "pending",
-      createdAt: new Date(Date.now() - 86400000).toISOString(),
-      updatedAt: new Date().toISOString(),
-      refundAmount: 349,
-    },
-  ],
+  returns: [],
+  isLoading: false,
+  error: null,
 
-  createReturn: (request) =>
-    set((state) => ({
-      returns: [
-        {
-          ...request,
-          id: `RET-${String(state.returns.length + 1).padStart(3, "0")}`,
-          status: "pending",
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString(),
-        },
-        ...state.returns,
-      ],
-    })),
+  fetchReturns: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await returnsService.getReturnsHistory();
+      
+      // Map API array to UI state array
+      const mappedReturns: ReturnRequest[] = data.flatMap((apiReturn: ReturnResponse) => 
+        apiReturn.items.map((item) => ({
+          id: `RET-${apiReturn.id}-${item.id}`,
+          orderId: apiReturn.orderNumber,
+          productId: String(item.productTitle),
+          productName: item.productTitle,
+          productImage: "/placeholder.svg?text=Item", // fallback
+          quantity: item.qty,
+          reason: apiReturn.reason,
+          details: "",
+          status: apiReturn.status.toLowerCase(),
+          createdAt: apiReturn.createdAt,
+          updatedAt: apiReturn.createdAt,
+          refundAmount: apiReturn.refundAmount
+        }))
+      );
 
-  updateReturnStatus: (id, status) =>
-    set((state) => ({
-      returns: state.returns.map((r) =>
-        r.id === id ? { ...r, status, updatedAt: new Date().toISOString() } : r
-      ),
-    })),
+      set({ returns: mappedReturns, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message || "Failed to fetch returns", isLoading: false });
+    }
+  },
+
+  createReturn: async (orderId, reason, items) => {
+    set({ isLoading: true, error: null });
+    try {
+      await returnsService.submitReturn(orderId, reason, items);
+      await get().fetchReturns();
+    } catch (error: any) {
+      set({ error: error.message || "Failed to submit return", isLoading: false });
+    }
+  },
 
   getReturnsByOrder: (orderId) => get().returns.filter((r) => r.orderId === orderId),
 }));

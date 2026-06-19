@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import Link from "next/link";
@@ -81,7 +81,7 @@ export default function ReturnsPage() {
         ) : (
           <div className="space-y-4">
             {filtered.map((ret) => {
-              const sc = statusConfig[ret.status];
+              const sc = statusConfig[ret.status as keyof typeof statusConfig] || statusConfig.pending;
               const StatusIcon = sc.icon;
               return (
                 <div key={ret.id} className="bg-white rounded-2xl border border-[#e8e8e8] overflow-hidden hover:shadow-md transition-shadow">

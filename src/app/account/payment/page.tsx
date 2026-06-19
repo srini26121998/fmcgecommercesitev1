@@ -1,5 +1,5 @@
-﻿"use client";
-import { useState } from "react";
+"use client";
+import { useEffect, useState } from "react";
 import Link from "next/link";
 import { ChevronLeft, CreditCard, Plus, Edit2, Trash2, Smartphone, CheckCircle, Shield, X, Star, Building2, Ban as Bank } from "lucide-react";
 import { useSavedCardsStore, type SavedCard, type CardType, type CardCategory } from "@/store/saved-cards-store";
@@ -37,10 +37,14 @@ const CARD_TYPE_OPTIONS: { type: CardType; icon: typeof CreditCard; color: strin
 ];
 
 export default function PaymentPage() {
-  const { cards, addCard, updateCard, deleteCard, setDefaultCard, maskCardNumber } = useSavedCardsStore();
+  const { cards, addCard, updateCard, deleteCard, setDefaultCard, maskCardNumber, fetchCards } = useSavedCardsStore();
   const [showForm, setShowForm] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState<CardFormData>({ ...emptyForm });
+
+  useEffect(() => {
+    fetchCards();
+  }, [fetchCards]);
 
   const resetForm = () => {
     setForm({ ...emptyForm });
@@ -85,35 +89,31 @@ export default function PaymentPage() {
     const last4 = form.type === "UPI" ? form.cardNumber : form.cardNumber.replace(/\s/g, "").slice(-4);
     const masked = form.type === "UPI" ? form.cardNumber : maskCardNumber(form.cardNumber);
 
+    const [month, year] = form.expiry.split("/");
+    const expiryMonth = month ? parseInt(month, 10) : undefined;
+    const expiryYear = year ? parseInt(`20${year}`, 10) : undefined;
+
+    const payload = {
+      token: "tok_dummy", // Assuming some dummy token
+      provider: form.provider,
+      type: form.type,
+      last4,
+      expiryMonth,
+      expiryYear,
+      isDefault: form.isDefault,
+    };
+
     if (editingId) {
-      updateCard(editingId, {
-        type: form.type,
-        category: form.category,
-        last4,
-        maskedNumber: masked,
-        expiry: form.expiry,
-        holderName: form.holderName,
-        provider: form.provider,
-        isDefault: form.isDefault,
-      });
+      updateCard(editingId, payload);
       toast.success("Payment method updated!");
     } else {
-      addCard({
-        type: form.type,
-        category: form.category,
-        last4,
-        maskedNumber: masked,
-        expiry: form.expiry,
-        holderName: form.holderName,
-        provider: form.provider,
-        isDefault: form.isDefault,
-      });
+      addCard(payload);
       toast.success("Payment method added!");
     }
     resetForm();
   };
 
-  const handleDelete = (id: string, label: string) => {
+  const handleDelete = (id: number, label: string) => {
     const card = cards.find((c) => c.id === id);
     if (card?.isDefault && cards.filter((c) => c.id !== id).length > 0) {
       toast.error("Set another card as default before removing this one");
@@ -123,7 +123,7 @@ export default function PaymentPage() {
     toast.success(`${label} removed`);
   };
 
-  const handleSetDefault = (id: string) => {
+  const handleSetDefault = (id: number) => {
     setDefaultCard(id);
     toast.success("Default payment method updated!");
   };

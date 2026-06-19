@@ -1,7 +1,7 @@
 "use client";
 
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { listsService, ShoppingListResponse, ShoppingListItem as ApiListItem } from "@/services/lists.service";
 
 interface FamilyListItem {
   id: string;
@@ -25,105 +25,114 @@ interface FamilyList {
 
 interface FamilyListStore {
   lists: FamilyList[];
-  createList: (name: string, description: string, members: string[]) => void;
-  addItemToList: (listId: string, item: Omit<FamilyListItem, "id" | "addedBy" | "purchased">) => void;
-  removeItemFromList: (listId: string, itemId: string) => void;
+  isLoading: boolean;
+  error: string | null;
+
+  fetchLists: () => Promise<void>;
+  createList: (name: string, description: string, members: string[]) => Promise<void>;
+  addItemToList: (listId: string, item: Omit<FamilyListItem, "id" | "addedBy" | "purchased">) => Promise<void>;
+  removeItemFromList: (listId: string, itemId: string) => Promise<void>;
   togglePurchased: (listId: string, itemId: string) => void;
-  deleteList: (listId: string) => void;
+  deleteList: (listId: string) => Promise<void>;
 }
 
-export const useFamilyListStore = create<FamilyListStore>()(
-  persist(
-    (set) => ({
-      lists: [
-        {
-          id: "FL-001",
-          name: "Weekly Groceries",
-          description: "Shared with family — add what we need for the week",
-          members: ["You", "Priya"],
-          items: [
-            { id: "FLI-001", productId: "1", name: "Tata Salt", price: 18, image: "/placeholder.svg?text=Salt", quantity: 2, addedBy: "You", purchased: false },
-            { id: "FLI-002", productId: "5", name: "Amul Butter", price: 55, image: "/placeholder.svg?text=Butter", quantity: 1, addedBy: "Priya", purchased: true },
-            { id: "FLI-003", productId: "10", name: "Fortune Oil", price: 195, image: "/placeholder.svg?text=Oil", quantity: 1, addedBy: "You", purchased: false },
-          ],
-          createdAt: "2026-05-01",
-        },
-        {
-          id: "FL-002",
-          name: "Party Snacks",
-          description: "Snacks for this weekend's get-together",
-          members: ["You", "Rahul", "Neha"],
-          items: [
-            { id: "FLI-004", productId: "15", name: "Lays Chips", price: 30, image: "/placeholder.svg?text=Chips", quantity: 3, addedBy: "Rahul", purchased: false },
-            { id: "FLI-005", productId: "20", name: "Coca-Cola", price: 40, image: "/placeholder.svg?text=Cola", quantity: 4, addedBy: "Neha", purchased: false },
-          ],
-          createdAt: "2026-05-10",
-        },
-      ],
+export const useFamilyListStore = create<FamilyListStore>((set, get) => ({
+  lists: [],
+  isLoading: false,
+  error: null,
 
-      createList: (name, description, members) =>
-        set((state) => ({
-          lists: [
-            {
-              id: `FL-${String(state.lists.length + 1).padStart(3, "0")}`,
-              name,
-              description,
-              members: ["You", ...members],
-              items: [],
-              createdAt: new Date().toISOString().split("T")[0],
-            },
-            ...state.lists,
-          ],
+  fetchLists: async () => {
+    set({ isLoading: true, error: null });
+    try {
+      const data = await listsService.getLists();
+      
+      const mappedLists: FamilyList[] = data.map((apiList: ShoppingListResponse) => ({
+        id: String(apiList.id),
+        name: apiList.name,
+        description: "", // BE doesn't store this yet
+        members: ["You"], // BE doesn't store sharing yet
+        items: apiList.items.map((apiItem: ApiListItem) => ({
+          id: String(apiItem.id),
+          productId: String(apiItem.productId),
+          name: apiItem.productTitle || `Product ${apiItem.productId}`,
+          price: apiItem.price || 0,
+          image: "/placeholder.svg?text=Item",
+          quantity: apiItem.qty,
+          addedBy: "You",
+          purchased: false
         })),
+        createdAt: apiList.createdAt
+      }));
 
-      addItemToList: (listId, item) =>
-        set((state) => ({
-          lists: state.lists.map((list) =>
-            list.id === listId
-              ? {
-                  ...list,
-                  items: [
-                    ...list.items,
-                    {
-                      ...item,
-                      id: `FLI-${Date.now()}`,
-                      addedBy: "You",
-                      purchased: false,
-                    },
-                  ],
-                }
-              : list
-          ),
-        })),
+      set({ lists: mappedLists, isLoading: false });
+    } catch (error: any) {
+      set({ error: error.message || "Failed to fetch lists", isLoading: false });
+    }
+  },
 
-      removeItemFromList: (listId, itemId) =>
-        set((state) => ({
-          lists: state.lists.map((list) =>
-            list.id === listId
-              ? { ...list, items: list.items.filter((i) => i.id !== itemId) }
-              : list
-          ),
-        })),
+  createList: async (name, description, members) => {
+    set({ isLoading: true, error: null });
+    try {
+      await listsService.createList(name);
+      await get().fetchLists();
+    } catch (error: any) {
+      set({ error: error.message || "Failed to create list", isLoading: false });
+    }
+  },
 
-      togglePurchased: (listId, itemId) =>
-        set((state) => ({
-          lists: state.lists.map((list) =>
-            list.id === listId
-              ? {
-                  ...list,
-                  items: list.items.map((i) =>
-                    i.id === itemId ? { ...i, purchased: !i.purchased } : i
-                  ),
-                }
-              : list
-          ),
-        })),
+  addItemToList: async (listId, item) => {
+    set({ isLoading: true, error: null });
+    try {
+      await listsService.addItemToList(Number(listId), Number(item.productId), item.quantity);
+      await get().fetchLists();
+    } catch (error: any) {
+      set({ error: error.message || "Failed to add item", isLoading: false });
+    }
+  },
 
-      deleteList: (listId) =>
-        set((state) => ({
-          lists: state.lists.filter((l) => l.id !== listId),
-        })),
-    }),
-    { name: "fmcg-family-lists" }
-  )
-);
+  removeItemFromList: async (listId, itemId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await listsService.removeItemFromList(Number(listId), Number(itemId));
+      set((state) => ({
+        lists: state.lists.map((list) =>
+          list.id === listId
+            ? { ...list, items: list.items.filter((i) => i.id !== itemId) }
+            : list
+        ),
+        isLoading: false
+      }));
+    } catch (error: any) {
+      set({ error: error.message || "Failed to remove item", isLoading: false });
+    }
+  },
+
+  togglePurchased: (listId, itemId) => {
+    // UI only for now, can be extended later
+    set((state) => ({
+      lists: state.lists.map((list) =>
+        list.id === listId
+          ? {
+              ...list,
+              items: list.items.map((i) =>
+                i.id === itemId ? { ...i, purchased: !i.purchased } : i
+              ),
+            }
+          : list
+      ),
+    }));
+  },
+
+  deleteList: async (listId) => {
+    set({ isLoading: true, error: null });
+    try {
+      await listsService.deleteList(Number(listId));
+      set((state) => ({
+        lists: state.lists.filter((l) => l.id !== listId),
+        isLoading: false
+      }));
+    } catch (error: any) {
+      set({ error: error.message || "Failed to delete list", isLoading: false });
+    }
+  },
+}));
