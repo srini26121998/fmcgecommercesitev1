@@ -12,172 +12,113 @@ import type {
   MFASetupPayload,
 } from "@/types/admin-profile";
 
-const mockProfile: AdminProfile = {
-  id: "admin-1",
-  name: "Admin User",
-  email: "admin@example.com",
-  phone: "+1234567890",
-  role: "admin",
-  roleLabel: "Administrator",
-  team: "Management",
-  avatarInitials: "AU",
-  status: "active",
-  department: "Operations",
-  location: "New York, USA",
-  timezone: "America/New_York",
-  bio: "System administrator.",
-  joinedAt: new Date(Date.now() - 365 * 24 * 60 * 60 * 1000).toISOString(),
-  lastLoginAt: new Date().toISOString(),
-  mfaEnabled: true,
-  mfaMethod: "app",
-  emailVerified: true,
-  phoneVerified: true,
-};
-
-const mockSessions: LoginSession[] = [
-  {
-    id: "sess-1",
-    deviceName: "MacBook Pro",
-    deviceType: "desktop",
-    browser: "Chrome",
-    os: "macOS",
-    ip: "192.168.1.1",
-    location: "New York, USA",
-    isCurrent: true,
-    lastActiveAt: new Date().toISOString(),
-    createdAt: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString(),
-  }
-];
-
-const mockActivityLog: ActivityLogEntry[] = [
-  {
-    id: "act-1",
-    action: "login",
-    description: "Logged in successfully",
-    status: "success",
-    createdAt: new Date().toISOString(),
-  }
-];
-
-const mockSecurity: AdminSecuritySettings = {
-  mfaEnabled: true,
-  mfaMethod: "app",
-  passwordLastChanged: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString(),
-  sessionTimeout: 60,
-  ipWhitelist: [],
-  loginNotifications: true,
-};
-
-const mockNotifPrefs: AdminNotificationPrefs = {
-  emailNotifications: true,
-  pushNotifications: true,
-  smsNotifications: false,
-  orderAlerts: true,
-  inventoryAlerts: true,
-  systemAlerts: true,
-  marketingEmails: false,
-  digestFrequency: "daily",
-};
-
-const mockStats: ProfileStats = {
-  totalOrdersProcessed: 1250,
-  totalRevenueManaged: 450000,
-  activeSessions: 1,
-  daysSinceJoined: 365,
-  loginStreak: 12,
-  actionsToday: 45,
-};
-
 const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
+import { apiClient } from "@/lib/api-client";
+
 export const profileService = {
-  /**
-   * Fetch admin profile.
-   */
   async getProfile(): Promise<AdminProfile> {
-    await delay(300);
-    return { ...mockProfile };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/profile");
+      return response.data?.data || response.data;
+    } catch (e) {
+      console.error(e);
+      return { ...mockProfile }; // Fallback
+    }
   },
 
   /**
    * Update profile fields.
    */
   async updateProfile(payload: ProfileUpdatePayload): Promise<AdminProfile> {
-    await delay(300);
-    return { ...mockProfile, ...payload } as AdminProfile;
+    try {
+      const response = await apiClient.patch<any>("/api/v1/admin/profile", payload);
+      return response.data?.data || response.data;
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   },
 
   /**
    * Change password.
    */
   async changePassword(payload: PasswordChangePayload): Promise<{ success: boolean }> {
-    await delay(300);
-    return { success: true };
+    try {
+      await apiClient.post("/api/v1/admin/profile/password", payload);
+      return { success: true };
+    } catch (e) {
+      console.error(e);
+      throw e;
+    }
   },
 
-  /**
-   * Get login sessions.
-   */
-  async getSessions(): Promise<LoginSession[]> {
-    await delay(300);
-    return [...mockSessions];
+  // -- Sessions --
+  async getLoginSessions(): Promise<LoginSession[]> {
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/profile/sessions");
+      return response.data?.data || response.data;
+    } catch (e) {
+      console.warn("Failed to fetch login sessions", e);
+      return [];
+    }
   },
 
-  /**
-   * Terminate a session.
-   */
   async terminateSession(sessionId: string): Promise<void> {
-    await delay(300);
+    await apiClient.delete(`/api/v1/admin/profile/sessions/${sessionId}`);
   },
 
-  /**
-   * Terminate all other sessions.
-   */
   async terminateOtherSessions(): Promise<void> {
-    await delay(300);
+    await apiClient.delete("/api/v1/admin/profile/sessions/others");
   },
 
-  /**
-   * Get activity log (paginated).
-   */
-  async getActivityLog(
-    page = 1,
-    pageSize = 10
-  ): Promise<{ entries: ActivityLogEntry[]; total: number; page: number; pageSize: number }> {
-    await delay(300);
-    return { entries: [...mockActivityLog], total: mockActivityLog.length, page, pageSize };
+  // -- Activity Log --
+  async getActivityLog(page = 1, pageSize = 20): Promise<{ entries: ActivityLogEntry[]; total: number; page: number; pageSize: number }> {
+    try {
+      const response = await apiClient.get<any>(`/api/v1/admin/profile/activity?page=${page}&pageSize=${pageSize}`);
+      return response.data?.data || response.data;
+    } catch (e) {
+      console.warn("Failed to fetch activity log", e);
+      return { entries: [], total: 0, page, pageSize };
+    }
   },
 
-  /**
-   * Get security settings.
-   */
+  // -- Security & Auth --
   async getSecuritySettings(): Promise<AdminSecuritySettings> {
-    await delay(300);
-    return { ...mockSecurity };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/profile/security");
+      return response.data?.data || response.data;
+    } catch (e) {
+      console.warn("Failed to fetch security settings", e);
+      throw e;
+    }
   },
 
-  /**
-   * Update MFA settings.
-   */
-  async updateMFA(payload: MFASetupPayload): Promise<AdminSecuritySettings> {
-    await delay(300);
-    return { ...mockSecurity, mfaEnabled: payload.enabled, mfaMethod: payload.method };
+  async updateSecuritySettings(payload: Partial<AdminSecuritySettings>): Promise<AdminSecuritySettings> {
+    const response = await apiClient.patch<any>("/api/v1/admin/profile/security", payload);
+    return response.data?.data || response.data;
+  },
+
+  async setupMFA(payload: MFASetupPayload): Promise<AdminSecuritySettings> {
+    // We treat setupMFA the same as updateSecuritySettings for this phase
+    const response = await apiClient.patch<any>("/api/v1/admin/profile/security", { mfaEnabled: payload.enabled, mfaMethod: payload.method });
+    return response.data?.data || response.data;
   },
 
   /**
    * Rotate API key.
    */
   async rotateApiKey(): Promise<string> {
-    await delay(300);
-    return "new-api-key-" + Date.now();
+    const response = await apiClient.post<any>("/api/v1/admin/profile/api-key/rotate");
+    return response.data?.data?.apiKey || response.data?.apiKey;
   },
 
   /**
    * Get notification preferences.
    */
   async getNotificationPrefs(): Promise<AdminNotificationPrefs> {
-    await delay(300);
-    return { ...mockNotifPrefs };
+    const response = await apiClient.get<any>("/api/v1/admin/profile/notifications");
+    return response.data?.data || response.data;
   },
 
   /**
@@ -194,7 +135,12 @@ export const profileService = {
    * Get profile stats.
    */
   async getProfileStats(): Promise<ProfileStats> {
-    await delay(300);
-    return { ...mockStats };
+    try {
+      const response = await apiClient.get<any>("/api/v1/admin/profile/stats");
+      return response.data?.data || response.data;
+    } catch (e) {
+      console.error(e);
+      return { ...mockStats };
+    }
   },
 };

@@ -17,7 +17,7 @@ import {
   Loader2,
 } from "lucide-react";
 import { toast } from "sonner";
-import { useGlobalSettings } from "@/hooks/use-settings";
+import { useGlobalSettings, useFeatureFlags } from "@/hooks/use-settings";
 
 interface FeatureFlag {
   id: string;
@@ -27,14 +27,7 @@ interface FeatureFlag {
   enabled: boolean;
 }
 
-const mockFlags: FeatureFlag[] = [
-  { id: "FF-001", name: "New Checkout Flow", key: "new_checkout", description: "Enable new streamlined checkout experience", enabled: true },
-  { id: "FF-002", name: "AI Recommendations", key: "ai_recommendations", description: "Enable ML-based product recommendations", enabled: true },
-  { id: "FF-003", name: "Dark Mode", key: "dark_mode", description: "Enable dark mode toggle for users", enabled: false },
-  { id: "FF-004", name: "Voice Search", key: "voice_search", description: "Enable voice-based product search", enabled: false },
-  { id: "FF-005", name: "Wallet Payments", key: "wallet_payments", description: "Enable FMCG wallet payment method", enabled: true },
-  { id: "FF-006", name: "Subscription Service", key: "subscriptions", description: "Enable recurring subscription orders", enabled: false },
-];
+// Removed mockFlags
 
 const settingsTabs = [
   { id: "general", label: "General", icon: Settings },
@@ -47,10 +40,10 @@ const settingsTabs = [
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = useState("general");
-  const [flags, setFlags] = useState(mockFlags);
   const [showFeatureModal, setShowFeatureModal] = useState<FeatureFlag | null>(null);
   
   const { settings, loading, saving, updateSettings } = useGlobalSettings();
+  const { flags, toggleFlag } = useFeatureFlags();
 
   return (
     <DashboardLayout>
@@ -269,12 +262,12 @@ export default function SettingsPage() {
                     <label className="relative inline-flex cursor-pointer items-center ml-4">
                       <input
                         type="checkbox"
+                        className="sr-only peer"
                         checked={flag.enabled}
-                        onChange={() => {
-                          setFlags(f => f.map(x => x.id === flag.id ? { ...x, enabled: !x.enabled } : x));
-                          toast.success(`${flag.name} ${flag.enabled ? "disabled" : "enabled"}`);
+                        onChange={(e) => {
+                          toggleFlag(flag.id, e.target.checked);
+                          toast.success(`${flag.name} ${e.target.checked ? "enabled" : "disabled"}`);
                         }}
-                        className="peer sr-only"
                       />
                       <div className="h-6 w-11 rounded-full bg-[#e8e8e8] after:absolute after:left-[2px] after:top-[2px] after:h-5 after:w-5 after:rounded-full after:bg-white after:shadow-sm after:transition-all peer-checked:bg-[#0c831f] peer-checked:after:translate-x-full" />
                     </label>

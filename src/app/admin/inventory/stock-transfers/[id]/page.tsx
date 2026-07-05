@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { useRouter, useParams } from "next/navigation";
 import DashboardLayout from "../../../dashboard-layout";
-import { ArrowLeft, Edit3, Save, X, Truck, Loader2 } from "lucide-react";
+import { ArrowLeft, Edit3, Save, X, Truck, Loader2, CheckCircle } from "lucide-react";
 import { toast } from "sonner";
 import { inventoryService } from "@/services/inventory.service";
 import type { StockTransfer } from "@/types/inventory";
@@ -17,9 +17,7 @@ export default function StockTransferDetailPage() {
   const [transfer, setTransfer] = useState<StockTransfer | null>(null);
   const [loading, setLoading] = useState(true);
 
-  const [isEditing, setIsEditing] = useState(false);
-  const [editForm, setEditForm] = useState<{ status: StockTransfer["status"] }>({ status: "pending" });
-  const [saving, setSaving] = useState(false);
+  const [savingStatus, setSavingStatus] = useState<string | null>(null);
 
   const fetchTransfer = useCallback(async () => {
     setLoading(true);
@@ -39,18 +37,17 @@ export default function StockTransferDetailPage() {
     }
   }, [id, fetchTransfer]);
 
-  const handleEditSave = async () => {
+  const handleStatusChange = async (newStatus: StockTransfer["status"]) => {
     if (!transfer) return;
-    setSaving(true);
+    setSavingStatus(newStatus);
     try {
-      await inventoryService.updateTransferStatus(transfer.id, editForm.status);
-      toast.success(`Transfer status updated successfully`);
-      setIsEditing(false);
+      await inventoryService.updateTransferStatus(transfer.id, newStatus);
+      toast.success(`Transfer marked as ${newStatus}`);
       fetchTransfer();
     } catch (err: any) {
       toast.error(err?.message || "Failed to update transfer.");
     } finally {
-      setSaving(false);
+      setSavingStatus(null);
     }
   };
 
@@ -100,12 +97,26 @@ export default function StockTransferDetailPage() {
           </div>
 
           <div className="flex items-center gap-2">
-            <button
-              onClick={() => { setIsEditing(true); setEditForm({ status: transfer.status }); }}
-              className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18] transition-all"
-            >
-              <Edit3 className="h-4 w-4" /> Edit Transfer
-            </button>
+            {(transfer.status === "pending" || transfer.status === "in_transit") && (
+              <>
+                <button
+                  onClick={() => handleStatusChange("cancelled")}
+                  disabled={savingStatus !== null}
+                  className="flex items-center gap-2 rounded-xl bg-white border border-[#e8e8e8] px-4 py-2 text-sm font-bold text-red-600 hover:bg-red-50 hover:border-red-200 transition-all disabled:opacity-60"
+                >
+                  {savingStatus === "cancelled" ? <Loader2 className="h-4 w-4 animate-spin" /> : <X className="h-4 w-4" />}
+                  Reject
+                </button>
+                <button
+                  onClick={() => handleStatusChange("completed")}
+                  disabled={savingStatus !== null}
+                  className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-4 py-2 text-sm font-bold text-white hover:bg-[#0a6a18] transition-all disabled:opacity-60"
+                >
+                  {savingStatus === "completed" ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle className="h-4 w-4" />}
+                  Accept Stock
+                </button>
+              </>
+            )}
           </div>
         </div>
 
@@ -152,52 +163,6 @@ export default function StockTransferDetailPage() {
         </div>
       </div>
 
-      {/* Edit Drawer */}
-      <div
-        className={`fixed inset-0 z-[60] bg-black/30 backdrop-blur-sm transition-opacity duration-300 ${isEditing ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"}`}
-        onClick={() => setIsEditing(false)}
-      />
-      <aside
-        className={`fixed right-0 top-0 z-[70] flex h-full w-[400px] max-w-[100vw] flex-col bg-white shadow-2xl transition-transform duration-300 ease-in-out ${isEditing ? "translate-x-0" : "translate-x-full"}`}
-      >
-        <div className="flex items-center justify-between border-b border-[#e8e8e8] px-6 py-4">
-          <div>
-            <p className="text-[10px] font-semibold uppercase tracking-wide text-[#0c831f]">Edit Transfer</p>
-            <h2 className="mt-0.5 text-base font-black text-[#1a1a1a] truncate max-w-xs">{transfer.product}</h2>
-            <p className="text-[10px] text-[#999] mt-0.5">ID: {transfer.id}</p>
-          </div>
-          <button onClick={() => setIsEditing(false)} className="flex h-9 w-9 items-center justify-center rounded-xl border border-[#e8e8e8] text-[#666] hover:bg-[#f6f7f6] transition-all">
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-        <div className="flex-1 overflow-y-auto px-6 py-5">
-          <div className="space-y-6">
-            <div className="space-y-4">
-              <h3 className="text-xs font-black uppercase tracking-wider text-[#1a1a1a] border-b border-[#e8e8e8] pb-2">Update Status</h3>
-              <div>
-                <label className="mb-1.5 block text-xs font-bold text-[#666]">Status</label>
-                <select
-                  value={editForm.status}
-                  onChange={(e) => setEditForm({ status: e.target.value as StockTransfer["status"] })}
-                  className="h-10 w-full rounded-xl border border-[#e8e8e8] px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f] transition-colors bg-white"
-                >
-                  <option value="pending">Pending</option>
-                  <option value="in_transit">In Transit</option>
-                  <option value="completed">Completed</option>
-                  <option value="cancelled">Cancelled</option>
-                </select>
-              </div>
-            </div>
-          </div>
-        </div>
-        <div className="flex items-center justify-end gap-3 border-t border-[#e8e8e8] bg-white px-6 py-4">
-          <button onClick={() => setIsEditing(false)} className="rounded-xl border border-[#e8e8e8] bg-white px-5 py-2.5 text-sm font-bold text-[#666] hover:bg-[#f6f7f6] transition-all">Cancel</button>
-          <button onClick={handleEditSave} disabled={saving} className="flex items-center gap-2 rounded-xl bg-[#0c831f] px-5 py-2.5 text-sm font-bold text-white hover:bg-[#0a6a18] transition-all disabled:opacity-60 disabled:cursor-not-allowed">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            {saving ? "Saving…" : "Save Changes"}
-          </button>
-        </div>
-      </aside>
     </DashboardLayout>
   );
 }

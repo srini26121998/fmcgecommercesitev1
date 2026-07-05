@@ -35,7 +35,7 @@ export function useAdminProfile() {
       setError(null);
       const [p, s, sec, np, st] = await Promise.all([
         profileService.getProfile(),
-        profileService.getSessions(),
+        profileService.getLoginSessions(),
         profileService.getSecuritySettings(),
         profileService.getNotificationPrefs(),
         profileService.getProfileStats(),

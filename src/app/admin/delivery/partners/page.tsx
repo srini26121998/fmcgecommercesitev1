@@ -100,7 +100,14 @@ export default function DeliveryPartnersPage() {
                       </p>
                     </div>
                   </div>
-                  <StatusBadge status={p.status} />
+                  <div className="flex flex-col items-end gap-1.5">
+                    <StatusBadge status={p.status} />
+                    {p.partnerType === "THIRD_PARTY" ? (
+                      <span className="rounded-full bg-purple-100 px-2 py-0.5 text-[10px] font-medium text-purple-700">3rd Party</span>
+                    ) : (
+                      <span className="rounded-full bg-blue-100 px-2 py-0.5 text-[10px] font-medium text-blue-700">In-House</span>
+                    )}
+                  </div>
                 </div>
                 <div className="mt-3 space-y-1.5 text-xs text-[#666]">
                   <p className="flex items-center gap-1.5"><MapPin className="h-3.5 w-3.5 text-[#2563eb]" /> {p.zone} - {p.vehicleType || "Vehicle"} {p.vehicleNumber}</p>
@@ -256,6 +263,20 @@ export default function DeliveryPartnersPage() {
                   placeholder="e.g. MH01 AB 1234"
                   className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
                 />
+              </div>
+            </div>
+
+            <div className="flex gap-4">
+              <div className="flex-1">
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Partner Type</label>
+                <select
+                  value={editForm.partnerType || "IN_HOUSE"}
+                  onChange={(e) => setEditForm((f: any) => ({ ...f, partnerType: e.target.value }))}
+                  className="h-10 w-full rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm text-[#1a1a1a] outline-none focus:border-[#0c831f]"
+                >
+                  <option value="IN_HOUSE">In-House Fleet</option>
+                  <option value="THIRD_PARTY">Third-Party Logistics</option>
+                </select>
               </div>
             </div>
 

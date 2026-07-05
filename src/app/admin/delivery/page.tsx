@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import DashboardLayout from "../dashboard-layout";
 import { ReusableTable } from "@/components/ui/admin/reusable-table";
 import ReusableSearchBar from "@/components/ui/admin/reusable-search";
@@ -11,6 +11,7 @@ import ReusableModal from "@/components/ui/admin/reusable-modal";
 import { ReusableDrawer } from "@/components/common/drawer";
 import { Truck, MapPin, Eye, Star, Phone, Gauge, Users, DollarSign, Edit3 } from "lucide-react";
 import { toast } from "sonner";
+import { deliveryService } from "@/services/delivery.service";
 
 interface Partner {
   id: string;
@@ -26,23 +27,50 @@ interface Partner {
   joinedAt: string;
 }
 
-const mockPartners: Partner[] = [
-  { id: "DP-001", name: "Rahul Sharma", phone: "+91 98765 43201", vehicleType: "bike", status: "online", currentOrders: 2, totalDeliveries: 3420, rating: 4.9, zone: "Mumbai Metro", earnings: "₹1.82L", joinedAt: "2024-01-10" },
-  { id: "DP-002", name: "Suresh Reddy", phone: "+91 98765 43202", vehicleType: "scooter", status: "busy", currentOrders: 1, totalDeliveries: 2150, rating: 4.7, zone: "Mumbai Metro", earnings: "₹1.20L", joinedAt: "2024-03-15" },
-  { id: "DP-003", name: "Amit Kumar", phone: "+91 98765 43203", vehicleType: "bike", status: "online", currentOrders: 0, totalDeliveries: 1890, rating: 4.8, zone: "Delhi NCR", earnings: "₹98K", joinedAt: "2024-04-01" },
-  { id: "DP-004", name: "Vijay Singh", phone: "+91 98765 43204", vehicleType: "cycle", status: "offline", currentOrders: 0, totalDeliveries: 890, rating: 4.5, zone: "Delhi NCR", earnings: "₹45K", joinedAt: "2024-06-01" },
-  { id: "DP-005", name: "Manoj Patil", phone: "+91 98765 43205", vehicleType: "bike", status: "online", currentOrders: 3, totalDeliveries: 1560, rating: 4.6, zone: "Pune City", earnings: "₹78K", joinedAt: "2024-05-15" },
-  { id: "DP-006", name: "Sneha Kulkarni", phone: "+91 98765 43206", vehicleType: "scooter", status: "online", currentOrders: 1, totalDeliveries: 980, rating: 4.9, zone: "Pune City", earnings: "₹52K", joinedAt: "2024-08-01" },
-  { id: "DP-007", name: "Rajesh Gupta", phone: "+91 98765 43207", vehicleType: "bike", status: "offline", currentOrders: 0, totalDeliveries: 2340, rating: 4.7, zone: "Bangalore Central", earnings: "₹1.15L", joinedAt: "2024-02-01" },
-  { id: "DP-008", name: "Kiran Patel", phone: "+91 98765 43208", vehicleType: "ev_scooter", status: "busy", currentOrders: 2, totalDeliveries: 450, rating: 4.4, zone: "Bangalore Central", earnings: "₹28K", joinedAt: "2026-01-10" },
-];
+const mockPartners: Partner[] = [];
 
 export default function DeliveryPage() {
-  const [partnersList, setPartnersList] = useState<Partner[]>(mockPartners);
+  const [partnersList, setPartnersList] = useState<Partner[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
+  const [totalItems, setTotalItems] = useState(0);
+
+  useEffect(() => {
+    fetchPartners();
+  }, [page, pageSize, statusFilter]);
+
+  const fetchPartners = async () => {
+    try {
+      setIsLoading(true);
+      const res = await deliveryService.getPartners({ page, limit: pageSize });
+      if (res.success && res.data) {
+        // Map the backend data to the Partner interface expected by the UI
+        const mapped = res.data.items.map((r: any) => ({
+          id: r.id,
+          name: r.name || "Unknown",
+          phone: r.phone || "N/A",
+          vehicleType: r.vehicleType || "bike",
+          status: r.status || "offline",
+          currentOrders: r.currentOrders || 0,
+          totalDeliveries: r.totalDeliveries || 0,
+          rating: r.rating || 5,
+          zone: r.zone || "N/A",
+          earnings: `₹${(r.earnings || 0).toLocaleString()}`,
+          joinedAt: r.joinedAt || "N/A"
+        }));
+        setPartnersList(mapped);
+        setTotalItems(res.data.pagination.total);
+      }
+    } catch (err) {
+      console.error("Failed to load delivery partners", err);
+      toast.error("Failed to load delivery partners");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const [showViewModal, setShowViewModal] = useState<Partner | null>(null);
   const [editPartner, setEditPartner] = useState<Partner | null>(null);

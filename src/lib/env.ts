@@ -6,13 +6,13 @@
 
 export const env = {
   /** Base URL for the API backend. */
-  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "https://ecommerce-backend-1-zdlm.onrender.com",
+  apiBaseUrl: process.env.NEXT_PUBLIC_API_BASE_URL ?? "http://localhost:8080",
 
   /** Current environment. */
   nodeEnv: process.env.NODE_ENV as "development" | "production" | "test",
 
   /** Optional: your site URL (used for OG images, sitemaps, etc.). */
-  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "https://ecommerce-backend-1-zdlm.onrender.com",
+  siteUrl: process.env.NEXT_PUBLIC_SITE_URL ?? "http://localhost:8080",
 } as const;
 
 // ── Helpers ────────────────────────────────────────────

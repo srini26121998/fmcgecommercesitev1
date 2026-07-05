@@ -52,7 +52,7 @@ function CheckoutContent() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const orderType = searchParams.get("order_type");
-  const { cartItems: cart, clearCart } = useUserCart();
+  const { cartItems: cart, clearCart, cartDetails, appliedCoupon } = useUserCart();
   const addOrder = useOrderStore((state) => state.addOrder);
   const { addresses, getDefaultAddress } = useAddressStore();
   const { addAddress } = useUserAddresses(true); // Auto-fetch addresses on load
@@ -77,24 +77,26 @@ function CheckoutContent() {
   const [pickupStore, setPickupStore] = useState("andheri");
   const [scheduledDate, setScheduledDate] = useState("");
   const [scheduledTime, setScheduledTime] = useState("10:00");
-  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  // GC Features commented out as backend doesn't support them yet
+  // const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
   const [paymentMode, setPaymentMode] = useState<"full" | "emi" | "bnpl">("full");
   const [selectedEmi, setSelectedEmi] = useState<number>(3);
   const [selectedBnpl, setSelectedBnpl] = useState<string>("lazypay");
 
-  const { validateCoupon, isValidating, result: couponResult, clearCoupon } = useValidateCoupon();
+  // const { validateCoupon, isValidating, result: couponResult, clearCoupon } = useValidateCoupon();
   const [couponInput, setCouponInput] = useState("");
   const [appliedPaymentOffer, setAppliedPaymentOffer] = useState<any>(null);
 
-  const [appliedGiftCardAmount, setAppliedGiftCardAmount] = useState<number>(0);
-  const [appliedGiftCardCode, setAppliedGiftCardCode] = useState<string>("");
+  // const [appliedGiftCardAmount, setAppliedGiftCardAmount] = useState<number>(0);
+  // const [appliedGiftCardCode, setAppliedGiftCardCode] = useState<string>("");
   
-  const [pendingGCPurchase, setPendingGCPurchase] = useState<any>(null);
+  // const [pendingGCPurchase, setPendingGCPurchase] = useState<any>(null);
 
   const { balance: walletBalance, debit: debitWallet, addPendingTransaction } = useWalletStore();
-  const { validatePromotions, estimatedCashback, appliedCashbackRuleId } = usePromotionsStore();
-  const { purchasePlatformGiftCard, purchasePartnerGiftCard, deductGiftCardBalance } = useGiftCardStore();
+  const { validatePromotions, appliedCashbackRuleId } = usePromotionsStore(); // estimatedCashback removed
+  // const { purchasePlatformGiftCard, purchasePartnerGiftCard, deductGiftCardBalance } = useGiftCardStore();
 
+  /*
   useEffect(() => {
     if (orderType === "giftcard_purchase") {
        const data = sessionStorage.getItem("pendingGiftCardPurchase");
@@ -104,6 +106,7 @@ function CheckoutContent() {
        if (data) setPendingGCPurchase(JSON.parse(data));
     }
   }, [orderType]);
+  */
 
   // Load default address on mount
   useEffect(() => {
@@ -193,12 +196,15 @@ function CheckoutContent() {
 
   const itemTotal = useMemo(
     () => {
+      /*
       if (orderType === "giftcard_purchase" || orderType === "partner_giftcard_purchase") {
         return pendingGCPurchase?.denomination || 0;
       }
+      */
       return cart.reduce((acc, item) => acc + item.price * item.quantity, 0);
     },
-    [cart, orderType, pendingGCPurchase]
+    // [cart, orderType, pendingGCPurchase]
+    [cart, orderType]
   );
   // ... (rest of memos same as before)
   const deliveryFee = useMemo(
@@ -212,14 +218,11 @@ function CheckoutContent() {
   const handlingFee = useMemo(() => (itemTotal > 0 ? 5 : 0), [itemTotal]);
 
   const couponDiscount = useMemo(() => {
-    if (!appliedCoupon || !couponResult?.data) return 0;
-
-    // The backend provides the exact calculated discount based on cart total
-    if (couponResult.data.discountType === "percentage") {
-      return Math.round(itemTotal * (couponResult.data.discountValue / 100));
-    }
-    return Math.min(couponResult.data.discountValue, itemTotal);
-  }, [appliedCoupon, couponResult, itemTotal]);
+    if (cartDetails?.couponDiscount !== undefined) return cartDetails.couponDiscount;
+    if (cartDetails?.discountAmount !== undefined) return cartDetails.discountAmount;
+    if (!appliedCoupon) return 0;
+    return Math.round((itemTotal * appliedCoupon.discount) / 100);
+  }, [itemTotal, appliedCoupon, cartDetails]);
 
   const subscriptionDiscount = useMemo(() => {
     if (deliveryMode !== "subscription") return 0;
@@ -236,13 +239,18 @@ function CheckoutContent() {
   }, [appliedPaymentOffer, itemTotal]);
 
   const totalDiscount = couponDiscount + subscriptionDiscount + paymentOfferDiscountAmount;
-  const taxAmount = useMemo(() => itemTotal > 0 ? Number(((itemTotal - totalDiscount) * 0.05).toFixed(2)) : 0, [itemTotal, totalDiscount]);
+  const taxAmount = useMemo(() => {
+    if (itemTotal <= 0) return 0;
+    const taxable = Math.max(0, itemTotal - totalDiscount);
+    return Number((taxable * 0.05).toFixed(2));
+  }, [itemTotal, totalDiscount]);
   const grossTotal = useMemo(
     () => Math.max(0, itemTotal + deliveryFee + handlingFee + taxAmount - totalDiscount),
     [itemTotal, deliveryFee, handlingFee, taxAmount, totalDiscount]
   );
   
-  const total = useMemo(() => Math.max(0, grossTotal - appliedGiftCardAmount), [grossTotal, appliedGiftCardAmount]);
+  // const total = useMemo(() => Math.max(0, grossTotal - appliedGiftCardAmount), [grossTotal, appliedGiftCardAmount]);
+  const total = grossTotal;
 
   useEffect(() => {
     validatePromotions(total, cart, selectedPayment);
@@ -301,7 +309,7 @@ function CheckoutContent() {
       // Required backend fields for integration
       addressId: addressIdNum,
       paymentMethod: paymentMethodLabel,
-      couponCode: appliedCoupon || "",
+      couponCode: cartDetails?.couponCode || appliedCoupon?.code || "",
       loyaltyPointsBurn: 0,
       notes: "Order placed via Storefront",
 
@@ -361,7 +369,7 @@ function CheckoutContent() {
         setIsPlacingOrder(false);
         return; // Do not fallback to local store on failure
       }
-    } else {
+    } /*else {
       // It's a GC Purchase, simulate API Delay and use Store
       await new Promise(res => setTimeout(res, 800));
       if (orderType === "giftcard_purchase") {
@@ -376,13 +384,21 @@ function CheckoutContent() {
     // Deduct Gift Card if applied
     if (appliedGiftCardAmount > 0 && appliedGiftCardCode) {
        await deductGiftCardBalance(appliedGiftCardCode, appliedGiftCardAmount);
-    }
+    }*/
 
 
     // ── Always persist to local store (works offline too) ─
     addOrder({
       id: finalOrderId,
       date: now.toLocaleDateString("en-US", { month: "long", day: "numeric", year: "numeric" }),
+      items: cart.map((item) => ({
+        id: Number(item.id),
+        name: item.name,
+        price: item.price,
+        image: item.image,
+        quantity: item.quantity,
+      })),
+      /*
       items: orderType ? [{
         id: 9999,
         name: orderType === "giftcard_purchase" ? "Platform Gift Card" : "Partner Gift Card",
@@ -396,6 +412,7 @@ function CheckoutContent() {
         image: item.image,
         quantity: item.quantity,
       })),
+      */
       total,
       status: localStatus,
       paymentMethod: paymentMethodLabel,
@@ -414,12 +431,14 @@ function CheckoutContent() {
           ? "Rahul (FMCG Partner)"
           : deliveryMode === "pickup" ? "Store Pickup" : "FMCG Logistics",
       trackingSteps: buildTrackingSteps(localStatus, estimatedTime),
-      cashback: estimatedCashback > 0 ? estimatedCashback : undefined,
+      // cashback: estimatedCashback > 0 ? estimatedCashback : undefined,
     });
 
+    /*
     if (estimatedCashback > 0) {
       addPendingTransaction(estimatedCashback, `Cashback for Order ${finalOrderId}`, "cashback");
     }
+    */
 
     useScratchCardStore.getState().createCard(finalOrderId);
 
@@ -712,6 +731,7 @@ function CheckoutContent() {
                   <SectionHeader icon={ReceiptText} title="Bill Details" />
                   <div className="p-4 space-y-3">
                     <BillRow label="Item total" value={<>₹{itemTotal}</>} />
+                    {/*
                     {orderType ? (
                        <div className="flex flex-col gap-1 text-sm pt-2">
                          <div className="flex items-center justify-between text-[#1a1a1a]">
@@ -722,6 +742,7 @@ function CheckoutContent() {
                          </div>
                        </div>
                     ) : (
+                    */
                       cart.filter(item => item.isBogoReward).map((item, idx) => (
                         <div key={idx} className="flex flex-col gap-1 text-sm pt-2">
                           <div className="flex items-center justify-between text-[#1a1a1a]">
@@ -734,7 +755,8 @@ function CheckoutContent() {
                           </div>
                         </div>
                       ))
-                    )}
+                    /*)}*/
+                    }
                     {couponDiscount > 0 && (
                       <BillRow label="Coupon discount" value={<span className="text-[#0c831f]">-₹{couponDiscount}</span>} />
                     )}
@@ -744,6 +766,7 @@ function CheckoutContent() {
                     {paymentOfferDiscountAmount > 0 && (
                       <BillRow label="Payment offer discount" value={<span className="text-[#0c831f]">-₹{paymentOfferDiscountAmount}</span>} />
                     )}
+                    {/*
                     {estimatedCashback > 0 && (
                       <BillRow 
                         label={
@@ -759,6 +782,7 @@ function CheckoutContent() {
                         } 
                       />
                     )}
+                    */}
                     <BillRow
                       label="Delivery fee"
                       value={deliveryFee === 0 ? <span className="text-[#ff4f8b]">FREE</span> : <>₹{deliveryFee}</>}
@@ -767,6 +791,7 @@ function CheckoutContent() {
                     {taxAmount > 0 && (
                       <BillRow label="Taxes (5%)" value={<>₹{taxAmount}</>} />
                     )}
+                    {/*
                     {appliedGiftCardAmount > 0 && (
                       <BillRow 
                         label={
@@ -779,6 +804,7 @@ function CheckoutContent() {
                         } 
                       />
                     )}
+                    */}
                     <div className="flex items-center justify-between border-t border-[#e8e8e8] pt-3 text-base font-black text-[#1a1a1a]">
                       <span>To pay</span>
                       <span>₹{total}</span>
@@ -787,6 +813,7 @@ function CheckoutContent() {
                 </section>
 
                 {/* Gift Card Picker (Hide during GC purchase itself) */}
+                {/*
                 {!orderType && (
                   <GiftCardPicker 
                     appliedBalance={appliedGiftCardAmount}
@@ -802,6 +829,7 @@ function CheckoutContent() {
                     }}
                   />
                 )}
+                */}
 
                 {/* Payment Method */}
                 <section className="rounded-xl border border-[#e8e8e8] bg-white relative z-20">

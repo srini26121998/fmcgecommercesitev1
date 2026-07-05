@@ -655,28 +655,7 @@ export default function ProductsPage() {
             )}
           </div>
 
-          {/* Category Tabs */}
-          <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar pb-1 pt-0.5">
-            <div className="flex items-center gap-1.5 shrink-0">
-              {[
-                { label: "All Categories", value: "all" },
-                ...["Groceries", "Fruits", "Vegetables", "Dairy", "Beverages", "Snacks", "Health", "Personal Care", "Home Care", "Baby Care"].map(
-                  (c) => ({ label: c, value: c })
-                ),
-              ].map((cat) => (
-                <button
-                  key={cat.value}
-                  onClick={() => handleCategoryFilter(cat.value)}
-                  className={`px-3 py-1.5 text-[11px] font-semibold rounded-xl border whitespace-nowrap transition-all ${categoryFilter === cat.value
-                      ? "bg-[#0c831f] border-[#0c831f] text-white shadow-sm shadow-green-500/15"
-                      : "bg-white border-gray-200 text-gray-500 hover:border-[#0c831f]/50 hover:text-[#0c831f]"
-                    }`}
-                >
-                  {cat.label}
-                </button>
-              ))}
-            </div>
-          </div>
+
         </div>
 
         {/* Advanced Filters */}
@@ -737,9 +716,10 @@ export default function ProductsPage() {
               <table className="w-full">
                 <thead>
                   <tr className="text-left text-[10px] font-medium text-gray-400 uppercase tracking-wider border-b border-gray-200 bg-[#f8faf8]">
-                    <th className="px-4 py-2.5 w-[50%]">Product name</th>
-                    <th className="px-4 py-2.5 w-[35%]">Item code</th>
-                    <th className="px-4 py-2.5 w-[15%] text-right" />
+                    <th className="px-4 py-2.5 w-[40%]">Product name</th>
+                    <th className="px-4 py-2.5 w-[25%]">Category</th>
+                    <th className="px-4 py-2.5 w-[25%]">Item code</th>
+                    <th className="px-4 py-2.5 w-[10%] text-right" />
                   </tr>
                 </thead>
                 <tbody>
@@ -769,6 +749,9 @@ export default function ProductsPage() {
                             )}
                           </td>
                           <td className="px-4 py-2.5">
+                            <span className="text-[11px] font-medium text-gray-600">{firstVariant.category || "—"}</span>
+                          </td>
+                          <td className="px-4 py-2.5">
                             {variants.length === 1 ? (
                               <span className="inline-flex items-center gap-1 px-2 py-0.5 rounded text-[11px] font-semibold text-[#0c831f] border border-[#0c831f]/25 bg-[#0c831f]/5">
                                 {firstVariant.itemCode || `ITEM-${firstVariant.id.slice(-2)}`}
@@ -787,7 +770,7 @@ export default function ProductsPage() {
                         </tr>
                         {isExpanded && (
                           <tr>
-                            <td colSpan={3} className="p-0 border-b border-gray-200">
+                            <td colSpan={4} className="p-0 border-b border-gray-200">
                               <div className="flex flex-col bg-[#f8faf8]">
                                 {variants.map((v, index) => (
                                   <div key={v.id} className={index > 0 ? "border-t-[4px] border-gray-200/60" : ""}>

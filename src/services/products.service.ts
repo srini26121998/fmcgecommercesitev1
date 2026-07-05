@@ -84,7 +84,7 @@ export const productService = {
         if (pagination.pageSize) params.append("limit", pagination.pageSize.toString());
 
       let endpoint = "/api/v1/products";
-      const needsClientFilter = filters.search || filters.stockStatus || filters.minPrice !== undefined || filters.maxPrice !== undefined || filters.sortBy;
+      const needsClientFilter = filters.search || filters.stockStatus || filters.minPrice !== undefined || filters.maxPrice !== undefined || filters.sortBy || filters.category || filters.status;
       if (needsClientFilter) {
         // Fetch more items to perform comprehensive client-side filtering
         params.set("limit", "1000");

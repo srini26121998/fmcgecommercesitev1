@@ -227,6 +227,10 @@ function normalizeInventoryItem(raw: any): InventoryItem & {
 }
 
 function normalizeStockTransfer(raw: any): StockTransfer {
+  const createdAtStr = Array.isArray(raw?.createdAt) 
+    ? `${raw.createdAt[0]}-${String(raw.createdAt[1]).padStart(2, '0')}-${String(raw.createdAt[2]).padStart(2, '0')}`
+    : (raw?.createdAt ? String(raw.createdAt).split("T")[0] : undefined);
+
   return {
     id: String(raw?.id ?? raw?.transferNumber ?? ""),
     product: raw?.productName ?? raw?.product ?? "Unknown Product",

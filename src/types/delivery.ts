@@ -78,6 +78,7 @@ export const DeliveryPartnerSchema = z.object({
   vehicleType: z.enum(["bike", "scooter", "cycle", "van", "ev_scooter"]).optional(),
   vehicleNumber: z.string().optional().nullable(),
   status: z.enum(["online", "offline", "busy", "available"]).default("available"),
+  partnerType: z.string().optional(),
   currentOrders: z.number().int().nonnegative().default(0),
   totalDeliveries: z.number().int().nonnegative().default(0),
   rating: z.number().min(0).max(5).default(0),

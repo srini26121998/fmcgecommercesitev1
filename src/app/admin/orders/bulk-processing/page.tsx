@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState } from "react";
 import DashboardLayout from "../../dashboard-layout";
@@ -26,13 +26,19 @@ export default function BulkProcessingPage() {
   const totalProcessing = jobs.filter((j) => j.status === "processing" || j.status === "pending").length;
   const totalOrdersProcessed = jobs.reduce((s, j) => s + (j.count || 0), 0);
 
+  const [orderIdsInput, setOrderIdsInput] = useState("");
+
   const handleCreateAction = async () => {
-    // In real usage, user would select order IDs from a multi-select
-    const mockOrderIds = ["ORD-001", "ORD-002", "ORD-005", "ORD-009", "ORD-010"];
-    const success = await createBulkAction(actionType, mockOrderIds, "preparing");
+    const ids = orderIdsInput.split(",").map(id => id.trim()).filter(id => id.length > 0);
+    if (ids.length === 0) {
+      toast.error("Please enter at least one Order ID");
+      return;
+    }
+    const success = await createBulkAction(actionType, ids, "preparing");
     if (success) {
       toast.success(`Bulk action "${actionType.replace(/_/g, " ")}" created`);
       setShowProcessModal(false);
+      setOrderIdsInput("");
     } else {
       toast.error("Failed to create bulk action");
     }
@@ -124,11 +130,14 @@ export default function BulkProcessingPage() {
             </select>
           </div>
 
-          <div className="rounded-xl bg-[#f9fafb] p-3">
-            <p className="text-xs font-bold text-[#666]">Sample Selection</p>
-            <p className="mt-1 text-xs text-[#999]">
-              In production, select orders from the table above. For now, 5 sample orders will be processed.
-            </p>
+          <div>
+            <label className="text-xs font-bold text-[#666]">Order IDs (Comma-separated)</label>
+            <textarea
+              value={orderIdsInput}
+              onChange={(e) => setOrderIdsInput(e.target.value)}
+              placeholder="e.g. ORD-1234, ORD-5678"
+              className="mt-1 w-full rounded-xl border border-[#e8e8e8] bg-white px-4 py-2.5 text-sm font-bold text-[#1a1a1a] outline-none focus:border-[#0c831f]/50 h-24 resize-none"
+            />
           </div>
 
           <div className="flex justify-end gap-3 pt-4 border-t border-[#e8e8e8]">

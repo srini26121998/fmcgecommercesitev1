@@ -19,6 +19,12 @@ interface CartItem {
   bogoMrp?: number;
 }
 
+export interface AppliedCoupon {
+  code: string;
+  discount: number; // percentage or fixed amount depending on type
+  type?: "percent" | "fixed";
+}
+
 interface CartStore {
   cart: CartItem[];
   savedForLater: CartItem[];
@@ -38,6 +44,10 @@ interface CartStore {
   moveToCart: (id: number | string) => void;
   removeFromSaved: (id: number | string) => void;
   updateItemOptions: (id: number | string, options: Partial<CartItem>) => void;
+
+  appliedCoupon: AppliedCoupon | null;
+  applyCoupon: (coupon: AppliedCoupon) => void;
+  removeCoupon: () => void;
 }
 
 export const useCartStore = create<CartStore>()(
@@ -45,6 +55,7 @@ export const useCartStore = create<CartStore>()(
     (set, get) => ({
       cart: [],
       savedForLater: [],
+      appliedCoupon: null,
 
       addToCart: (product) => {
         // Stock validation should be handled by the UI or API before calling this
@@ -142,6 +153,9 @@ export const useCartStore = create<CartStore>()(
             item.id === id ? { ...item, ...options } : item
           ),
         })),
+
+      applyCoupon: (coupon) => set({ appliedCoupon: coupon }),
+      removeCoupon: () => set({ appliedCoupon: null }),
     }),
     {
       name: "fmcg-cart-storage",

@@ -59,7 +59,10 @@ export const customerService = {
       if (filters?.minSpent !== undefined) params.set("minSpent", String(filters.minSpent));
       if (filters?.sortBy) params.set("sortBy", filters.sortBy);
       if (filters?.sortOrder) params.set("sortOrder", filters.sortOrder);
-      if (pagination?.page) params.set("page", String(pagination.page));
+      if (pagination?.page) {
+        const page0 = Math.max(0, pagination.page - 1);
+        params.set("page", String(page0));
+      }
       if (pagination?.pageSize) params.set("limit", String(pagination.pageSize));
 
       const qs = params.toString();
@@ -69,6 +72,8 @@ export const customerService = {
       let customers = [];
       if (Array.isArray(response)) {
         customers = response;
+      } else if (Array.isArray(response?.data?.content)) { // Added this check for PagedResponse!
+        customers = response.data.content;
       } else if (Array.isArray(response?.data?.customers)) {
         customers = response.data.customers;
       } else if (Array.isArray(response?.customers)) {
@@ -77,7 +82,7 @@ export const customerService = {
         customers = response.data;
       }
       
-      const total = response?.data?.total || response?.total || customers.length;
+      const total = response?.data?.totalElements || response?.data?.total || response?.total || customers.length;
       
       return {
         customers,

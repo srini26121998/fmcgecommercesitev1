@@ -52,6 +52,7 @@ export const deliveryService = {
           email: r.email || "",
           vehicleType: r.vehicleType?.toLowerCase() || "bike",
           vehicleNumber: r.vehicleNumber || "",
+          partnerType: r.partnerType || "IN_HOUSE",
           status,
           currentOrders: 0,
           totalDeliveries: 0,

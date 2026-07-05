@@ -37,6 +37,10 @@ export function useUserCart() {
   const localDecreaseQuantity = useCartStore((s) => s.decreaseQuantity);
   const localClearCart = useCartStore((s) => s.clearCart);
   const localUpdateItemOptions = useCartStore((s) => s.updateItemOptions);
+  
+  const localAppliedCoupon = useCartStore((s) => s.appliedCoupon);
+  const setLocalAppliedCoupon = useCartStore((s) => s.applyCoupon);
+  const removeLocalAppliedCoupon = useCartStore((s) => s.removeCoupon);
 
   // API cart state
   const apiCart = useApiCartStore((state) => state.apiCart);
@@ -253,25 +257,34 @@ export function useUserCart() {
 
   // Merge items logically for UI
   const unifiedItems = isApiAvailable && apiCart 
-    ? apiCart.items.map(item => ({
-        id: Number(item.productId),
-        name: item.title || item.product?.name || `Product ${item.productId}`,
-        price: item.unitPrice ?? item.product?.price ?? 0,
-        image: item.imageUrl || item.product?.image || "/placeholder.jpg",
-        quantity: item.qty ?? item.quantity ?? 1,
-        weight: item.unit || item.product?.weight,
-        // Since API might not support these yet, we try to get them from localCart if they exist, or just use what's there
-        ...(localCart.find(i => i.id === Number(item.productId)) || {})
-      }))
+    ? apiCart.items.map(item => {
+        const localItem = localCart.find(i => i.id === Number(item.productId)) || {};
+        return {
+          ...localItem, // Apply local item first to keep extra UI fields
+          id: Number(item.productId),
+          name: item.title || item.product?.name || localItem.name || `Product ${item.productId}`,
+          price: item.unitPrice ?? item.product?.price ?? localItem.price ?? 0,
+          image: item.imageUrl || item.product?.image || localItem.image || "/placeholder.jpg",
+          quantity: item.qty ?? item.quantity ?? localItem.quantity ?? 1,
+          weight: item.unit || item.product?.weight || localItem.weight,
+        };
+      })
     : localCart;
 
   const unifiedTotal = isApiAvailable && apiCart 
     ? apiCart.total 
     : localCart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
+  const activeCoupon = (isApiAvailable && apiCart?.couponCode) 
+    ? { code: apiCart.couponCode, discount: apiCart.couponDiscount || 0 }
+    : localAppliedCoupon;
+
   return {
     cartItems: unifiedItems,
     cartDetails: apiCart, // Will contain couponCode, discountAmount, subTotal if API is used
+    appliedCoupon: activeCoupon,
+    setLocalAppliedCoupon,
+    removeLocalAppliedCoupon,
     total: unifiedTotal,
     loading,
     error,

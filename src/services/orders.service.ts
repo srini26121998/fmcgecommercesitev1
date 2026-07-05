@@ -219,15 +219,7 @@ function normalizeAnyOrder(o: any): Order {
     performedBy: t.changedBy || t.performedBy,
   }));
 
-  let partnerVal = o.deliveryPartnerName || o.deliveryPartner || null;
-  if (!partnerVal && typeof window !== "undefined") {
-    const storedPartnerId = localStorage.getItem(`assigned_partner_${id}`) ||
-      (backendId ? localStorage.getItem(`assigned_partner_${backendId}`) : null);
-    if (storedPartnerId) {
-      const partner = MOCK_DELIVERY_PARTNERS.find((p) => p.id === storedPartnerId);
-      partnerVal = partner ? partner.name : storedPartnerId;
-    }
-  }
+  let partnerVal = o.deliveryBoyName || o.deliveryPartnerName || o.deliveryPartner || null;
 
   return {
     id,
@@ -286,112 +278,7 @@ function computeOrdersSummary(orders: Order[]) {
 
 // ── Orders Service ────────────────────────────────────────
 
-const MOCK_DELIVERY_PARTNERS: DeliveryPartner[] = [
-  {
-    id: "DP-001",
-    name: "Rahul Sharma",
-    phone: "+91 98765 43201",
-    vehicleType: "bike",
-    status: "online",
-    currentOrders: 2,
-    totalDeliveries: 3420,
-    rating: 4.9,
-    earnings: 182000,
-    zone: "Mumbai Metro",
-    joinedAt: "2024-01-10",
-  },
-  {
-    id: "DP-002",
-    name: "Suresh Reddy",
-    phone: "+91 98765 43202",
-    vehicleType: "scooter",
-    status: "busy",
-    currentOrders: 1,
-    totalDeliveries: 2150,
-    rating: 4.7,
-    earnings: 120000,
-    zone: "Mumbai Metro",
-    joinedAt: "2024-03-15",
-  },
-  {
-    id: "DP-003",
-    name: "Amit Kumar",
-    phone: "+91 98765 43203",
-    vehicleType: "bike",
-    status: "online",
-    currentOrders: 0,
-    totalDeliveries: 1890,
-    rating: 4.8,
-    earnings: 98000,
-    zone: "Delhi NCR",
-    joinedAt: "2024-04-01",
-  },
-  {
-    id: "DP-004",
-    name: "Vijay Singh",
-    phone: "+91 98765 43204",
-    vehicleType: "cycle",
-    status: "offline",
-    currentOrders: 0,
-    totalDeliveries: 890,
-    rating: 4.5,
-    earnings: 45000,
-    zone: "Delhi NCR",
-    joinedAt: "2024-06-01",
-  },
-  {
-    id: "DP-005",
-    name: "Manoj Patil",
-    phone: "+91 98765 43205",
-    vehicleType: "bike",
-    status: "online",
-    currentOrders: 3,
-    totalDeliveries: 1560,
-    rating: 4.6,
-    earnings: 78000,
-    zone: "Pune City",
-    joinedAt: "2024-05-15",
-  },
-  {
-    id: "DP-006",
-    name: "Sneha Kulkarni",
-    phone: "+91 98765 43206",
-    vehicleType: "scooter",
-    status: "online",
-    currentOrders: 1,
-    totalDeliveries: 980,
-    rating: 4.9,
-    earnings: 52000,
-    zone: "Pune City",
-    joinedAt: "2024-08-01",
-  },
-  {
-    id: "DP-007",
-    name: "Rajesh Gupta",
-    phone: "+91 98765 43207",
-    vehicleType: "bike",
-    status: "offline",
-    currentOrders: 0,
-    totalDeliveries: 2340,
-    rating: 4.7,
-    earnings: 115000,
-    zone: "Bangalore Central",
-    joinedAt: "2024-02-01",
-  },
-  {
-    id: "DP-008",
-    name: "Kiran Patel",
-    phone: "+91 98765 43208",
-    vehicleType: "scooter",
-    status: "busy",
-    currentOrders: 2,
-    totalDeliveries: 450,
-    rating: 4.4,
-    earnings: 28000,
-    zone: "Bangalore Central",
-    joinedAt: "2026-01-10",
-  },
-];
+// MOCK_DELIVERY_PARTNERS removed - using live data from /api/v1/admin/delivery/riders
 
 export const orderService = {
 
@@ -749,13 +636,7 @@ export const orderService = {
         {}
       );
 
-      // Save assignment to local storage
-      if (typeof window !== "undefined") {
-        localStorage.setItem(`assigned_partner_${data.orderId}`, data.partnerId);
-        if (apiId) {
-          localStorage.setItem(`assigned_partner_${apiId}`, data.partnerId);
-        }
-      }
+      // Assignment successful on backend, just reload order from backend
 
       const updated = raw?.data || (raw as any).order || raw;
       if (updated && (updated.id || updated.orderNumber)) {
@@ -990,10 +871,7 @@ export const orderService = {
    */
   async updatePartnerStatus(id: string, status: string): Promise<boolean> {
     try {
-      const partner = MOCK_DELIVERY_PARTNERS.find((p) => p.id === id);
-      if (partner) {
-        partner.status = status as any;
-      }
+      await apiClient.patch(`/api/v1/admin/delivery/fleet/${id}/status`, { status });
       return true;
     } catch (err) {
       console.error(`[OrderService] updatePartnerStatus failed for ${id}:`, err);

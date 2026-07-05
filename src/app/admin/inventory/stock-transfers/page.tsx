@@ -18,6 +18,8 @@ export default function StockTransfersPage() {
   const [page, setPage] = useState(1);
   const [pageSize, setPageSize] = useState(10);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [selectedWarehouseId, setSelectedWarehouseId] = useState<string>("all");
+  const [activeTab, setActiveTab] = useState<"all" | "outbound" | "inbound">("all");
   const router = useRouter();
 
   const { transfers, loading, pagination, refresh: refreshTransfers, createTransfer } = useStockTransfers({ page, pageSize, search });
@@ -41,15 +43,35 @@ export default function StockTransfersPage() {
     [createTransfer],
   );
 
+  const filteredTransfers = useMemo(() => {
+    let result = transfers;
+    
+    // Filter by selected warehouse if one is chosen
+    if (selectedWarehouseId !== "all") {
+      if (activeTab === "outbound") {
+        result = result.filter(t => t.fromWarehouseId === selectedWarehouseId);
+      } else if (activeTab === "inbound") {
+        result = result.filter(t => t.toWarehouseId === selectedWarehouseId);
+      } else {
+        result = result.filter(t => t.fromWarehouseId === selectedWarehouseId || t.toWarehouseId === selectedWarehouseId);
+      }
+    } else {
+      // If "All Warehouses" is selected, inbound/outbound is harder to define without a perspective.
+      // We will just show everything if "all" warehouses is selected, regardless of tab, or disable the tabs.
+    }
+    
+    return result;
+  }, [transfers, selectedWarehouseId, activeTab]);
+
   const kpis = useMemo(() => {
-    const all = transfers;
+    const all = filteredTransfers;
     return {
       total: all.length,
-      inTransit: all.filter((t) => t.status === "in_transit").length,
+      inTransit: all.filter((t) => t.status === "in_transit" || t.status === "pending").length,
       completed: all.filter((t) => t.status === "completed").length,
-      pending: all.filter((t) => t.status === "pending").length,
+      cancelled: all.filter((t) => t.status === "cancelled").length,
     };
-  }, [transfers]);
+  }, [filteredTransfers]);
 
   return (
     <DashboardLayout>
@@ -76,13 +98,53 @@ export default function StockTransfersPage() {
           <ReusableCard title="Total Transfers" value={kpis.total} icon={<ArrowRightLeft className="h-4 w-4" />} color="text-[#0c831f]" bgColor="bg-[#e8f5e9]" />
           <ReusableCard title="In Transit" value={kpis.inTransit} icon={<Truck className="h-4 w-4" />} color="text-[#2563eb]" bgColor="bg-[#eff6ff]" />
           <ReusableCard title="Completed" value={kpis.completed} icon={<CheckCircle className="h-4 w-4" />} color="text-[#9333ea]" bgColor="bg-[#f3e8ff]" />
-          <ReusableCard title="Pending" value={kpis.pending} icon={<Clock className="h-4 w-4" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
+          <ReusableCard title="Cancelled" value={kpis.cancelled} icon={<Clock className="h-4 w-4" />} color="text-[#d97706]" bgColor="bg-[#fffbeb]" />
+        </div>
+
+        {/* Filters and Context */}
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between rounded-xl bg-[#f8faf8] p-4 border border-[#e8e8e8]">
+          <div className="flex items-center gap-3">
+            <span className="text-xs font-bold text-[#666] uppercase tracking-wider">Viewing As:</span>
+            <select 
+              value={selectedWarehouseId}
+              onChange={(e) => { setSelectedWarehouseId(e.target.value); setPage(1); }}
+              className="h-9 rounded-xl border border-[#e8e8e8] bg-white px-3 text-sm font-bold text-[#1a1a1a] outline-none focus:border-[#0c831f]"
+            >
+              <option value="all">All Warehouses</option>
+              {warehouseList.map(w => (
+                <option key={w.id} value={w.id}>{w.name}</option>
+              ))}
+            </select>
+          </div>
+          
+          {selectedWarehouseId !== "all" && (
+            <div className="flex items-center gap-1 rounded-xl bg-[#e8e8e8]/50 p-1">
+              <button 
+                onClick={() => { setActiveTab("all"); setPage(1); }} 
+                className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${activeTab === "all" ? "bg-white text-[#1a1a1a] shadow-sm" : "text-[#666] hover:text-[#1a1a1a]"}`}
+              >
+                All Transfers
+              </button>
+              <button 
+                onClick={() => { setActiveTab("outbound"); setPage(1); }} 
+                className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${activeTab === "outbound" ? "bg-white text-[#1a1a1a] shadow-sm" : "text-[#666] hover:text-[#1a1a1a]"}`}
+              >
+                Outbound (I Raised)
+              </button>
+              <button 
+                onClick={() => { setActiveTab("inbound"); setPage(1); }} 
+                className={`rounded-lg px-4 py-1.5 text-xs font-bold transition-all ${activeTab === "inbound" ? "bg-white text-[#1a1a1a] shadow-sm" : "text-[#666] hover:text-[#1a1a1a]"}`}
+              >
+                Inbound (Sent to me)
+              </button>
+            </div>
+          )}
         </div>
 
         <ReusableSearchBar value={search} onChange={(v) => { setSearch(v); setPage(1); }} placeholder="Search by product or transfer ID..." />
 
         <ReusableTable
-          data={transfers}
+          data={filteredTransfers}
           isLoading={loading}
           keyExtractor={(t: StockTransfer) => t.id}
           page={page}

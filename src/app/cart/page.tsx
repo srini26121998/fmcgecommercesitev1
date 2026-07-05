@@ -33,7 +33,7 @@ import BillRow from "@/components/ui/a11y/bill-row";
 import { SafeProductImage } from "@/components/ui/safe-image";
 
 export default function CartPage() {
-  const { cartItems: cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, applyCoupon, removeCoupon, cartDetails, updateItemOptions, addBogoReward } =
+  const { cartItems: cart, removeFromCart, increaseQuantity, decreaseQuantity, clearCart, applyCoupon, removeCoupon, cartDetails, updateItemOptions, addBogoReward, appliedCoupon, setLocalAppliedCoupon, removeLocalAppliedCoupon } =
     useUserCart();
   const [isHydrated, setIsHydrated] = useState(false);
   const [isGiftOrder, setIsGiftOrder] = useState(false);
@@ -47,7 +47,6 @@ export default function CartPage() {
   // We use our new useUserCart hook to manage coupons on the backend if logged in.
   // Otherwise we manage local UI state.
   const [localCouponCode, setLocalCouponCode] = useState("");
-  const [localAppliedCoupon, setLocalAppliedCoupon] = useState<{code: string, discount: number} | null>(null);
   const [couponMessage, setCouponMessage] = useState<string | null>(null);
   const [couponsList, setCouponsList] = useState<any[]>([]);
   const [showCoupons, setShowCoupons] = useState(false);
@@ -96,24 +95,7 @@ export default function CartPage() {
           if (res && res.length > 0) {
             setCouponsList(res);
           } else {
-            setCouponsList([
-              {
-                "code": "SAVE200",
-                "type": "FIXED",
-                "discountValue": 200.00,
-                "discountType": "FIXED",
-                "minOrder": 999.00,
-                "description": "This coupon requires minimum order ₹999.00 for this coupon SAVE200"
-              },
-              {
-                "code": "WELCOME10",
-                "type": "PERCENTAGE",
-                "discountValue": 10.00,
-                "discountType": "PERCENTAGE",
-                "minOrder": 0.00,
-                "description": "Apply WELCOME10 for a discount!"
-              }
-            ]);
+            setCouponsList([]);
           }
         }).finally(() => setLoadingCoupons(false));
       });
@@ -140,13 +122,15 @@ export default function CartPage() {
   const discountAmount = useMemo(() => {
     if (cartDetails?.couponDiscount !== undefined) return cartDetails.couponDiscount;
     if (cartDetails?.discountAmount !== undefined) return cartDetails.discountAmount;
-    if (!localAppliedCoupon) return 0;
-    return Math.round((itemTotal * localAppliedCoupon.discount) / 100);
-  }, [itemTotal, localAppliedCoupon, cartDetails]);
+    if (!appliedCoupon) return 0;
+    return Math.round((itemTotal * appliedCoupon.discount) / 100);
+  }, [itemTotal, appliedCoupon, cartDetails]);
 
   const taxAmount = useMemo(() => {
     if (cartDetails?.tax !== undefined) return cartDetails.tax;
-    return itemTotal > 0 ? Number(((itemTotal - discountAmount) * 0.05).toFixed(2)) : 0;
+    if (itemTotal <= 0) return 0;
+    const taxable = Math.max(0, itemTotal - discountAmount);
+    return Number((taxable * 0.05).toFixed(2));
   }, [itemTotal, discountAmount, cartDetails]);
 
   const total = useMemo(
@@ -528,11 +512,11 @@ export default function CartPage() {
                 </section>
 
                 <aside className="space-y-3 lg:sticky lg:top-20 lg:h-fit">
-                   {(cartDetails?.couponCode || localAppliedCoupon) ? (
+                   {(cartDetails?.couponCode || appliedCoupon) ? (
                      <div className="rounded-xl border border-[#0c831f] bg-[#e8f5e9] p-3 flex items-center justify-between">
                        <div>
                         <p className="text-xs font-bold text-[#0c831f]">
-                          Coupon Applied: {cartDetails?.couponCode || localAppliedCoupon?.code}
+                          Coupon Applied: {cartDetails?.couponCode || appliedCoupon?.code}
                         </p>
                         <p className="text-[10px] text-[#0c831f]">
                           You saved &#8377;{discountAmount} on this order
@@ -541,7 +525,7 @@ export default function CartPage() {
                        <button 
                         onClick={async () => {
                           await removeCoupon();
-                          setLocalAppliedCoupon(null);
+                          removeLocalAppliedCoupon();
                           setCouponMessage(null);
                           toast.info("Coupon removed");
                         }}
@@ -577,13 +561,14 @@ export default function CartPage() {
                              if (res && res.success === false && res.message?.includes("login")) {
                                // Fallback to local coupon logic
                                const matchedCoupon = couponsList.find(c => c.code === code);
-                               const coupon = matchedCoupon ? {
-                                 discount: matchedCoupon.discountValue,
-                                 type: matchedCoupon.discountType === "PERCENTAGE" ? "percent" : "fixed",
-                                 minAmount: matchedCoupon.minOrder
-                               } : { discount: 10, type: "percent", minAmount: 0 }; // Default fallback
                                
-                               if (coupon) {
+                               if (matchedCoupon) {
+                                 const coupon = {
+                                   discount: matchedCoupon.discountValue,
+                                   type: matchedCoupon.discountType === "PERCENTAGE" ? "percent" : "fixed",
+                                   minAmount: matchedCoupon.minOrder
+                                 };
+                                 
                                  if (itemTotal < coupon.minAmount) {
                                    setCouponMessage(`Min order ₹${coupon.minAmount} required`);
                                    toast.error(`Minimum order ₹${coupon.minAmount} needed for ${code}`);
@@ -651,7 +636,7 @@ export default function CartPage() {
                        )}
 
                        {couponMessage && !showCoupons && (
-                         <p className={`text-[10px] font-bold ${(cartDetails?.couponCode || localAppliedCoupon) ? "text-[#0c831f]" : "text-[#ff4f8b]"}`}>
+                         <p className={`text-[10px] font-bold ${(cartDetails?.couponCode || appliedCoupon) ? "text-[#0c831f]" : "text-[#ff4f8b]"}`}>
                            {couponMessage}
                          </p>
                        )}
@@ -675,7 +660,7 @@ export default function CartPage() {
                           </>
                         }
                       />
-                      {(cartDetails?.couponCode || localAppliedCoupon) && (
+                      {(cartDetails?.couponCode || appliedCoupon) && (
                         <BillRow
                           label="Coupon discount"
                           value={
@@ -718,6 +703,7 @@ export default function CartPage() {
                           }
                         />
                       )}
+                      {/* Backend does not currently support cashback
                       {estimatedCashback > 0 && (
                         <BillRow
                           label={
@@ -733,7 +719,7 @@ export default function CartPage() {
                             </div>
                           }
                         />
-                      )}
+                      )} */}
                       <div className="flex items-center justify-between border-t border-[#e8e8e8] pt-3 text-base font-black text-[#1a1a1a]">
                         <span>To pay</span>
                         <span>&#8377;{total}</span>
