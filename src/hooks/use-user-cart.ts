@@ -3,7 +3,7 @@
 import { useState, useEffect, useCallback } from "react";
 import { cartService } from "@/services/cart.service";
 import { useAuthStore } from "@/store/auth-store";
-import { useCartStore } from "@/store/cart-store";
+import { useCartStore, type CartItem } from "@/store/cart-store";
 import type { ApiCart } from "@/types/api-cart";
 import { productService } from "@/services/products.service";
 
@@ -261,19 +261,19 @@ export function useUserCart() {
     localUpdateItemOptions(Number(productId), options);
   };
 
-  const unifiedItems = isApiAvailable && apiCart 
+  const unifiedItems: CartItem[] = isApiAvailable && apiCart 
     ? [
         ...apiCart.items.map(item => {
-          const localItem = localCart.find(i => i.id === Number(item.productId)) || {};
+          const localItem = localCart.find(i => i.id === Number(item.productId));
           return {
-            ...localItem, // Apply local item first to keep extra UI fields
+            ...(localItem || {}), // Apply local item first to keep extra UI fields
             id: Number(item.productId),
-            name: item.title || item.product?.name || localItem.name || `Product ${item.productId}`,
-            price: item.unitPrice ?? item.product?.price ?? localItem.price ?? 0,
-            image: item.imageUrl || item.product?.image || localItem.image || "/placeholder.jpg",
-            quantity: item.qty ?? item.quantity ?? localItem.quantity ?? 1,
-            weight: item.unit || item.product?.weight || localItem.weight,
-          };
+            name: item.title || item.product?.name || localItem?.name || `Product ${item.productId}`,
+            price: item.unitPrice ?? item.product?.price ?? localItem?.price ?? 0,
+            image: item.imageUrl || item.product?.image || localItem?.image || "/placeholder.jpg",
+            quantity: item.qty ?? item.quantity ?? localItem?.quantity ?? 1,
+            weight: item.unit || item.product?.weight || localItem?.weight,
+          } as CartItem;
         }),
         ...localCart.filter(localItem => !apiCart.items.some(apiItem => Number(apiItem.productId) === localItem.id))
       ]

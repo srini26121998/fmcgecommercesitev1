@@ -21,6 +21,13 @@ export const adminToast = {
   },
 
   /**
+   * Show a general error notification.
+   */
+  error(message: string, description?: string) {
+    toast.error(message, { description, duration: 4000 });
+  },
+
+  /**
    * Show an error notification for API failures.
    */
   apiError(message: string, details?: string) {
