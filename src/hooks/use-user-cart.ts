@@ -151,17 +151,23 @@ export function useUserCart() {
 
   const removeFromCart = async (productId: number | string) => {
     if (isLoggedIn && isApiAvailable) {
+      const item = apiCart?.items.find(i => String(i.productId) === String(productId) || String(i.id) === String(productId));
+      if (!item) {
+        // Local-only item (like a BOGO reward), no need to hit the API
+        localRemoveFromCart(Number(productId));
+        return;
+      }
       try {
         setLoading(true);
-        // Find the actual item in the API cart to get its ID, or fallback to productId
-        const item = apiCart?.items.find(i => String(i.productId) === String(productId) || String(i.id) === String(productId));
-        const itemIdToRemove = item?.id || productId;
+        const itemIdToRemove = item.id;
         const res = await cartService.removeItemFromCart(String(itemIdToRemove));
         if (res.cart) setApiCart(res.cart);
       } catch (err) {
         console.warn("Failed to remove from API cart", err);
       } finally {
         setLoading(false);
+        // Also ensure it's removed locally just in case
+        localRemoveFromCart(Number(productId));
       }
     } else {
       localRemoveFromCart(Number(productId));
@@ -255,20 +261,22 @@ export function useUserCart() {
     localUpdateItemOptions(Number(productId), options);
   };
 
-  // Merge items logically for UI
   const unifiedItems = isApiAvailable && apiCart 
-    ? apiCart.items.map(item => {
-        const localItem = localCart.find(i => i.id === Number(item.productId)) || {};
-        return {
-          ...localItem, // Apply local item first to keep extra UI fields
-          id: Number(item.productId),
-          name: item.title || item.product?.name || localItem.name || `Product ${item.productId}`,
-          price: item.unitPrice ?? item.product?.price ?? localItem.price ?? 0,
-          image: item.imageUrl || item.product?.image || localItem.image || "/placeholder.jpg",
-          quantity: item.qty ?? item.quantity ?? localItem.quantity ?? 1,
-          weight: item.unit || item.product?.weight || localItem.weight,
-        };
-      })
+    ? [
+        ...apiCart.items.map(item => {
+          const localItem = localCart.find(i => i.id === Number(item.productId)) || {};
+          return {
+            ...localItem, // Apply local item first to keep extra UI fields
+            id: Number(item.productId),
+            name: item.title || item.product?.name || localItem.name || `Product ${item.productId}`,
+            price: item.unitPrice ?? item.product?.price ?? localItem.price ?? 0,
+            image: item.imageUrl || item.product?.image || localItem.image || "/placeholder.jpg",
+            quantity: item.qty ?? item.quantity ?? localItem.quantity ?? 1,
+            weight: item.unit || item.product?.weight || localItem.weight,
+          };
+        }),
+        ...localCart.filter(localItem => !apiCart.items.some(apiItem => Number(apiItem.productId) === localItem.id))
+      ]
     : localCart;
 
   const unifiedTotal = isApiAvailable && apiCart 

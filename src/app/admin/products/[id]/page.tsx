@@ -10,6 +10,7 @@ import type { UploadedFile } from "@/components/ui/file-upload";
 import { validateForm } from "@/validation/admin";
 import { productSchema } from "@/validation/product";
 import { adminToast } from "@/lib/admin-toast";
+import { apiClient } from "@/lib/api-client";
 import { toast } from "sonner";
 import type { ProductStatus, ProductMedia } from "@/types/products";
 import {
@@ -101,22 +102,24 @@ export default function ProductDetailPage() {
     }
     setErrors({});
     
-    // Upload files to local server first
+    // Upload files to backend directly
     const uploadedMediaUrls: string[] = [];
     for (const f of editFiles) {
       const formData = new FormData();
       formData.append("file", f.file);
       try {
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
+        const res = await apiClient.post<any>("/api/v1/admin/upload", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
-        const data = await res.json();
-        if (data.url) {
-          uploadedMediaUrls.push(data.url);
+        if (res?.data?.url) {
+          uploadedMediaUrls.push(res.data.url);
+        } else if (res?.url) { // fallback
+          uploadedMediaUrls.push(res.url);
         }
       } catch (err) {
-        console.error("Failed to upload file locally", err);
+        console.error("Failed to upload file to backend", err);
       }
     }
 
@@ -372,13 +375,12 @@ export default function ProductDetailPage() {
               <div><label className="mb-1.5 block text-xs font-bold text-[#666]">Supplier</label><input className={inp} value={(f.supplier as string) ?? ""} onChange={e => setEditForm(p => ({ ...p, supplier: e.target.value }))} /></div>
               <div><label className="mb-1.5 block text-xs font-bold text-[#666]">Discount %</label><input type="number" min={0} max={100} className={inp} value={(f.discountPercent as number) ?? ""} onChange={e => setEditForm(p => ({ ...p, discountPercent: Number(e.target.value) }))} /></div>
 
-              <div className="sm:col-span-3"><label className="mb-1.5 block text-xs font-bold text-[#666]">Short Description</label><input className={inp} value={(f.shortDescription as string) ?? ""} onChange={e => setEditForm(p => ({ ...p, shortDescription: e.target.value }))} /></div>
               <div className="sm:col-span-3">
                 <label className="mb-1.5 block text-xs font-bold text-[#666]">Description</label>
                 <textarea rows={4} className="w-full rounded-xl border border-[#e8e8e8] bg-white px-4 py-3 text-sm text-[#1a1a1a] outline-none shadow-sm hover:shadow focus:border-[#0c831f] focus:ring-4 focus:ring-[#0c831f]/10 focus:shadow-md transition-all duration-200 resize-none" value={(f.description as string) ?? ""} onChange={e => setEditForm(p => ({ ...p, description: e.target.value }))} />
               </div>
               <div className="sm:col-span-3">
-                <label className="mb-1.5 block text-xs font-bold text-[#666]">Tags (comma separated)</label>
+                <label className="mb-1.5 block text-xs font-bold text-[#666]">Keywords (comma separated)</label>
                 <input className={inp} value={((f.tags as string[]) ?? []).join(", ")} onChange={e => setEditForm(p => ({ ...p, tags: e.target.value.split(",").map(t => t.trim()).filter(Boolean) }))} />
               </div>
 

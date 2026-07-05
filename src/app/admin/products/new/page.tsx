@@ -12,6 +12,7 @@ import type { UploadedFile } from "@/components/ui/file-upload";
 import { validateForm } from "@/validation/admin";
 import { productSchema } from "@/validation/product";
 import { adminToast } from "@/lib/admin-toast";
+import { apiClient } from "@/lib/api-client";
 
 export default function NewProductPage() {
   const router = useRouter();
@@ -31,22 +32,24 @@ export default function NewProductPage() {
       return;
     }
 
-    // Upload files to local server first
+    // Upload files to backend directly
     const uploadedMediaUrls: string[] = [];
     for (const f of files) {
       const formData = new FormData();
       formData.append("file", f.file);
       try {
-        const res = await fetch("/api/upload", {
-          method: "POST",
-          body: formData,
+        const res = await apiClient.post<any>("/api/v1/admin/upload", formData, {
+          headers: {
+            "Content-Type": "multipart/form-data",
+          },
         });
-        const data = await res.json();
-        if (data.url) {
-          uploadedMediaUrls.push(data.url);
+        if (res?.data?.url) {
+          uploadedMediaUrls.push(res.data.url);
+        } else if (res?.url) { // fallback
+          uploadedMediaUrls.push(res.url);
         }
       } catch (err) {
-        console.error("Failed to upload file locally", err);
+        console.error("Failed to upload file to backend", err);
       }
     }
 
@@ -178,16 +181,7 @@ export default function NewProductPage() {
                   </div>
                 </div>
 
-                <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Short Description</label>
-                  <textarea
-                    rows={2}
-                    placeholder="Brief summary..."
-                    value={form.shortDescription ?? ""}
-                    onChange={(e) => setForm((f) => ({ ...f, shortDescription: e.target.value }))}
-                    className="w-full rounded-xl border border-[#e8e8e8] bg-[#f9fafb] px-3 py-3 text-sm text-[#1a1a1a] outline-none transition-colors placeholder:text-[#999] focus:border-[#0c831f] focus:bg-white focus:ring-4 focus:ring-[#0c831f]/10 resize-none"
-                  />
-                </div>
+
                 <div>
                   <label className="mb-1.5 block text-xs font-bold text-[#666]">Description</label>
                   <textarea
@@ -199,7 +193,7 @@ export default function NewProductPage() {
                   />
                 </div>
                 <div>
-                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Tags</label>
+                  <label className="mb-1.5 block text-xs font-bold text-[#666]">Keywords</label>
                   <input
                     type="text"
                     placeholder="e.g. organic, fresh, dairy (comma separated)"

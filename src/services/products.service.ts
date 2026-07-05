@@ -254,12 +254,20 @@ export const productService = {
       const payload: any = { ...data };
       if (data.name !== undefined) {
         payload.title = data.name;
-        // Optionally delete payload.name if backend doesn't like it
       }
       if (data.categoryId !== undefined) {
         payload.categoryId = data.categoryId;
       } else if (data.category !== undefined) {
         payload.categoryId = data.category;
+      }
+      if (payload.media && Array.isArray(payload.media)) {
+        payload.media = payload.media.map((m: any) => {
+          if (typeof m.id === 'string' && m.id.startsWith('media-')) {
+            const { id, ...rest } = m;
+            return rest;
+          }
+          return m;
+        });
       }
       const response = await apiClient.post<any>("/api/v1/admin/products", payload);
       const p = response?.data?.product || response?.product || response?.data || response;
@@ -281,6 +289,15 @@ export const productService = {
         payload.categoryId = data.categoryId;
       } else if (data.category !== undefined) {
         payload.categoryId = data.category;
+      }
+      if (payload.media && Array.isArray(payload.media)) {
+        payload.media = payload.media.map((m: any) => {
+          if (typeof m.id === 'string' && m.id.startsWith('media-')) {
+            const { id, ...rest } = m;
+            return rest;
+          }
+          return m;
+        });
       }
       const response = await apiClient.put<any>(`/api/v1/admin/products/${id}`, payload);
       const p = response?.data?.product || response?.product || response?.data || response;

@@ -42,7 +42,7 @@ export const deliveryService = {
       const items = riders.map((r: any) => {
         let status = "offline";
         const avail = (r.availabilityStatus || "").toUpperCase();
-        if (avail === "FREE") status = "online";
+        if (avail === "FREE" || avail === "AVAILABLE") status = "online";
         else if (avail === "BUSY") status = "busy";
         
         return {
