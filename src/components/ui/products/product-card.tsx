@@ -14,6 +14,7 @@ import ProductView360 from "@/components/ui/home/product-view-360";
 import { toast } from "sonner";
 import type { Product } from "@/data/products";
 import AddToCartButton from "@/components/ui/products/add-to-cart-button";
+import { useSearchHistoryStore } from "@/store/search-history-store";
 import { usePromotionsStore } from "@/store/promotions-store";
 import { Tag } from "lucide-react";
 
@@ -41,6 +42,7 @@ interface ProductCardProps {
 }
 
 function ProductCard({ product }: ProductCardProps) {
+  const { addQuery } = useSearchHistoryStore();
   const [animateHeart, setAnimateHeart] = useState(false);
   const [show360, setShow360] = useState(false);
   const [showPicker, setShowPicker] = useState(false);
@@ -127,7 +129,7 @@ function ProductCard({ product }: ProductCardProps) {
 
       {/* ── Image ── */}
       <div className={`relative bg-[#f2f2f2] aspect-square overflow-hidden ${isOOS ? "opacity-60 grayscale" : ""}`}>
-        <Link href={`/product/${product.id}`} className="block w-full h-full" aria-label={`View ${product.name}`}>
+        <Link href={`/product/${product.id}`} className="block w-full h-full" aria-label={`View ${product.name}`} onClick={() => addQuery(product.name)}>
           <SafeProductImage
             src={imageUrl}
             alt={seoAlt}
@@ -257,7 +259,7 @@ function ProductCard({ product }: ProductCardProps) {
 
         {/* Title & Veg/Non-Veg Icon */}
         <div className="flex items-start justify-between gap-1 mb-1">
-          <Link href={`/product/${product.id}`} className="block group/title flex-1">
+          <Link href={`/product/${product.id}`} className="block group/title flex-1" onClick={() => addQuery(product.name)}>
             <h2 className={`text-[11px] sm:text-xs font-semibold leading-tight line-clamp-2 ${isOOS ? "text-[#666]" : "text-[#1a1a1a] group-hover/title:text-[#ff4f8b] transition-colors"}`}>
               {product.name}
             </h2>

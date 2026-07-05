@@ -72,8 +72,12 @@ export default function SearchPage() {
   const [showScanner, setShowScanner] = useState(false);
   const [isScanningBarcode, setIsScanningBarcode] = useState(false);
   const searchInputRef = useRef<HTMLInputElement>(null);
-  const { addQuery } = useSearchHistoryStore();
+  const { addQuery, queries } = useSearchHistoryStore();
   const { getByBarcode } = useProductBarcode();
+
+  const searchTags = useMemo(() => {
+    return queries.slice(0, 10);
+  }, [queries]);
 
   const handleRefresh = useCallback(async () => {
     await new Promise((resolve) => setTimeout(resolve, 600));
@@ -335,13 +339,13 @@ export default function SearchPage() {
                     initial="hidden"
                     animate="show"
                   >
-                    {filterCategories.map((cat) => (
+                    {searchTags.map((cat) => (
                       <motion.button
                         variants={itemVariants}
                         key={cat}
-                        onClick={() => { setSelectedCategory(cat); if (activeFilters.category !== "All") setActiveFilters((prev) => ({ ...prev, category: "All" })); }}
+                        onClick={() => { setSearchQuery(cat); addQuery(cat); }}
                         className={`flex-shrink-0 inline-flex items-center justify-center h-10 px-5 rounded-xl text-sm font-medium border transition-all ${
-                          cat === selectedCategory
+                          cat === searchQuery.trim()
                             ? "bg-gray-900 text-white border-gray-900 shadow-md shadow-gray-900/10"
                             : "bg-white text-gray-600 border-gray-200 hover:border-gray-900 hover:text-gray-900 hover:bg-gray-50"
                         }`}
