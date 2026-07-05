@@ -16,6 +16,42 @@ const delay = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
 
 import { apiClient } from "@/lib/api-client";
 
+const mockProfile: AdminProfile = {
+  id: "mock_123",
+  name: "Admin",
+  email: "admin@example.com",
+  role: "admin",
+  roleLabel: "Admin",
+  avatarInitials: "AD",
+  status: "active",
+  timezone: "Asia/Kolkata",
+  joinedAt: new Date().toISOString(),
+  lastLoginAt: new Date().toISOString(),
+  mfaEnabled: false,
+  emailVerified: true,
+  phoneVerified: false,
+};
+
+const mockNotifPrefs: AdminNotificationPrefs = {
+  emailNotifications: true,
+  pushNotifications: true,
+  smsNotifications: false,
+  orderAlerts: true,
+  inventoryAlerts: true,
+  systemAlerts: true,
+  marketingEmails: false,
+  digestFrequency: "daily",
+};
+
+const mockStats: ProfileStats = {
+  totalOrdersProcessed: 0,
+  totalRevenueManaged: 0,
+  activeSessions: 1,
+  daysSinceJoined: 0,
+  loginStreak: 1,
+  actionsToday: 0,
+};
+
 export const profileService = {
   async getProfile(): Promise<AdminProfile> {
     try {

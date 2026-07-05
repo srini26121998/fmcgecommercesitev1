@@ -45,7 +45,7 @@ export default function DeliveryPage() {
   const fetchPartners = async () => {
     try {
       setIsLoading(true);
-      const res = await deliveryService.getPartners({ page, limit: pageSize });
+      const res = await deliveryService.getPartners({ page, pageSize });
       if (res.success && res.data) {
         // Map the backend data to the Partner interface expected by the UI
         const mapped = res.data.items.map((r: any) => ({

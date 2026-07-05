@@ -66,7 +66,7 @@ export function useUserNotifications() {
     if (isLoggedIn) {
       fetchNotifications();
       
-      const token = useAuthStore.getState().token;
+      const token = useAuthStore.getState().user?.token;
       if (token) {
         eventSource = new EventSource(`${process.env.NEXT_PUBLIC_API_URL || "http://localhost:8080"}/api/v1/notifications/stream?token=${token}`);
         

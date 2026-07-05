@@ -104,7 +104,7 @@ export function useAdminProfile() {
 
   const updateMFA = useCallback(
     async (enabled: boolean, method: "app" | "sms" | "email" | null) => {
-      const updated = await profileService.updateMFA({ enabled, method });
+      const updated = await profileService.setupMFA({ enabled, method });
       setSecurity(updated);
       return updated;
     },
